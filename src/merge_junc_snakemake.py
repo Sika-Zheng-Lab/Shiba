@@ -52,11 +52,13 @@ def merge_exonexon(filelist):
 
 	result_df["count"] = result_df["count"].astype("int32")
 	# Check if there are duplicated junctions
-	dup_df = result_df.groupby(["ID", "sample"], as_index = False).count()
-	dup_df = dup_df[dup_df["count"] > 1]
-	if dup_df.shape[0] > 0:
-		logger.error("Duplicated junctions found")
-		raise ValueError("Duplicated junctions detected. Please check the input files.")
+	if result_df.duplicated(subset=["ID", "sample"]).any():
+		duplicates = result_df[result_df.duplicated(subset=["ID", "sample"], keep=False)]
+		logger.debug(f"Duplicated junctions found: {duplicates}")
+		logger.debug("Duplicated junctions occur when the same junction is detected in both strands.")
+		logger.debug("The duplicated junctions will be summed and merged.")
+		# Group by ID and sample and sum counts
+		result_df = result_df.groupby(["ID", "sample"], as_index=False).sum()
 
 	result_df = result_df.pivot(
 		index = "ID",

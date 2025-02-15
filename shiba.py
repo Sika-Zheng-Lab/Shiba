@@ -49,6 +49,7 @@ def main():
 
     # Validate input and config
     logger.info("Running Shiba...")
+    logger.info(f"Shiba {VERSION}")
     logger.debug(f"Arguments: {args}")
     # Get number of processors
     processors = str(args.process)

@@ -41,6 +41,7 @@ def main():
 
 	# Validate input and config
 	logger.info("Running scShiba...")
+	logger.info(f"scShiba {VERSION}")
 	logger.debug(f"Arguments: {args}")
 	# Get number of processors
 	processors = str(args.process)

@@ -2,6 +2,16 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.5.2] - 2025-??-??
+
+### Added
+
+- Print Shiba version in the log file.
+
+### Fixed
+
+- Fixed a bug in `bam2junc.py` due to wrong handling of duplicated juntions ([#40](https://github.com/NaotoKubota/Shiba/issues/40))
+
 ## [v0.5.2] - 2025-02-07
 
 ### Fixed

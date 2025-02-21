@@ -6,26 +6,26 @@ You don't have to build a local environment for running Shiba! We provide a Dock
 
 ``` bash
 # Pull the latest image
-docker pull naotokubota/shiba:latest
+docker pull naotokubota/shiba:v0.5.2
 
 # Login to the container
-docker run -it --rm naotokubota/shiba:latest bash
+docker run -it --rm naotokubota/shiba:v0.5.2 bash
 
 # Run Shiba, for example, to see the help message
-docker run -it --rm naotokubota/shiba:latest python /opt_shiba/Shiba/shiba.py -h
+docker run -it --rm naotokubota/shiba:v0.5.2 python /opt_shiba/Shiba/shiba.py -h
 ```
 
 ## Singularity
 
 ``` bash
 # Pull the latest image
-singularity pull docker://naotokubota/shiba:latest
+singularity pull docker://naotokubota/shiba:v0.5.2
 
 # Login to the container
-singularity shell shiba_latest.sif
+singularity shell shiba_v0.5.2.sif
 
 # Run Shiba, for example, to see the help message
-singularity exec shiba_latest.sif python /opt_shiba/Shiba/shiba.py -h
+singularity exec shiba_v0.5.2.sif python /opt_shiba/Shiba/shiba.py -h
 ```
 
 ## Snakemake
@@ -34,7 +34,7 @@ You need to install [Snakemake](https://snakemake.readthedocs.io/en/stable/) and
 
 ``` bash
 # Clone the Shiba repository
-git clone https://github.com/NaotoKubota/Shiba.git
+git clone https://github.com/Sika-Zheng-Lab/Shiba.git
 ```
 
 And please make sure you have [Singularity](https://sylabs.io/guides/3.7/user-guide/quick_start.html) installed on your system as the snakemake workflow uses Singularity to run each step of the pipeline.

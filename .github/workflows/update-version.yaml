@@ -73,11 +73,14 @@ jobs:
           NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
           sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/usage/shiba.md
           sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/usage/scshiba.md
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/quickstart/diff_splicing_bulk.md
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/quickstart/diff_splicing_sc.md
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/installation.md
 
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add README.md shiba.py scshiba.py snakeshiba.smk snakescshiba.smk docker/Dockerfile docs/usage/shiba.md docs/usage/scshiba.md
+          git add README.md shiba.py scshiba.py snakeshiba.smk snakescshiba.smk docker/Dockerfile docs/usage/shiba.md docs/usage/scshiba.md docs/quickstart/diff_splicing_bulk.md docs/quickstart/diff_splicing_sc.md docs/installation.md
           git commit -m "actions: Ready for ${{ steps.read_version.outputs.NEW_VERSION }}"
           git push origin HEAD:${{ steps.get_branch.outputs.BRANCH_NAME }}

@@ -92,7 +92,7 @@ Docker:
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
 cd /path/to/workdir
-docker run --rm -v $(pwd):$(pwd) naotokubota/shiba:latest \
+docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.2 \
 python /opt_shiba/Shiba/shiba.py -p 32 /path/to/workdir/config.yaml
 ```
 
@@ -100,7 +100,7 @@ Singularity:
 
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
-singularity exec shiba_latest.sif \
+singularity exec docker://naotokubota/shiba:v0.5.2 \
 python /opt_shiba/Shiba/shiba.py -p 32 /path/to/workdir/config.yaml
 ```
 

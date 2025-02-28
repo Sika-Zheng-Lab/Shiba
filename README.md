@@ -60,7 +60,7 @@ snakemake -s snakescshiba.smk --configfile config.yaml --cores 32 --use-singular
 
 ## Citation
 
-Kubota N, Chen L, Zheng S. (2024). [Shiba: A unified computational method for robust identification of differential RNA splicing across platforms](https://www.biorxiv.org/content/10.1101/2024.05.30.596331v1). *bioRxiv* 2024.05.30.596331
+Kubota N, Chen L, Zheng S. (2024). [Shiba: a versatile computational method for systematic identification of differential RNA splicing across platforms](https://academic.oup.com/nar/article/53/4/gkaf098/8042001). *Nucleic Acids Research*  53(4), 2025, gkaf098.
 
 ## Authors
 

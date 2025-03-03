@@ -1,10 +1,10 @@
 # Shiba
 
-![SE](https://github.com/NaotoKubota/Shiba/blob/main/img/Shiba_icon.png?raw=true){ align=right width=40% }
+![SE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/Shiba_icon.png?raw=true){ align=right width=40% }
 
 A unified computational method for robust identification of differential RNA splicing. **Shiba**/**scShiba** can quantify and identify differential splicing events (DSEs) from short-read bulk RNA-seq data and single-cell RNA-seq data. **Shiba** and **scShiba** are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, **SnakeShiba** and **SnakeScShiba**, respectively.
 
-See [CHANGELOG.md](https://github.com/NaotoKubota/Shiba/blob/main/CHANGELOG.md) for the latest updates.
+See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
 ## Contents
 

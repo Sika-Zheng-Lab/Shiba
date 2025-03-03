@@ -60,7 +60,7 @@ rule all:
 
             All analysis finished successfully!
             SnakeShiba version: {params.version}
-            https://github.com/NaotoKubota/Shiba
+            https://github.com/Sika-Zheng-Lab/Shiba
 
         '
         """

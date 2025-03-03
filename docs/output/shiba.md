@@ -42,7 +42,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_SE.txt`
 
 <figure markdown="span">
-	![SE](https://github.com/NaotoKubota/Shiba/blob/main/img/SE.png?raw=true){ width="100%" }
+	![SE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/SE.png?raw=true){ width="100%" }
 	<figcaption>Skipped exon</figcaption>
 </figure>
 
@@ -67,7 +67,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_FIVE.txt` and `PSI_THREE.txt`
 
 <figure markdown="span">
-	![FIVE_THREE](https://github.com/NaotoKubota/Shiba/blob/main/img/FIVE_THREE.png?raw=true){ width="100%" }
+	![FIVE_THREE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/FIVE_THREE.png?raw=true){ width="100%" }
 	<figcaption>Alternative 5' and 3' splice sites</figcaption>
 </figure>
 
@@ -87,7 +87,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_MXE.txt`
 
 <figure markdown="span">
-	![MXE](https://github.com/NaotoKubota/Shiba/blob/main/img/MXE.png?raw=true){ width="100%" }
+	![MXE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/MXE.png?raw=true){ width="100%" }
 	<figcaption>Mutually exclusive exons</figcaption>
 </figure>
 
@@ -120,7 +120,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_RI.txt`
 
 <figure markdown="span">
-	![RI](https://github.com/NaotoKubota/Shiba/blob/main/img/RI.png?raw=true){ width="100%" }
+	![RI](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/RI.png?raw=true){ width="100%" }
 	<figcaption>Reteined intron</figcaption>
 </figure>
 
@@ -145,7 +145,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_MSE.txt`
 
 <figure markdown="span">
-	![MSE](https://github.com/NaotoKubota/Shiba/blob/main/img/MSE.png?raw=true){ width="100%" }
+	![MSE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/MSE.png?raw=true){ width="100%" }
 	<figcaption>Multiple skipped exons</figcaption>
 </figure>
 
@@ -162,7 +162,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_AFE.txt` and `PSI_ALE.txt`
 
 <figure markdown="span">
-	![AFE_ALE](https://github.com/NaotoKubota/Shiba/blob/main/img/AFE_ALE.png?raw=true){ width="100%" }
+	![AFE_ALE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/AFE_ALE.png?raw=true){ width="100%" }
 	<figcaption>Alternative first and last exons</figcaption>
 </figure>
 

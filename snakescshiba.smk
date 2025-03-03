@@ -25,7 +25,7 @@ rule all:
 
             All analysis finished successfully!
             SnakeScShiba version: {params.version}
-            https://github.com/NaotoKubota/Shiba
+            https://github.com/Sika-Zheng-Lab/Shiba
 
         '
         """

@@ -8,9 +8,14 @@ All notable changes to this Shiba project will be documented in this file.
 
 - Print Shiba version in the log file.
 
+### Changed
+
+- Update citation information in [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md#citation)
+
 ### Fixed
 
 - Fixed a bug in `bam2junc.py` due to wrong handling of duplicated juntions ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40))
+- Fixed a bug of misassignment of samples when there are >3 groups in an experiment table and calculating individual PSI values.
 
 ## [v0.5.2] - 2025-02-07
 

@@ -30,7 +30,7 @@ The following sub directories are added when **SnakeShiba** is used:
 - **strand**: Strand of the event (*+* or *-*).
 - **gene_id**: Gene ID.
 - **gene_name**: Gene name.
-- **label**: Label of the event type (*annotated* or *unannotated*).
+- **label**: Label of the event type (*annotated* or *unannotated*). *annotated* means that the event is documented in the reference annotation file, while *unannotated* means that the event is NOT documented in the reference annotation file (i.e. novel or cryptic splicing event).
 - **ref_PSI**: PSI of the reference group.
 - **alt_PSI**: PSI of the alternative group.
 - **dPSI**: Delta PSI (alt_PSI - ref_PSI).

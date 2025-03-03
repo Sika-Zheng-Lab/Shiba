@@ -8,6 +8,8 @@ import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
 from styleframe import StyleFrame, Styler, utils
+import logging
+logger = logging.getLogger(__name__)
 
 def read_events(event_path) -> dict:
     """
@@ -227,7 +229,10 @@ def set_group(group_df, onlypsi_group, reference, alternative) -> list:
     - list: A list containing the group information in the order [reference, alternative].
     """
 
-    group_list = sorted(group_df['group'].unique().tolist())
+    if onlypsi_group:
+        group_list = sorted(group_df['group'].unique().tolist())
+    else:
+        group_list = [reference, alternative]
 
     return(group_list)
 
@@ -2073,24 +2078,26 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
 
     output_ind_df = output_ind_df.reset_index()
     output_ind_df = output_ind_df.drop(columns = "index")
-
     group1 = group_list[0]
     group2 = group_list[1]
 
     sample_group1 = list(group_df[group_df['group'] == group1]["sample"])
     sample_group1 = [i + "_PSI" for i in sample_group1]
-    sample_group1 = [output_ind_df[i].values for i in sample_group1]
+    try:
+        sample_group1 = [output_ind_df[i].values for i in sample_group1]
+    except:
+        logger.debug(f"Sample names do not match.")
+        logger.debug(f"Columns: {output_ind_df.columns}")
+        logger.debug(f"Sample names: {sample_group1}")
+        raise ValueError("Error: Sample names do not match.")
     sample_group2 = list(group_df[group_df['group'] == group2]["sample"])
     sample_group2 = [i + "_PSI" for i in sample_group2]
     sample_group2 = [output_ind_df[i].values for i in sample_group2]
-
     p_col = []
 
     for index in range(output_ind_df.shape[0]):
-
         PSI_group1 = [i[index] for i in sample_group1]
         PSI_group2 = [i[index] for i in sample_group2]
-
         # t-test
         t, p = stats.ttest_ind(
             PSI_group1,
@@ -2098,13 +2105,9 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
             equal_var = False,
             nan_policy = "omit"
         )
-
         p_col.append(p)
-
     output_ind_df["p_ttest"] = p_col
-
     return(output_ind_df)
-
 
 def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads) -> pd.DataFrame:
     """
@@ -2209,48 +2212,29 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
     """
 
     output_df = func_diff(psi_table_df, group_list, FDR, dPSI)
-
     if (output_df.shape[0]) != 0:
-
         if individual_psi:
-
             event_for_analysis_df = event_for_analysis_df[event_for_analysis_df["event_id"].isin(output_df["event_id"])]
-
             with concurrent.futures.ProcessPoolExecutor(max_workers = num_process) as executor:
-
                 futures = [executor.submit(func_ind, junc_dict_all, event_for_analysis_df, sample_list, num_process, i) for i in range(num_process)]
-
             output_l = []
             for future in concurrent.futures.as_completed(futures):
-
                 output_l += future.result()
-
             columns_ind = col_ind(sample_list)
             output_ind_df = pd.DataFrame(
-
                 output_l,
                 columns = columns_ind
-
             )
-
             if ttest_bool:
-
                 output_ind_df = ttest(output_ind_df, group_df, group_list)
-
             output_df = pd.merge(
-
                 output_df,
                 output_ind_df,
                 on = "event_id"
-
             )
-
         if "q" in output_df.columns:
-
             output_df = output_df.sort_values(["Diff events", "q"], ascending = [False, True])
-
     return(output_df)
-
 
 def make_psi_mtx(psi_table_df) -> pd.DataFrame:
     """

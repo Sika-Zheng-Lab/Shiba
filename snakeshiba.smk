@@ -40,6 +40,10 @@ container: config["container"]
 
 rule all:
     input:
+        report = "report.txt"
+
+rule generate_report:
+    input:
         event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         PSI = expand("results/splicing/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         summary = "plots/summary.html",
@@ -51,18 +55,17 @@ rule all:
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
         psi_contribution = "results/pca/psi_contribution.tsv"
+    output:
+        report = "report.txt"
     params:
-        version = VERSION
+        workdir = config["workdir"],
+        version = VERSION,
+        command = command,
+        experiment_table = config["experiment_table"]
     shell:
         """
-        echo \
-        '
-
-            All analysis finished successfully!
-            SnakeShiba version: {params.version}
-            https://github.com/Sika-Zheng-Lab/Shiba
-
-        '
+        export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
+        python -c 'from general import generate_report; import sys; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
         """
 
 rule bam2gtf:

@@ -88,7 +88,7 @@ Docker:
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
 cd /path/to/workdir
-docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.2 \
+docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.3 \
 python /opt_shiba/Shiba/scshiba.py -p 32 /path/to/workdir/config.yaml
 ```
 
@@ -96,7 +96,7 @@ Singularity:
 
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
-singularity exec docker://naotokubota/shiba:v0.5.2 \
+singularity exec docker://naotokubota/shiba:v0.5.3 \
 python /opt_shiba/Shiba/scshiba.py -p 32 /path/to/workdir/config.yaml
 ```
 
@@ -120,7 +120,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 workdir:
   /path/to/workdir
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba:v0.5.2
+  docker://naotokubota/shiba:v0.5.3
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf
 experiment_table:

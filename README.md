@@ -27,7 +27,7 @@ Shiba comprises four main steps:
 A docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba).
 
 ```bash
-docker pull naotokubota/shiba:v0.5.2
+docker pull naotokubota/shiba:v0.5.3
 ```
 
 ## Usage

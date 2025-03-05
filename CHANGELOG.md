@@ -2,20 +2,21 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
-## [v0.5.3] - 2025-??-??
+## [v0.5.3] - 2025-03-05
 
 ### Added
 
 - Print Shiba version in the log file.
 - Generate a report for the version of pipeline, date of execution, and parameters used in the analysis.
+- Deposit test datasets for Shiba and scShiba in Zenodo (https://zenodo.org/records/14976391) ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40#issuecomment-2660001877))
 
 ### Changed
 
-- Update citation information in [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md#citation)
+- Update citation information in [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md#citation).
 
 ### Fixed
 
-- Fixed a bug in `bam2junc.py` due to wrong handling of duplicated juntions ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40))
+- Fixed a bug in `bam2junc.py` due to wrong handling of duplicated juntions ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40)).
 - Fixed a bug of misassignment of samples when there are >3 groups in an experiment table and calculating individual PSI values.
 
 ## [v0.5.2] - 2025-02-07

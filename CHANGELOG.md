@@ -7,6 +7,7 @@ All notable changes to this Shiba project will be documented in this file.
 ### Added
 
 - Print Shiba version in the log file.
+- Generate a report for the version of pipeline, date of execution, and parameters used in the analysis.
 
 ### Changed
 

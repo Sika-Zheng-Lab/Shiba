@@ -9,6 +9,7 @@
 ## Before you start
 
 - Perform mapping of sc(sn)RNA-seq reads to the reference genome using [STARsolo](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md).
+  - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
 Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
@@ -119,7 +120,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 workdir:
   /path/to/workdir
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba
+  docker://naotokubota/shiba:v0.5.2
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf
 experiment_table:

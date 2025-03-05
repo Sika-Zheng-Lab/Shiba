@@ -9,6 +9,7 @@
 ## Before you start
 
 - Perform mapping of RNA-seq reads to the reference genome and generate bam files by software such as [STAR](https://github.com/alexdobin/STAR) and [HISAT2](https://daehwankimlab.github.io/hisat2/).
+  - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
 Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
@@ -28,12 +29,10 @@ gzip -d Mus_musculus.GRCm38.102.gtf.gz
 
 ``` text
 sample<tab>bam<tab>group
-sample_1<tab>/path/to/workdir/bam/sample_1.bam<tab>Ref
-sample_2<tab>/path/to/workdir/bam/sample_2.bam<tab>Ref
-sample_3<tab>/path/to/workdir/bam/sample_3.bam<tab>Ref
-sample_4<tab>/path/to/workdir/bam/sample_4.bam<tab>Alt
-sample_5<tab>/path/to/workdir/bam/sample_5.bam<tab>Alt
-sample_6<tab>/path/to/workdir/bam/sample_6.bam<tab>Alt
+Ref_1<tab>/path/to/workdir/bam/Ref_1.bam<tab>Ref
+Ref_2<tab>/path/to/workdir/bam/Ref_2.bam<tab>Ref
+Alt_1<tab>/path/to/workdir/bam/Alt_1.bam<tab>Alt
+Alt_2<tab>/path/to/workdir/bam/Alt_2.bam<tab>Alt
 ```
 
 Please put bam files with their index files (`.bai`) in the `path/to/workdir/bam` directory and replace `<tab>` with a tab character.
@@ -124,7 +123,7 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 workdir:
   /path/to/workdir
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba
+  docker://naotokubota/shiba:v0.5.2
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf
 experiment_table:

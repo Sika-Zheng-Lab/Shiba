@@ -1,10 +1,10 @@
 site_name: Shiba
 site_description: Shiba documentation
 site_author: Naoto Kubota
-site_url: https://naotokubota/shiba
+site_url: https://sika-zheng-lab/shiba
 copyright: © 2024 Naoto Kubota
-repo_url: https://github.com/NaotoKubota/Shiba
-repo_name: NaotoKubota/Shiba
+repo_url: https://github.com/Sika-Zheng-Lab/Shiba
+repo_name: Sika-Zheng-Lab/Shiba
 
 theme:
   name: material

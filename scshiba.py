@@ -5,10 +5,11 @@ import logging
 import subprocess
 import yaml
 from src.lib import general
+import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.5.2"
+VERSION = "v0.5.3"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -40,7 +41,8 @@ def main():
 	)
 
 	# Validate input and config
-	logger.info("Running scShiba...")
+	logger.info(f"Running scShiba ({VERSION})")
+	time.sleep(1)
 	logger.debug(f"Arguments: {args}")
 	# Get number of processors
 	processors = str(args.process)
@@ -68,6 +70,11 @@ def main():
 	# Get parent directory of this script
 	logger.debug("Getting script directory...")
 	script_dir = os.path.dirname(os.path.realpath(__file__))
+
+	# Get command line of this script
+	logger.debug("Getting command line...")
+	command_line = " ".join(sys.argv)
+	logger.debug(f"Command line: {command_line}")
 
 	# Steps
 	experiment_table = config["experiment_table"]
@@ -131,6 +138,9 @@ def main():
 
 	# Finish
 	logger.info(f"scShiba finished! Results saved in {output_dir}")
+	# Generate report
+	report_name = "scShiba"
+	general.generate_report(report_name, output_dir, VERSION, command_line, experiment_table)
 
 if __name__ == "__main__":
     main()

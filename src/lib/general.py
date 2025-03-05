@@ -4,6 +4,7 @@ import subprocess
 import sys
 import yaml
 import logging
+import datetime
 
 def load_config(config_path):
     """
@@ -35,3 +36,14 @@ def execute_command(command, log_file=None):
     else:
         result = subprocess.run(command, shell=False)
     return result.returncode
+
+def generate_report(name, output_dir, version, command_line, experiment_table):
+    report_path = os.path.join(output_dir, "report.txt")
+    with open(report_path, "w") as report_file:
+        report_file.write(f"Pipeline: {name}\n")
+        report_file.write(f"Version: {version}\n")
+        report_file.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        report_file.write(f"Command Line: {command_line}\n")
+        report_file.write(f"Experiment Table: {experiment_table}\n")
+    logging.info(f"Report generated at {report_path}")
+    return None

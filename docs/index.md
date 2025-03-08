@@ -1,10 +1,10 @@
 # Shiba
 
-![SE](https://github.com/NaotoKubota/Shiba/blob/main/img/Shiba_icon.png?raw=true){ align=right width=40% }
+![SE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/Shiba_icon.png?raw=true){ align=right width=40% }
 
-A unified computational method for robust identification of differential RNA splicing. **Shiba**/**scShiba** can quantify and identify differential splicing events (DSEs) from short-read bulk RNA-seq data and single-cell RNA-seq data. **Shiba** and **scShiba** are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, **SnakeShiba** and **SnakeScShiba**, respectively.
+A unified computational method for systematic identification of differential RNA splicing. **Shiba**/**scShiba** can quantify and identify differential splicing events (DSEs) from short-read bulk RNA-seq data and single-cell RNA-seq data. **Shiba** and **scShiba** are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, **SnakeShiba** and **SnakeScShiba**, respectively.
 
-See [CHANGELOG.md](https://github.com/NaotoKubota/Shiba/blob/main/CHANGELOG.md) for the latest updates.
+See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
 ## Contents
 
@@ -17,10 +17,10 @@ See [CHANGELOG.md](https://github.com/NaotoKubota/Shiba/blob/main/CHANGELOG.md) 
     - [scShiba/SnakeScShiba](output/scshiba.md)
 - Usage
     - [shiba.py](usage/shiba.md)
-    - [SnakeShiba](usage/snakeshiba.md)
+    - [snakeshiba.smk](usage/snakeshiba.md)
     - [scshiba.py](usage/scshiba.md)
-    - [SnakeScShiba](usage/snakescshiba.md)
+    - [snakescshiba.smk](usage/snakescshiba.md)
 
 ## Citation
 
-Kubota N, Chen L, Zheng S. (2024). [Shiba: A unified computational method for robust identification of differential RNA splicing across platforms](https://www.biorxiv.org/content/10.1101/2024.05.30.596331v1). *bioRxiv* 2024.05.30.596331
+Kubota N, Chen L, Zheng S. (2024). [Shiba: a versatile computational method for systematic identification of differential RNA splicing across platforms](https://academic.oup.com/nar/article/53/4/gkaf098/8042001). *Nucleic Acids Research*  53(4), 2025, gkaf098.

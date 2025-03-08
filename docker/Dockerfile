@@ -1,5 +1,5 @@
 ###############################################################
-# Dockerfile to build container images for Shiba (v0.5.0)
+# Dockerfile to build container images for Shiba (v0.5.3)
 # Based on python 3.11-buster
 ################################################################
 
@@ -48,7 +48,7 @@ RUN /usr/local/bin/python -m pip install --upgrade pip && \
     pip install pandas==1.5.3 statsmodels==0.13.5 matplotlib==3.6.3 \
 	seaborn==0.12.2 numexpr==2.8.4 styleframe==4.1 plotly==5.13.0 dash==2.8.1 \
 	pysam==0.21.0 scanpy==1.9.5 \
-	numpy==1.26.4
+	numpy==1.26.4 PyYAML==6.0.2
 
 # Install Subread (version 2.0.3)
 RUN cd /opt_shiba && \
@@ -77,7 +77,7 @@ RUN cd /opt_shiba && \
 
 # Install Shiba
 RUN cd /opt_shiba && \
-	git clone https://github.com/NaotoKubota/Shiba.git -b v0.5.0
+	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.5.3
 
 # Set environment variables
 ENV PATH $PATH:/opt_shiba/subread-2.0.3-Linux-x86_64/bin:/opt_shiba/stringtie-2.2.1:/opt_shiba/regtools-1.0.0/build:/opt_shiba/Shiba

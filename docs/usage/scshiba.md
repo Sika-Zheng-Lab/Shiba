@@ -3,7 +3,7 @@
 ``` bash
 usage: scshiba.py [-h] [-p PROCESS] [-s START_STEP] [-v] config
 
-scShiba v0.5.0 - Pipeline for identification of differential RNA splicing in single-cell RNA-seq data
+scShiba v0.5.3 - Pipeline for identification of differential RNA splicing in single-cell RNA-seq data
 
 Step 1: gtf2event.py
     - Converts GTF files to event format.

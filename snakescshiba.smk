@@ -1,5 +1,5 @@
 
-VERSION = "v0.5.0"
+VERSION = "v0.5.3"
 
 '''
 SnakeScShiba: A snakemake-based workflow of scShiba
@@ -8,26 +8,42 @@ Usage:
     snakemake -s snakescshiba.smk --configfile config.yaml --cores <int> --use-singularity --singularity-args "--bind $HOME:$HOME"
 '''
 
+import os
+from pathlib import Path
+import sys
+args = sys.argv
+
 workdir: config["workdir"]
 container: config["container"]
 base_dir = os.path.dirname(workflow.snakefile)
+command = " ".join(args)
+# Replace snakefile path with the absolute path
+command = command.replace(workflow.snakefile, os.path.join(base_dir, workflow.snakefile))
+# Replace config yaml path with the absolute path
+configfile_path= args[args.index("--configfile") + 1]
+# Absolute path of the directory containing the config yaml file
+configfile_dir_path = Path(configfile_path).resolve().parent
+command = command.replace(configfile_path, os.path.join(str(configfile_dir_path), configfile_path))
 
 rule all:
     input:
+        report = "report.txt"
+
+rule generate_report:
+    input:
         event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
         PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
+    output:
+        report = "report.txt"
     params:
-        version = VERSION
+        workdir = config["workdir"],
+        version = VERSION,
+        command = command,
+        experiment_table = config["experiment_table"]
     shell:
         """
-        echo \
-        '
-
-            All analysis finished successfully!
-            SnakeScShiba version: {params.version}
-            https://github.com/NaotoKubota/Shiba
-
-        '
+        export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
+        python -c 'from general import generate_report; import sys; generate_report("SnakeScShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
         """
 
 rule gtf2event:

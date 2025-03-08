@@ -9,6 +9,7 @@
 ## Before you start
 
 - Perform mapping of sc(sn)RNA-seq reads to the reference genome using [STARsolo](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md).
+  - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
 Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
@@ -87,7 +88,7 @@ Docker:
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
 cd /path/to/workdir
-docker run --rm -v $(pwd):$(pwd) naotokubota/shiba:latest \
+docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.3 \
 python /opt_shiba/Shiba/scshiba.py -p 32 /path/to/workdir/config.yaml
 ```
 
@@ -95,7 +96,7 @@ Singularity:
 
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
-singularity exec shiba_latest.sif \
+singularity exec docker://naotokubota/shiba:v0.5.3 \
 python /opt_shiba/Shiba/scshiba.py -p 32 /path/to/workdir/config.yaml
 ```
 
@@ -119,7 +120,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 workdir:
   /path/to/workdir
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba
+  docker://naotokubota/shiba:v0.5.3
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf
 experiment_table:

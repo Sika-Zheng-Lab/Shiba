@@ -165,8 +165,11 @@ def merge_junction_files(junc_files, output_file):
 	exon_exon_df = process_junction_files(exon_exon_files, "exon-exon")
 	if exon_exon_df.duplicated(subset=["ID", "sample"]).any():
 		duplicates = exon_exon_df[exon_exon_df.duplicated(subset=["ID", "sample"], keep=False)]
-		logger.error(f"Duplicated junctions found: {duplicates}")
-		raise ValueError("Duplicated junctions detected. Please check the input files.")
+		logger.debug(f"Duplicated junctions found: {duplicates}")
+		logger.debug("Duplicated junctions occur when the same junction is detected in both strands.")
+		logger.debug("The duplicated junctions will be summed and merged.")
+		# Group by ID and sample and sum counts
+		exon_exon_df = exon_exon_df.groupby(["ID", "sample"], as_index=False).sum()
 
 	exon_exon_df = exon_exon_df.pivot(index="ID", columns="sample", values="count").fillna(0).reset_index()
 	exon_exon_df["chr"], exon_exon_df["start"], exon_exon_df["end"] = zip(*exon_exon_df["ID"].str.extract(r'([^:]+):(\d+)-(\d+)').values)

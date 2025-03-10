@@ -6,26 +6,26 @@ You don't have to build a local environment for running Shiba! We provide a Dock
 
 ``` bash
 # Pull the latest image
-docker pull naotokubota/shiba:v0.5.3
+docker pull naotokubota/shiba:v0.5.4
 
 # Login to the container
-docker run -it --rm naotokubota/shiba:v0.5.3 bash
+docker run -it --rm naotokubota/shiba:v0.5.4 bash
 
 # Run Shiba, for example, to see the help message
-docker run -it --rm naotokubota/shiba:v0.5.3 python /opt_shiba/Shiba/shiba.py -h
+docker run -it --rm naotokubota/shiba:v0.5.4 python /opt_shiba/Shiba/shiba.py -h
 ```
 
 ## Singularity
 
 ``` bash
 # Pull the latest image
-singularity pull docker://naotokubota/shiba:v0.5.3
+singularity pull docker://naotokubota/shiba:v0.5.4
 
 # Login to the container
-singularity shell shiba_v0.5.3.sif
+singularity shell shiba_v0.5.4.sif
 
 # Run Shiba, for example, to see the help message
-singularity exec shiba_v0.5.3.sif python /opt_shiba/Shiba/shiba.py -h
+singularity exec shiba_v0.5.4.sif python /opt_shiba/Shiba/shiba.py -h
 ```
 
 ## Snakemake

@@ -1,5 +1,5 @@
 ###############################################################
-# Dockerfile to build container images for Shiba (v0.5.3)
+# Dockerfile to build container images for Shiba (v0.5.4)
 # Based on python 3.11-buster
 ################################################################
 
@@ -77,7 +77,7 @@ RUN cd /opt_shiba && \
 
 # Install Shiba
 RUN cd /opt_shiba && \
-	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.5.3
+	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.5.4
 
 # Set environment variables
 ENV PATH $PATH:/opt_shiba/subread-2.0.3-Linux-x86_64/bin:/opt_shiba/stringtie-2.2.1:/opt_shiba/regtools-1.0.0/build:/opt_shiba/Shiba

@@ -2,6 +2,23 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.5.3] - 2025-03-05
+
+### Added
+
+- Print Shiba version in the log file.
+- Generate a report for the version of pipeline, date of execution, and parameters used in the analysis.
+- Deposit test datasets for Shiba and scShiba in Zenodo (https://zenodo.org/records/14976391) ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40#issuecomment-2660001877))
+
+### Changed
+
+- Update citation information in [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md#citation).
+
+### Fixed
+
+- Fixed a bug in `bam2junc.py` due to wrong handling of duplicated juntions ([#40](https://github.com/Sika-Zheng-Lab/Shiba/issues/40)).
+- Fixed a bug of misassignment of samples when there are >3 groups in an experiment table and calculating individual PSI values.
+
 ## [v0.5.2] - 2025-02-07
 
 ### Fixed
@@ -73,14 +90,14 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
-- New features for identifying multiple skipped exons (MSE), alternative first exon (AFE), and alternative last exon (ALE) ([#4](https://github.com/NaotoKubota/Shiba/issues/4))
+- New features for identifying multiple skipped exons (MSE), alternative first exon (AFE), and alternative last exon (ALE) ([#4](https://github.com/Sika-Zheng-Lab/Shiba/issues/4))
   - Up to 5,000 tandemly skipped exons can be identified for MSE, which is reasonable for most datasets and organisms
 
 ### Changed
 
 - Unannotated splicing events are now defined when at least one of the associated ***introns*** are not documented in the reference annotation file. Previously, unannotated splicing events were defined when at least one of the associated ***exons*** were not documented in the reference annotation file.
-- Update [README.md](https://github.com/NaotoKubota/Shiba/blob/main/README.md) with new badges
-- Update [MANUAL.md](https://github.com/NaotoKubota/Shiba/blob/main/doc/MANUAL.md) with new instructions for MSE, AFE, and ALE analyses
+- Update [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md) with new badges
+- Update [MANUAL.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/doc/MANUAL.md) with new instructions for MSE, AFE, and ALE analyses
 
 ### Fixed
 
@@ -104,13 +121,13 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Fixed
 
-- Fix the bug in `SnakeShiba` ([#7](https://github.com/NaotoKubota/Shiba/issues/7))
+- Fix the bug in `SnakeShiba` ([#7](https://github.com/Sika-Zheng-Lab/Shiba/issues/7))
 
 ## [v0.2] - 2024-06-17
 
 ### Added
 
-- `pca.py`: Principal Component Analysis (PCA) module ([#1](https://github.com/NaotoKubota/Shiba/issues/1))
+- `pca.py`: Principal Component Analysis (PCA) module ([#1](https://github.com/Sika-Zheng-Lab/Shiba/issues/1))
   - Perform PCA for top 3,000 highly variable genes or splicing events
     - When PSI matrix has less than 6,000 rows without NaN values, drop rows with more than 50% NaN values followed by KNN imputation (n_neighbors=5), and then get top 3,000 highly variable splicing events
 - This `CHANGELOG.md` file to keep track of changes
@@ -119,8 +136,8 @@ All notable changes to this Shiba project will be documented in this file.
 
 - Generate PSI matrix (`PSI_matrix_sample.txt` and `PSI_matrix_group.txt`) when differential splicing analysis is performed
 - Update the style of `summary.html`
-- Update [MANUAL.md](https://github.com/NaotoKubota/Shiba/blob/main/doc/MANUAL.md) with new instructions
-- Update [README.md](https://github.com/NaotoKubota/Shiba/blob/main/README.md) with citation information
+- Update [MANUAL.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/doc/MANUAL.md) with new instructions
+- Update [README.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/README.md) with citation information
 
 ### Fixed
 

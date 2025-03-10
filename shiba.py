@@ -5,10 +5,11 @@ import logging
 import subprocess
 import yaml
 from src.lib import general
+import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.5.2"
+VERSION = "v0.5.3"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -48,8 +49,8 @@ def main():
     )
 
     # Validate input and config
-    logger.info("Running Shiba...")
-    logger.info(f"Shiba {VERSION}")
+    logger.info(f"Running Shiba ({VERSION})")
+    time.sleep(1)
     logger.debug(f"Arguments: {args}")
     # Get number of processors
     processors = str(args.process)
@@ -206,6 +207,9 @@ def main():
 
     # Finish
     logger.info(f"Shiba finished! Results saved in {output_dir}")
+    # Generate report
+    report_name = "Shiba"
+    general.generate_report(report_name, output_dir, VERSION, command_line, experiment_table)
 
 if __name__ == "__main__":
     main()

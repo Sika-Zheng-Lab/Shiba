@@ -211,7 +211,12 @@ def main():
 	merge_junction_files(junc_files, args.output)
 
 	# Cleanup
-	os.remove(saf_file)
+	logger.debug("Cleaning up temporary files...")
+	os.remove(saf_file) # SAF file
+	for junc_file, junc_type in junc_files:
+		os.remove(junc_file) # Junction files
+		if junc_type == "exon-intron":
+			os.remove(junc_file + ".summary")
 	logger.info("Junction read counts processing completed!")
 
 if __name__ == "__main__":

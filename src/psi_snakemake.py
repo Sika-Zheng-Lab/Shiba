@@ -98,6 +98,8 @@ def main():
         junc_group_df = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list)
         junc_dict_group = shibalib.junc_dict(junc_group_df)
         group_data = {"group_list": group_list, "group_df": group_df, "junc_group_df": junc_group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
+        logger.debug(f"group_list: {group_list}")
+        logger.debug(f"sample_list_diff: {sample_list_diff}")
 
     # Define event processing
     def process_event(event_type, event_func, func, col_func, diff_func=None, index_func=None):

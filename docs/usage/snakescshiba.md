@@ -12,7 +12,7 @@ snakemake -s snakescshiba.smk \
 Please check the [Quick Start](../quickstart/diff_splicing_sc.md/#1-prepare-inputs_1){ data-preview } to learn how to prepare the `config.yaml`.
 
 <figure markdown="span">
-	![SnakeScShiba rulegraph](https://github.com/NaotoKubota/Shiba/blob/mkdocs/img/SnakeScShiba_rulegraph.svg?raw=true){ width="500" align="center" }
+	![SnakeScShiba rulegraph](https://github.com/Sika-Zheng-Lab/Shiba/blob/mkdocs/img/SnakeScShiba_rulegraph.svg?raw=true){ width="500" align="center" }
 	<figcaption>SnakeScShiba rulegraph</figcaption>
 </figure>
 

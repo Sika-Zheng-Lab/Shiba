@@ -5,6 +5,7 @@ import sys
 import yaml
 import logging
 import datetime
+logger = logging.getLogger(__name__)
 
 def load_config(config_path):
     """
@@ -45,5 +46,47 @@ def generate_report(name, output_dir, version, command_line, experiment_table):
         report_file.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         report_file.write(f"Command Line: {command_line}\n")
         report_file.write(f"Experiment Table: {experiment_table}\n")
-    logging.info(f"Report generated at {report_path}")
+    logger.info(f"Report generated at {report_path}")
     return None
+
+def check_samplesize(experiment_table):
+    # Check if experiment table exists
+    try:
+        with open(experiment_table, "r") as table:
+            sample_count = sum(1 for _ in table) - 1
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Experiment table not found: {experiment_table}")
+    except Exception as e:
+        raise ValueError(f"Error reading experiment table: {e}")
+    # Check if there are samples in the experiment table
+    if sample_count <= 0:
+        raise ValueError('No samples found in experiment table')
+    else:
+        logger.debug(f'{sample_count} samples found in experiment table')
+    return sample_count
+
+def check_groupsize(experiment_table):
+    # Check if experiment table exists
+    try:
+        with open(experiment_table, "r") as table:
+            groups = {}
+            for i, line in enumerate(table):
+                if i == 0:  # Skip header
+                    continue
+                columns = line.strip().split("\t")
+                if len(columns) < 3:
+                    raise ValueError(f"Invalid format in experiment table at line {i + 1}")
+                group = columns[2]
+                groups[group] = groups.get(group, 0) + 1
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Experiment table not found: {experiment_table}")
+    except Exception as e:
+        raise ValueError(f"Error reading experiment table: {e}")
+    # Check if there are groups in the experiment table
+    if not groups:
+        raise ValueError('No groups found in experiment table')
+    else:
+        logger.debug(f'{len(groups.keys())} groups found in experiment table')
+        for group, size in groups.items():
+            logger.debug(f'Group "{group}" has {size} samples')
+    return len(groups.keys())

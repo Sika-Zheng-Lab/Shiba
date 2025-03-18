@@ -8,13 +8,12 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report!
-        !!! important
-          Before you submit a bug report, please run shiba with `--verbose` to get more detailed logs.
+        Before you submit a bug report, please run shiba with `--verbose` to get more detailed logs.
 
   - type: textarea
     id: description
     attributes:
-      label: 'description'
+      label: 'Description'
       description: A clear and concise description of the bug.
     validations:
       required: true
@@ -60,10 +59,8 @@ body:
           Optional: The environment information.
           Example:
           OS: WSL (Ubuntu 22.04)
-          Python version: 3.10.15
       value: |
           OS:
-          Python version:
       render: markdown
     validations:
       required: false

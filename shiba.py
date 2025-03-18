@@ -70,6 +70,31 @@ def main():
         logger.info(f"experiment_table: {config['experiment_table']}")
         logger.info(f"gtf: {config['gtf']}")
 
+    # Check optional config keys
+    only_psi = config.get('only_psi', False)
+    only_psi_group = config.get('only_psi_group', False)
+
+    # Validate sample and group sizes in the experiment table
+    sample_count = general.check_samplesize(config["experiment_table"])
+    group_count = general.check_groupsize(config["experiment_table"])
+
+    if sample_count <= 0:
+        logger.error("No samples found in experiment table. Exiting...")
+        sys.exit(1)
+    elif sample_count == 1:
+        logger.info("Only one sample found in experiment table.")
+        only_psi = True
+        logger.info("Differential analysis mode disabled. Set only_psi to True.")
+
+    if group_count <= 0:
+        logger.error("No groups found in experiment table. Exiting...")
+        sys.exit(1)
+    elif group_count == 1:
+        logger.info("Only one group found in experiment table.")
+        if not (only_psi or only_psi_group):
+            logger.info("Differential analysis mode disabled.")
+            only_psi = True
+
     # Prepare output directory
     output_dir = config["workdir"]
     logger.debug("Making output directory...")
@@ -137,8 +162,8 @@ def main():
                 "-i" if config['individual_psi'] else "",
                 "-t" if config['ttest'] else "",
                 "--excel" if config['excel'] else "",
-                "--onlypsi" if config['only_psi'] else "",
-                "--onlypsi-group" if config['only_psi_group'] else "",
+                "--onlypsi" if only_psi else "",
+                "--onlypsi-group" if only_psi_group else "",
                 os.path.join(output_dir, "junctions", "junctions.bed"),
                 os.path.join(output_dir, "events"),
                 os.path.join(output_dir, "results", "splicing")
@@ -151,10 +176,10 @@ def main():
                 "-i", experiment_table,
                 "-g", gtf,
                 "-o", os.path.join(output_dir, "results", "expression"),
-                "" if config['only_psi'] or config['only_psi_group'] else "-r",
-                "" if config['only_psi'] or config['only_psi_group'] else config['reference_group'],
-                "" if config['only_psi'] or config['only_psi_group'] else "-a",
-                "" if config['only_psi'] or config['only_psi_group'] else config['alternative_group'],
+                "" if only_psi or only_psi_group else "-r",
+                "" if only_psi or only_psi_group else config['reference_group'],
+                "" if only_psi or only_psi_group else "-a",
+                "" if only_psi or only_psi_group else config['alternative_group'],
                 "--excel" if config['excel'] else "",
                 "-p", processors
             ]
@@ -164,7 +189,7 @@ def main():
             "command": [
                 "python", os.path.join(script_dir, "src", "pca.py"),
                 "--input-tpm", os.path.join(output_dir, "results", "expression", "TPM.txt"),
-                "--input-psi", os.path.join(output_dir, "results", "splicing", "PSI_matrix_group.txt" if config['only_psi_group'] else "PSI_matrix_sample.txt"),
+                "--input-psi", os.path.join(output_dir, "results", "splicing", "PSI_matrix_group.txt" if only_psi_group else "PSI_matrix_sample.txt"),
                 "-g", "3000",
                 "-o", os.path.join(output_dir, "results", "pca"),
             ]
@@ -190,7 +215,7 @@ def main():
         steps = steps[start_step-1:]
 
     # Skip plots.py step when only_psi or only_psi_group is True
-    if config['only_psi'] or config['only_psi_group']:
+    if only_psi or only_psi_group:
         steps = steps[:-1]
 
     # Execute steps

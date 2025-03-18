@@ -106,7 +106,7 @@ def set_group(group_df, onlypsi_group, reference, alternative) -> list:
     - list: A list containing the group information in the order [reference, alternative].
     """
 
-    if onlypsi_group:
+    if onlypsi_group or len(group_df['group'].unique().tolist()) == 1:
         group_list = sorted(group_df['group'].unique().tolist())
     else:
         group_list = [reference, alternative]

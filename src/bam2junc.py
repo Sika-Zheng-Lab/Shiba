@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import shutil
 import subprocess
 import logging
 import pandas as pd
@@ -28,11 +29,13 @@ def get_args():
 def prepare_output_dir(output_path):
 	output_dir = os.path.dirname(output_path)
 	logs_dir = os.path.join(output_dir, "logs")
+	tmp_dir = os.path.join(output_dir, "tmp")
 	os.makedirs(logs_dir, exist_ok=True)
-	return output_dir, logs_dir
+	os.makedirs(tmp_dir, exist_ok=True)
+	return output_dir, logs_dir, tmp_dir
 
-def create_saf_file(ri_event, output_dir):
-	saf_file = os.path.join(output_dir, "RI.saf")
+def create_saf_file(ri_event, tmp_dir):
+	saf_file = os.path.join(tmp_dir, "RI.saf")
 	logger.info(f"Generating SAF file: {saf_file}")
 	saf_data = []
 	with open(ri_event, "r") as ri_file:
@@ -50,7 +53,7 @@ def create_saf_file(ri_event, output_dir):
 	saf_df.drop_duplicates().to_csv(saf_file, sep="\t", index=False)
 	return saf_file
 
-def process_samples(experiment_file, strand, anchor, min_intron, max_intron, output_dir, logs_dir, saf_file, processors):
+def process_samples(experiment_file, strand, anchor, min_intron, max_intron, output_dir, logs_dir, tmp_dir, saf_file, processors):
 	junc_files = []
 	with open(experiment_file, "r") as experiment:
 		for line in experiment:
@@ -71,7 +74,7 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 
 			# Extract exon-exon junctions
 			logger.info(f"Counting exon-exon junctions for sample {sample}...")
-			exon_junc_file = os.path.join(sample_dir, f"{sample}_exon-exon.junc")
+			exon_junc_file = os.path.join(tmp_dir, f"{sample}_exon-exon.junc")
 			regtools_command = [
 				"regtools",
 				"junctions",
@@ -94,7 +97,7 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 
 			# Count exon-intron junctions
 			logger.info(f"Counting exon-intron junctions for sample {sample}...")
-			exon_intron_file = os.path.join(sample_dir, f"{sample}_exon-intron.junc")
+			exon_intron_file = os.path.join(tmp_dir, f"{sample}_exon-intron.junc")
 			# Check if BAM is paired-end
 			paired_flag = expression.is_paired_end(bam)
 			paired_option = ["-p"] if paired_flag else [""]
@@ -200,11 +203,11 @@ def main():
 	logger.info("Processing junction read counts...")
 	logger.debug(args)
 
-	output_dir, logs_dir = prepare_output_dir(args.output)
-	saf_file = create_saf_file(args.ri_event, output_dir)
+	output_dir, logs_dir, tmp_dir = prepare_output_dir(args.output)
+	saf_file = create_saf_file(args.ri_event, tmp_dir)
 	logger.info("Extracting junctions from BAM files...")
 	junc_files = process_samples(
-		args.input, args.strand, args.anchor, args.min_intron, args.max_intron, output_dir, logs_dir, saf_file, args.processors
+		args.input, args.strand, args.anchor, args.min_intron, args.max_intron, output_dir, logs_dir, tmp_dir, saf_file, args.processors
 	)
 	logger.debug(junc_files)
 	logger.info("Merging junction read counts...")
@@ -212,11 +215,8 @@ def main():
 
 	# Cleanup
 	logger.debug("Cleaning up temporary files...")
-	os.remove(saf_file) # SAF file
-	for junc_file, junc_type in junc_files:
-		os.remove(junc_file) # Junction files
-		if junc_type == "exon-intron":
-			os.remove(junc_file + ".summary")
+	shutil.rmtree(tmp_dir) # Temporary directory
+
 	logger.info("Junction read counts processing completed!")
 
 if __name__ == "__main__":

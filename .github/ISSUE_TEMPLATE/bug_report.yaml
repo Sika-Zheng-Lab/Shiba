@@ -30,7 +30,7 @@ body:
   - type: textarea
     id: experiment_table
     attributes:
-      label: '🧪 eriment Table'
+      label: '🧪 Experiment Table'
       description: 'Required: Copy and paste the experiment table that you are using.'
     validations:
       required: false

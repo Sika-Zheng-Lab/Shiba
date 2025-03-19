@@ -27,32 +27,19 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: experiment_table
     attributes:
       label: 'Experiment Table'
       description: 'Required: Copy and paste the experiment table that you are using.'
-      placeholder: |
-        | sample   | bam                  | group |
-        |----------|----------------------|-------|
-        | sample1  | /path/to/sample1.bam | Ref   |
-        | sample2  | /path/to/sample2.bam | Alt   |
     validations:
       required: false
 
-  - type: input
+  - type: textarea
     id: config_yaml
     attributes:
       label: 'Config YAML'
       description: 'Required: Copy and paste the config YAML that you are using.'
-      placeholder: |
-        workdir:
-          /path/to/workdir/output
-        container:
-          docker://naotokubota/shiba:v0.5.4
-        gtf:
-          /path/to/workdir/annotation.gtf
-        ... etc ...
     validations:
       required: false
 

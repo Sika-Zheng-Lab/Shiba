@@ -83,10 +83,17 @@ jobs:
           sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" example/Shiba_SnakeShiba_config_example.yaml
           sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" example/scShiba_SnakeScShiba_config_example.yaml
 
+      - name: Update issue templates
+        run: |
+          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/feature_request.yaml
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/question.yaml
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/bug_report.yaml
+
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add README.md shiba.py scshiba.py snakeshiba.smk snakescshiba.smk docker/Dockerfile docs/usage/shiba.md docs/usage/scshiba.md docs/quickstart/diff_splicing_bulk.md docs/quickstart/diff_splicing_sc.md docs/installation.md example/Shiba_SnakeShiba_config_example.yaml example/scShiba_SnakeScShiba_config_example.yaml
+          git add README.md shiba.py scshiba.py snakeshiba.smk snakescshiba.smk docker/Dockerfile docs/usage/shiba.md docs/usage/scshiba.md docs/quickstart/diff_splicing_bulk.md docs/quickstart/diff_splicing_sc.md docs/installation.md example/Shiba_SnakeShiba_config_example.yaml example/scShiba_SnakeScShiba_config_example.yaml .github/ISSUE_TEMPLATE/feature_request.yaml .github/ISSUE_TEMPLATE/question.yaml .github/ISSUE_TEMPLATE/bug_report.yaml
           git commit -m "actions: Ready for ${{ steps.read_version.outputs.NEW_VERSION }}"
           git push origin HEAD:${{ steps.get_branch.outputs.BRANCH_NAME }}

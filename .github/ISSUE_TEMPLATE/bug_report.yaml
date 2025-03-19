@@ -1,7 +1,7 @@
 name: 🐞 Bug Report
 description: Create a report to help us improve
 title: "[Bug]: "
-labels: ['bug']
+labels: ['bug🐞']
 
 body:
   - type: markdown
@@ -13,7 +13,7 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: 'Description'
+      label: '📋 Description'
       description: A clear and concise description of the bug.
     validations:
       required: true
@@ -21,7 +21,7 @@ body:
   - type: input
     id: shiba_version
     attributes:
-      label: 'Shiba Version'
+      label: '🔖 Shiba Version'
       description: 'Required: Specify the Shiba version you are using. You can find this information in the `python shiba.py -h` command.'
       placeholder: 'e.g., 0.5.4'
     validations:
@@ -30,7 +30,7 @@ body:
   - type: textarea
     id: experiment_table
     attributes:
-      label: 'Experiment Table'
+      label: '🧪 eriment Table'
       description: 'Required: Copy and paste the experiment table that you are using.'
     validations:
       required: false
@@ -38,14 +38,14 @@ body:
   - type: textarea
     id: config_yaml
     attributes:
-      label: 'Config YAML'
+      label: '📄 Config YAML'
       description: 'Required: Copy and paste the config YAML that you are using.'
     validations:
       required: false
 
   - type: textarea
     attributes:
-      label: 'Current Behavior'
+      label: '💬 Current Behavior'
       description: |
         Optional: A concise description of what you're experiencing.
     validations:
@@ -53,7 +53,7 @@ body:
 
   - type: textarea
     attributes:
-      label: 'Expected Behavior'
+      label: '🎯 Expected Behavior'
       description: |
         Optional: A concise description of what you expected to happen.
     validations:
@@ -61,7 +61,7 @@ body:
 
   - type: textarea
     attributes:
-      label: 'Error message'
+      label: '⚠️ Error message'
       description: |
         Optional: If applicable, add the error message here.
     validations:
@@ -70,7 +70,7 @@ body:
   - type: textarea
     id: environment
     attributes:
-      label: 'Environment'
+      label: '🔍 Environment'
       description: |
           Optional: The environment information.
           Example:
@@ -84,7 +84,7 @@ body:
   - type: textarea
     id: anything_else
     attributes:
-      label: 'Anything else?'
+      label: '📎 Anything else?'
       description: |
         Optional: Add any other contexts, links, or screenshots about the bug here.
     validations:

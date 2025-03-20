@@ -63,7 +63,7 @@ snakemake -s snakescshiba.smk --configfile config.yaml --cores 32 --use-singular
 
 Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi](https://github.com/Sika-Zheng-Lab/shiba2sashimi) 🍣 !
 
-<img src="img/sashimi_example.png" width="75%">
+<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/shiba2sashimi/main/img/sashimi_example.png" width=75%>
 
 ## Citation
 

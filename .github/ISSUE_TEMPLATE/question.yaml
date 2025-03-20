@@ -1,0 +1,45 @@
+name: ❓ Question
+description: Report your question here
+title: "[Question]: "
+labels: ["question❓️"]
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+        label: "📋 Description"
+        description: A clear and concise description of the question.
+    validations:
+        required: true
+
+  - type: input
+    id: shiba_version
+    attributes:
+        label: "🔖 Shiba Version"
+        description: "Required: Specify the Shiba version you are using. You can find this information in the `python shiba.py -h` command."
+        placeholder: "e.g., v0.5.5"
+    validations:
+        required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+        label: "🔍 Environment"
+        description: |
+            Optional: The environment information.
+            Example:
+            OS: WSL (Ubuntu 22.04)
+        value: |
+            OS:
+        render: markdown
+    validations:
+        required: false
+
+  - type: textarea
+    id: anything_else
+    attributes:
+        label: "📎 Anything else?"
+        description: |
+            Optional: Add any other contexts, links, or screenshots about the bug here.
+    validations:
+        required: false

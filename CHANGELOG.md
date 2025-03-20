@@ -2,6 +2,16 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.5.5] - 2025-03-19
+
+### Fixed
+
+- Fixed a bug ([#47](https://github.com/Sika-Zheng-Lab/Shiba/issues/47)): automatically turn off differential analysis mode when there is only one group or one sample in the experiment table.
+
+### Added
+
+- Released 🐕 [shiba2sashimi](https://github.com/Sika-Zheng-Lab/shiba2sashimi) 🍣, a utility for creating sashimi plot from Shiba output.
+
 ## [v0.5.4] - 2025-03-10
 
 ### Fixed

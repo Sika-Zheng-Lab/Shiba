@@ -5,8 +5,9 @@
 [![Create Release and Build Docker Image](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
+[![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
 
-# Shiba (v0.5.4) <img src="img/Shiba_icon.png" width=40% align="right">
+# Shiba (v0.5.5) <img src="img/Shiba_icon.png" width=40% align="right">
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from short-read bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
@@ -27,7 +28,7 @@ Shiba comprises four main steps:
 A docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba).
 
 ```bash
-docker pull naotokubota/shiba:v0.5.4
+docker pull naotokubota/shiba:v0.5.5
 ```
 
 ## Usage
@@ -57,6 +58,12 @@ python scshiba.py -p 32 config.yaml
 ```bash
 snakemake -s snakescshiba.smk --configfile config.yaml --cores 32 --use-singularity
 ```
+
+## Visualization
+
+Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi](https://github.com/Sika-Zheng-Lab/shiba2sashimi) 🍣 !
+
+<img src="img/sashimi_example.png" width="75%">
 
 ## Citation
 

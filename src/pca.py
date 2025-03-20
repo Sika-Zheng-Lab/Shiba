@@ -126,6 +126,15 @@ def main():
     tpm_df = load_tpm_table(args.input_tpm)
     logger.debug(f"PSI file: {args.input_psi}")
     psi_df = load_psi_table(args.input_psi)
+
+    # Check if sample size is less than 2
+    if tpm_df.shape[1] < 2:
+        logger.info("PCA analysis cannot be performed because number of samples is less than 2. Exiting...")
+        sys.exit(0)
+    if psi_df.shape[1] < 2:
+        logger.info("PCA analysis cannot be performed because number of samples is less than 2. Exiting...")
+        sys.exit(0)
+
     # Perform PCA
     logger.info("Performing PCA...")
     logger.debug("Calculating PCA for TPM...")

@@ -79,6 +79,9 @@ RUN cd /opt_shiba && \
 RUN cd /opt_shiba && \
 	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.5.5
 
+# Install shiba2sashimi
+RUN pip install shiba2sashimi==0.1.2
+
 # Set environment variables
 ENV PATH $PATH:/opt_shiba/subread-2.0.3-Linux-x86_64/bin:/opt_shiba/stringtie-2.2.1:/opt_shiba/regtools-1.0.0/build:/opt_shiba/Shiba
 

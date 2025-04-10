@@ -92,7 +92,7 @@ Docker:
 cp experiment.tsv config.yaml /path/to/workdir
 cd /path/to/workdir
 docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.5 \
-python /opt_shiba/Shiba/shiba.py -p 32 /path/to/workdir/config.yaml
+python /opt_shiba/Shiba/shiba.py -p 4 /path/to/workdir/config.yaml
 ```
 
 Singularity:
@@ -100,12 +100,24 @@ Singularity:
 ``` bash
 cp experiment.tsv config.yaml /path/to/workdir
 singularity exec docker://naotokubota/shiba:v0.5.5 \
-python /opt_shiba/Shiba/shiba.py -p 32 /path/to/workdir/config.yaml
+python /opt_shiba/Shiba/shiba.py -p 4 /path/to/workdir/config.yaml
 ```
+
+You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
 
 !!! note
 
 	When you use Singularity, you do not need to bind any paths as it automatically binds some paths in the host system to the container. In the default configuration, the system default bind points are `$HOME`, `/sys:/sys`, `/proc:/proc`, `/tmp:/tmp`, `/var/tmp:/var/tmp`, `/etc/resolv.conf:/etc/resolv.conf`, `/etc/passwd:/etc/passwd`, and `$PWD`. If files needed to be accessed are not in these paths, you can use the `--bind` option to bind the files to the container.
+
+!!! tip
+
+	Did you encounter any problems?
+	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
+	```bash
+	docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.5 \
+	python /opt_shiba/Shiba/shiba.py --verbose -p 4 /path/to/workdir/config.yaml
+	```
+	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
 ---
 

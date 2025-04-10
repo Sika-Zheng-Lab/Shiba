@@ -38,25 +38,25 @@ Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https
 ***Shiba***
 
 ```bash
-python shiba.py -p 32 config.yaml
+python shiba.py -p 4 config.yaml
 ```
 
 ***SnakeShiba***, Snakemake-based workflow of Shiba
 
 ```bash
-snakemake -s snakeshiba.smk --configfile config.yaml --cores 32 --use-singularity
+snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
 ```
 
 ***scShiba***, a single-cell RNA-seq version of Shiba
 
 ```bash
-python scshiba.py -p 32 config.yaml
+python scshiba.py -p 4 config.yaml
 ```
 
 ***SnakeScShiba***, Snakemake-based workflow of scShiba
 
 ```bash
-snakemake -s snakescshiba.smk --configfile config.yaml --cores 32 --use-singularity
+snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singularity
 ```
 
 ## Visualization

@@ -21,7 +21,7 @@ You can run the script using the following command:
 ``` bash
 snakemake -s snakeshiba.smk \
 --configfile config.yaml \
---cores 32 \
+--cores 4 \
 --use-singularity \
 --singularity-args "--bind $HOME:$HOME" \
 --rerun-incomplete

@@ -6,6 +6,10 @@ A unified computational method for systematic identification of differential RNA
 
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
+!!! Important
+
+    If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
+
 ## Contents
 
 - [Installation](installation.md)

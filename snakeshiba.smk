@@ -5,7 +5,7 @@ VERSION = "v0.5.5"
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
 
 Usage:
-    snakemake -s snakeshiba.smk --configfile config.yaml --cores 32 --use-singularity --singularity-args "--bind $HOME:$HOME"
+    snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity --singularity-args "--bind $HOME:$HOME"
 '''
 
 import os

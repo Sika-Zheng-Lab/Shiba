@@ -15,6 +15,17 @@ docker run -it --rm naotokubota/shiba:v0.5.5 bash
 docker run -it --rm naotokubota/shiba:v0.5.5 python /opt_shiba/Shiba/shiba.py -h
 ```
 
+!!! Important
+
+	You may need to allocate more memory to the container if you are using a large dataset. You can do this in the Docker Desktop settings:
+
+	- Go to Docker Desktop settings
+	- Click on the "Resources" tab
+	- Increase the memory limit as needed
+	- Click "Apply & Restart" to save the changes
+
+	![Docker Memory Setting](https://github.com/Sika-Zheng-Lab/Shiba/blob/develop/img/docker_memory_setting.png?raw=true){ align=center width=100% }
+
 ## Singularity
 
 ``` bash

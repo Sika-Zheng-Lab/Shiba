@@ -64,7 +64,7 @@ experiment_table:
 
 # PSI calculation
 only_psi:
-  False
+  False # True if you want to calculate PSI values for each sample only
 fdr:
   0.05
 delta_psi:
@@ -76,10 +76,8 @@ alternative_group:
 minimum_reads:
   10
 excel:
-  True
+  False # True if you want to generate a file of splicing analysis results in excel format
 ```
-
-You can generate a file of splicing analysis results in excel format by setting `excel` to `True`.
 
 ### 2. Run
 
@@ -140,7 +138,7 @@ experiment_table:
 
 # PSI calculation
 only_psi:
-  False
+  False # True if you want to calculate PSI values for each sample only
 fdr:
   0.05
 delta_psi:
@@ -152,10 +150,8 @@ alternative_group:
 minimum_reads:
   10
 excel:
-  False
+  False # True if you want to generate a file of splicing analysis results in excel format
 ```
-
-You can generate a file of splicing analysis results in excel format by setting `excel` to `True`.
 
 ### 2. Run
 

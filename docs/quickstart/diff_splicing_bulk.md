@@ -61,9 +61,9 @@ strand:
 
 # PSI calculation
 only_psi:
-  False
+  False # True if you want to calculate PSI values for each sample only
 only_psi_group:
-  False
+  False # True if you want to calculate PSI values for each group only (Overrides `only_psi`)
 fdr:
   0.05
 delta_psi:
@@ -79,10 +79,8 @@ individual_psi:
 ttest:
   True
 excel:
-  True
+  False # True if you want to generate a file of splicing analysis results in excel format
 ```
-
-You can generate a file of splicing analysis results in excel format by setting `excel` to `True`.
 
 ### 2. Run
 
@@ -169,10 +167,8 @@ individual_psi:
 ttest:
   True
 excel:
-  True
+  False # True if you want to generate a file of splicing analysis results in excel format
 ```
-
-You can generate a file of splicing analysis results in excel format by setting `excel` to `True`.
 
 ### 2. Run
 

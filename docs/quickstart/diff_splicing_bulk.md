@@ -47,11 +47,11 @@ gtf:
 experiment_table:
   /path/to/experiment.tsv
 unannotated:
-  True
+  True # True if you want to include unannotated splicing events in the analysis. If False, only annotated events are considered.
 
 # Junction read filtering
 minimum_anchor_length:
-  6 # Minimum length of the anchor sequence at the 5' and 3' ends of the junction read
+  6 # Junctions having a minimum overlap of this much on both ends are reported
 minimum_intron_length:
   70 # Minimum length of the intron sequence
 maximum_intron_length:
@@ -138,12 +138,10 @@ gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf
 experiment_table:
   /path/to/experiment.tsv
-unannotated:
-  True
 
 # Junction read filtering
 minimum_anchor_length:
-  6 # Minimum length of the anchor sequence at the 5' and 3' ends of the junction read
+  6 # Junctions having a minimum overlap of this much on both ends are reported
 minimum_intron_length:
   70 # Minimum length of the intron sequence
 maximum_intron_length:

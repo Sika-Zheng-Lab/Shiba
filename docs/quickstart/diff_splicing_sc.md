@@ -66,15 +66,15 @@ experiment_table:
 only_psi:
   False # True if you want to calculate PSI values for each sample only
 fdr:
-  0.05
+  0.05 # Significance threshold for differential splicing analysis
 delta_psi:
-  0.1
+  0.1 # Minimum difference in PSI values between groups to be considered significant
 reference_group:
-  Cluster-1
+  Cluster-1 # Reference group for differential splicing analysis
 alternative_group:
-  Cluster-2
+  Cluster-2 # Alternative group for differential splicing analysis
 minimum_reads:
-  10
+  10 # Minimum number of reads required to calculate PSI values
 excel:
   False # True if you want to generate a file of splicing analysis results in excel format
 ```
@@ -138,17 +138,17 @@ experiment_table:
 
 # PSI calculation
 only_psi:
-  False # True if you want to calculate PSI values for each sample only
+  False # True if you want to skip the differential analysis and only calculate PSI values for each sample
 fdr:
-  0.05
+  0.05 # Significance threshold for differential splicing analysis
 delta_psi:
-  0.1
+  0.1 # Minimum difference in PSI values between groups to be considered significant
 reference_group:
-  Cluster-1
+  Cluster-1 # Reference group for differential splicing analysis
 alternative_group:
-  Cluster-2
+  Cluster-2 # Alternative group for differential splicing analysis
 minimum_reads:
-  10
+  10 # Minimum number of reads required to calculate PSI values
 excel:
   False # True if you want to generate a file of splicing analysis results in excel format
 ```

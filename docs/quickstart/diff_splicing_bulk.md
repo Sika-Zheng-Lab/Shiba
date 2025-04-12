@@ -51,33 +51,33 @@ unannotated:
 
 # Junction read filtering
 minimum_anchor_length:
-  6
+  6 # Minimum length of the anchor sequence at the 5' and 3' ends of the junction read
 minimum_intron_length:
-  70
+  70 # Minimum length of the intron sequence
 maximum_intron_length:
-  500000
+  500000 # Maximum length of the intron sequence
 strand:
-  XS
+  XS # Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
 
 # PSI calculation
 only_psi:
-  False # True if you want to calculate PSI values for each sample only
+  False # True if you want to skip the differential analysis and only calculate PSI values for each sample
 only_psi_group:
-  False # True if you want to calculate PSI values for each group only (Overrides `only_psi`)
+  False # True if you want to skip the differential analysis and only calculate PSI values for each group
 fdr:
-  0.05
+  0.05 # Significance threshold for differential splicing analysis
 delta_psi:
-  0.1
+  0.1 # Minimum difference in PSI values between groups to be considered significant
 reference_group:
-  Ref
+  Ref # Reference group for differential splicing analysis
 alternative_group:
-  Alt
+  Alt # Alternative group for differential splicing analysis
 minimum_reads:
-  10
+  10 # Minimum number of reads required to calculate PSI values
 individual_psi:
-  True
+  True # True if you want to print PSI values for each sample in the output file
 ttest:
-  True
+  True # True if you want to perform t-test for differential splicing analysis
 excel:
   False # True if you want to generate a file of splicing analysis results in excel format
 ```
@@ -143,29 +143,29 @@ unannotated:
 
 # Junction read filtering
 minimum_anchor_length:
-  6
+  6 # Minimum length of the anchor sequence at the 5' and 3' ends of the junction read
 minimum_intron_length:
-  70
+  70 # Minimum length of the intron sequence
 maximum_intron_length:
-  500000
+  500000 # Maximum length of the intron sequence
 strand:
-  XS
+  XS # Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
 
 # PSI calculation
 fdr:
-  0.05
+  0.05 # Significance threshold for differential splicing analysis
 delta_psi:
-  0.1
+  0.1 # Minimum difference in PSI values between groups to be considered significant
 reference_group:
-  Ref
+  Ref # Reference group for differential splicing analysis
 alternative_group:
-  Alt
+  Alt # Alternative group for differential splicing analysis
 minimum_reads:
-  10
+  10 # Minimum number of reads required to calculate PSI values
 individual_psi:
-  True
+  True # True if you want to print PSI values for each sample in the output file
 ttest:
-  True
+  True # True if you want to perform t-test for differential splicing analysis
 excel:
   False # True if you want to generate a file of splicing analysis results in excel format
 ```

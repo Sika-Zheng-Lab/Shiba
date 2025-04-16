@@ -2,6 +2,20 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.6.0] - 2025-??-??
+
+> [!IMPORTANT]
+> Shiba can now handle long-read RNA-seq data (e.g. PacBio, ONT)! 🎉
+
+### Fixed
+
+- Fixed a way to check if a given BAM file is paired-end or single-end.
+
+### Changed
+
+- Update `subread` version from `2.0.3` to `2.1.0` in the Dockerfile.
+- Update `stringtie` version from `2.2.1` to `3.0.0` in the Dockerfile.
+
 ## [v0.5.5] - 2025-03-19
 
 ### Fixed

@@ -60,9 +60,19 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 			line = line.strip()
 			if not line or line.startswith("sample"):
 				continue
-			sample, bam, _group = line.split(maxsplit=2)
+			# Parse the line
+			try:
+				sample, bam, _group, technology = line.split(maxsplit=3)
+			except ValueError:
+				sample, bam, _group = line.split(maxsplit=2)
+				technology = "short"
 			sample_dir = os.path.dirname(bam)
 			bam_index = f"{bam}.bai"
+
+			logger.info(f"Processing sample: {sample}")
+			logger.debug(f"BAM file: {bam}")
+			if technology.lower() == "long":
+				logger.debug(f"{sample} will be processed as a long read sequencing experiment.")
 
 			# Ensure BAM index exists
 			if not os.path.isfile(bam_index):
@@ -100,7 +110,9 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 			exon_intron_file = os.path.join(tmp_dir, f"{sample}_exon-intron.junc")
 			# Check if BAM is paired-end
 			paired_flag = expression.is_paired_end(bam)
-			paired_option = ["-p"] if paired_flag else [""]
+			paired_option = ["-p"] if paired_flag else []
+			# Check if BAM is longread
+			longread_flag = ["-L"] if technology.lower() == "long" else []
 			featurecounts_command = [
 				"featureCounts",
 				"-a", saf_file,
@@ -109,9 +121,10 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 				"--fracOverlapFeature", "1.0",
 				"-T", str(processors),
 				"-O"
-			] + paired_option + [bam]
+			] + paired_option + longread_flag + [bam]
 			# Delete empty strings
 			featurecounts_command = list(filter(None, featurecounts_command))
+			logger.debug(f"FeatureCounts command: {featurecounts_command}")
 			return_code = general.execute_command(
 				featurecounts_command, os.path.join(logs_dir, "featureCounts.log")
 			)

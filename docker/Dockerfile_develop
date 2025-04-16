@@ -36,12 +36,13 @@ RUN wget https://cran.r-project.org/src/base/R-4/R-4.1.3.tar.gz && \
 	make && \
 	make install
 
-ENV PATH /opt_shiba/R/4.1.3/bin:$PATH
+ENV PATH=/opt_shiba/R/4.1.3/bin:$PATH
 
-# Install DESeq2
+# Install DESeq2 and data.table
 RUN R -e "install.packages('BiocManager', repos = 'http://cran.us.r-project.org')" && \
 	R -e 'install.packages("https://cran.r-project.org/src/contrib/Archive/locfit/locfit_1.5-9.4.tar.gz", repos = NULL, type = "source")' && \
-    R -e "BiocManager::install('DESeq2')"
+    R -e "BiocManager::install('DESeq2')" && \
+	R -e "install.packages('data.table', repos = 'http://cran.us.r-project.org')"
 
 # Install python packages
 RUN /usr/local/bin/python -m pip install --upgrade pip && \
@@ -50,18 +51,18 @@ RUN /usr/local/bin/python -m pip install --upgrade pip && \
 	pysam==0.21.0 scanpy==1.9.5 \
 	numpy==1.26.4 PyYAML==6.0.2
 
-# Install Subread (version 2.0.3)
+# Install Subread (version 2.1.0)
 RUN cd /opt_shiba && \
-	wget https://sourceforge.net/projects/subread/files/subread-2.0.3/subread-2.0.3-Linux-x86_64.tar.gz && \
-	tar -zxvf subread-2.0.3-Linux-x86_64.tar.gz && \
-	rm -rf subread-2.0.3-Linux-x86_64.tar.gz
+	wget https://sourceforge.net/projects/subread/files/subread-2.1.0/subread-2.1.0-Linux-x86_64.tar.gz && \
+	tar -zxvf subread-2.1.0-Linux-x86_64.tar.gz && \
+	rm -rf subread-2.1.0-Linux-x86_64.tar.gz
 
-# Install StringTie (version 2.2.1)
+# Install StringTie (version 3.0.0)
 RUN cd /opt_shiba && \
-	wget http://ccb.jhu.edu/software/stringtie/dl/stringtie-2.2.1.tar.gz && \
-	tar -zxvf stringtie-2.2.1.tar.gz && \
-	rm -rf stringtie-2.2.1.tar.gz && \
-	cd stringtie-2.2.1 && \
+	wget http://ccb.jhu.edu/software/stringtie/dl/stringtie-3.0.0.tar.gz && \
+	tar -zxvf stringtie-3.0.0.tar.gz && \
+	rm -rf stringtie-3.0.0.tar.gz && \
+	cd stringtie-3.0.0 && \
 	make release
 
 # Install Regtools (version 1.0.0)
@@ -80,10 +81,10 @@ RUN cd /opt_shiba && \
 	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b develop
 
 # Install shiba2sashimi
-RUN pip install shiba2sashimi==0.1.2
+RUN pip install shiba2sashimi
 
 # Set environment variables
-ENV PATH $PATH:/opt_shiba/subread-2.0.3-Linux-x86_64/bin:/opt_shiba/stringtie-2.2.1:/opt_shiba/regtools-1.0.0/build:/opt_shiba/Shiba
+ENV PATH=$PATH:/opt_shiba/subread-2.1.0-Linux-x86_64/bin:/opt_shiba/stringtie-3.0.0:/opt_shiba/regtools-1.0.0/build:/opt_shiba/Shiba
 
 # Set working directory
 WORKDIR /home

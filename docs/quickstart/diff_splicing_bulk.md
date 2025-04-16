@@ -9,7 +9,7 @@
 ## Before you start
 
 - Perform mapping of RNA-seq reads to the reference genome and generate bam files by software such as [STAR](https://github.com/alexdobin/STAR) and [HISAT2](https://daehwankimlab.github.io/hisat2/).
-  - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
+    - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
 Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
@@ -36,6 +36,18 @@ Alt_2<tab>/path/to/workdir/bam/Alt_2.bam<tab>Alt
 ```
 
 Please put bam files with their index files (`.bai`) in the `path/to/workdir/bam` directory and replace `<tab>` with a tab character.
+
+If you have **long-read RNA-seq data** (i.e., PacBio or ONT), please add the 4th column to the `experiment.tsv` file with the value `long` for long-read data and `short` for short-read data. For example:
+
+``` text
+sample<tab>bam<tab>group<tab>technology
+Ref_1<tab>/path/to/workdir/bam/Ref_1.bam<tab>Ref<tab>short
+Ref_2<tab>/path/to/workdir/bam/Ref_2.bam<tab>Ref<tab>long
+Alt_1<tab>/path/to/workdir/bam/Alt_1.bam<tab>Alt<tab>short
+Alt_2<tab>/path/to/workdir/bam/Alt_2.bam<tab>Alt<tab>long
+```
+
+The 4th column is optional. If you do not have long-read data, you can omit the 4th column. Blank values are also accepted and will be treated as `short`.
 
 `config.yaml`: A yaml file of the configuration.
 

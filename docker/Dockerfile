@@ -1,5 +1,5 @@
 ###############################################################
-# Dockerfile to build container images for Shiba development
+# Dockerfile to build container images for Shiba (v0.5.5)
 # Based on python 3.11-buster
 ################################################################
 

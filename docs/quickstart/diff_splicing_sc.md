@@ -9,7 +9,7 @@
 ## Before you start
 
 - Perform mapping of sc(sn)RNA-seq reads to the reference genome using [STARsolo](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md).
-  - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
+    - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
 Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
@@ -25,32 +25,34 @@ gzip -d Mus_musculus.GRCm38.102.gtf.gz
 
 ### 1. Prepare inputs
 
-`experiment.tsv`: A tab-separated text file of barcode file and STAR solo raw output directory.
+`experiment.tsv`: A **tab-separated** text file of barcode file and STAR solo raw output directory.
 
 ``` text
-barcode<tab>SJ
-/path/to/barcodes_run1.tsv<tab>/path/to/run1/Solo.out/SJ/raw
-/path/to/barcodes_run2.tsv<tab>/path/to/run2/Solo.out/SJ/raw
-/path/to/barcodes_run3.tsv<tab>/path/to/run3/Solo.out/SJ/raw
-/path/to/barcodes_run4.tsv<tab>/path/to/run4/Solo.out/SJ/raw
+barcode SJ
+/path/to/barcodes_run1.tsv /path/to/run1/Solo.out/SJ/raw
+/path/to/barcodes_run2.tsv /path/to/run2/Solo.out/SJ/raw
+/path/to/barcodes_run3.tsv /path/to/run3/Solo.out/SJ/raw
+/path/to/barcodes_run4.tsv /path/to/run4/Solo.out/SJ/raw
 ```
 
-`barcodes.tsv` is a tab-separated text file of barcode and group name like this:
+`barcodes.tsv` is a **tab-separated** text file of barcode and group name like this:
 
 ``` text
-barcode<tab>group
-TTTGTTGTCCACACCT<tab>Cluster-1
-TCAAGACCACTACAGT<tab>Cluster-1
-TATTTCGGTACAGTAA<tab>Cluster-1
-ATCCTATGTTAATCGC<tab>Cluster-1
-ATCGATGAGTTTCTTC<tab>Cluster-2
-ATCGATGGTCTTGCTC<tab>Cluster-2
-TATGTTCGTCAGGCAA<tab>Cluster-2
-ATCGCCTAGACTCGAG<tab>Cluster-2
+barcode group
+TTTGTTGTCCACACCT Cluster-1
+TCAAGACCACTACAGT Cluster-1
+TATTTCGGTACAGTAA Cluster-1
+ATCCTATGTTAATCGC Cluster-1
+ATCGATGAGTTTCTTC Cluster-2
+ATCGATGGTCTTGCTC Cluster-2
+TATGTTCGTCAGGCAA Cluster-2
+ATCGCCTAGACTCGAG Cluster-2
 ...
 ```
 
-Please replace `<tab>` with a tab character.
+!!! warning
+
+    If you copy and paste the above example, your experiment.tsv file may contain **spaces** instead of tabs, which will causes an error when you run **scShiba**. Please make sure that you are using a **tab** character between the columns.
 
 `config.yaml`: A yaml file of the configuration.
 
@@ -107,7 +109,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 !!! tip
 
 	Did you encounter any problems?
-	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
+	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
 	docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.5 \
 	python /opt_shiba/Shiba/scshiba.py --verbose -p 4 /path/to/workdir/config.yaml
@@ -122,7 +124,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 
 ### 1. Prepare inputs
 
-`experiment.tsv`: A tab-separated text file of sample ID, path to fastq files, and groups for differential analysis. This is the same as the input for **scShiba**.
+`experiment.tsv`: A **tab-separated** text file of sample ID, path to fastq files, and groups for differential analysis. This is the same as the input for **scShiba**.
 
 `config.yaml`: A yaml file of the configuration. This is the same as the input for **scShiba** but with the addition of the `container` field.
 

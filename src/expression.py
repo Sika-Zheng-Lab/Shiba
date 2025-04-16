@@ -33,10 +33,18 @@ def process_samples(experiment_file, reference_gtf, output_dir, processors):
 			line = line.strip()
 			if not line or line.startswith("sample"):
 				continue
-			sample, bam_file, _group = line.split(maxsplit=2)
+			# Parse the line
+			try:
+				sample, bam_file, _group, technology = line.split(maxsplit=3)
+			except ValueError:
+				sample, bam_file, _group = line.split(maxsplit=2)
+				technology = "short"
 			bam_index = f"{bam_file}.bai"
 
 			logger.info(f"Processing sample: {sample}")
+			logger.debug(f"BAM file: {bam_file}")
+			if technology.lower() == "long":
+				logger.debug(f"{sample} will be processed as a long read sequencing experiment.")
 
 			# Ensure BAM index exists
 			if not os.path.isfile(bam_index):
@@ -48,14 +56,16 @@ def process_samples(experiment_file, reference_gtf, output_dir, processors):
 
 			# Check if BAM is paired-end
 			paired_flag = expression.is_paired_end(bam_file)
-			paired_option = ["-p", "-B"] if paired_flag else [""]
+			paired_option = ["-p", "-B"] if paired_flag else []
+			# Check if BAM is long-read
+			longread_option = ["-L"] if technology.lower() == "long" else []
 
 			# Run featureCounts
 			counts_file = f"{output_dir}/{sample}_counts.txt"
 			featurecounts_command = [
 				"featureCounts", "-a", reference_gtf, "-o", counts_file, "-T", str(processors),
 				"-t", "exon", "-g", "gene_id"
-			] + paired_option + [bam_file]
+			] + paired_option + longread_option + [bam_file]
 			# Delete empty strings
 			featurecounts_command = list(filter(None, featurecounts_command))
 			return_code = general.execute_command(featurecounts_command, f"{output_dir}/logs/featureCounts.log")

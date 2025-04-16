@@ -57,13 +57,19 @@ def main():
 			line = line.strip()
 			if not line or line.startswith("sample"):
 				continue
-
-			sample, bam_file, _group = line.split(maxsplit=2)
+			# Parse the line
+			try:
+				sample, bam_file, _group, technology = line.split(maxsplit=3)
+			except ValueError:
+				sample, bam_file, _group = line.split(maxsplit=2)
+				technology = "short"
 			sample_dir = os.path.dirname(bam_file)
 			bam_index = f"{bam_file}.bai"
 
 			logger.info(f"Processing sample: {sample}")
 			logger.debug(f"BAM file: {bam_file}")
+			if technology.lower() == "long":
+				logger.debug(f"{sample} will be processed as a long read sequencing experiment.")
 
 			# Check if BAM index exists
 			if not os.path.isfile(bam_index):
@@ -75,13 +81,14 @@ def main():
 
 			# Run StringTie2 for assembly
 			sample_gtf = os.path.join(os.path.dirname(assembled_gtf), f"{sample}.assembled.gtf")
+			longread_flag = ["-L"] if technology.lower() == "long" else []
 			stringtie_command = [
 				"stringtie",
 				"-p", str(num_processors),
 				"-G", reference_gtf,
-				"-o", sample_gtf,
-				bam_file
-			]
+				"-o", sample_gtf
+			] + longread_flag + [bam_file]
+			# Add -L option if long read experiment
 			logger.debug(f"StringTie2 command: {stringtie_command}")
 			return_code = general.execute_command(stringtie_command)
 			if return_code != 0:

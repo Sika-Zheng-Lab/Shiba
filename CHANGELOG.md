@@ -5,7 +5,7 @@ All notable changes to this Shiba project will be documented in this file.
 ## [v0.6.0] - 2025-??-??
 
 > [!IMPORTANT]
-> Shiba can now handle long-read RNA-seq data (e.g. PacBio, ONT)! 🎉
+> Shiba can now handle **long-read RNA-seq data** (e.g. PacBio, ONT)! 🎉
 
 ### Fixed
 
@@ -13,6 +13,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
+- Support long-read RNA-seq data (e.g. PacBio, ONT) in `shiba.py` and `snakeshiba.smk`. Users can specify long-read data in the experiment table. [See the manual for more details](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/#1-prepare-inputs).
 - Update `subread` version from `2.0.3` to `2.1.0` in the Dockerfile.
 - Update `stringtie` version from `2.2.1` to `3.0.0` in the Dockerfile.
 

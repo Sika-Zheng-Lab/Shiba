@@ -58,28 +58,39 @@ ATCGCCTAGACTCGAG Cluster-2
 
 ``` yaml
 workdir:
-  /path/to/workdir
+  /path/to/workdir # (1)!
 gtf:
-  /path/to/Mus_musculus.GRCm38.102.gtf
+  /path/to/Mus_musculus.GRCm38.102.gtf # (2)!
 experiment_table:
-  /path/to/experiment.tsv
+  /path/to/experiment.tsv # (3)!
 
 # PSI calculation
 only_psi:
-  False # True if you want to calculate PSI values for each sample only
+  False # (4)!
 fdr:
-  0.05 # Significance threshold for differential splicing analysis
+  0.05 # (5)!
 delta_psi:
-  0.1 # Minimum difference in PSI values between groups to be considered significant
+  0.1 # (6)!
 reference_group:
-  Cluster-1 # Reference group for differential splicing analysis
+  Cluster-1 # (7)!
 alternative_group:
-  Cluster-2 # Alternative group for differential splicing analysis
+  Cluster-2 # (8)!
 minimum_reads:
-  10 # Minimum number of reads required to calculate PSI values
+  10 # (9)!
 excel:
-  False # True if you want to generate a file of splicing analysis results in excel format
+  False # (10)!
 ```
+
+1. The working directory where the output files will be saved. Please make sure that you have write permission to this directory.
+2. The path to the gene annotation file in GTF format.
+3. The path to the `experiment.tsv` file.
+4. Set to `True` if you want to skip the differential analysis and only calculate PSI values for each sample.
+5. Significance threshold for differential splicing analysis.
+6. Minimum difference in PSI values between groups to be considered significant.
+7. Reference group for differential splicing analysis.
+8. Alternative group for differential splicing analysis.
+9. Minimum number of reads required to calculate PSI values.
+10. Set to `True` if you want to generate a file of splicing analysis results in excel format.
 
 ### 2. Run
 
@@ -130,30 +141,42 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 
 ``` yaml
 workdir:
-  /path/to/workdir
+  /path/to/workdir # (1)!
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba:v0.5.5
+  docker://naotokubota/shiba:v0.5.5 # (2)!
 gtf:
-  /path/to/Mus_musculus.GRCm38.102.gtf
+  /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:
-  /path/to/experiment.tsv
+  /path/to/experiment.tsv # (4)!
 
 # PSI calculation
 only_psi:
-  False # True if you want to skip the differential analysis and only calculate PSI values for each sample
+  False # (5)!
 fdr:
-  0.05 # Significance threshold for differential splicing analysis
+  0.05 # (6)!
 delta_psi:
-  0.1 # Minimum difference in PSI values between groups to be considered significant
+  0.1 # (7)!
 reference_group:
-  Cluster-1 # Reference group for differential splicing analysis
+  Cluster-1 # (8)!
 alternative_group:
-  Cluster-2 # Alternative group for differential splicing analysis
+  Cluster-2 # (9)!
 minimum_reads:
-  10 # Minimum number of reads required to calculate PSI values
+  10 # (10)!
 excel:
-  False # True if you want to generate a file of splicing analysis results in excel format
+  False # (11)!
 ```
+
+1. The working directory where the output files will be saved. Please make sure that you have write permission to this directory.
+2. The Docker image of **Shiba**.
+3. The path to the gene annotation file in GTF format.
+4. The path to the `experiment.tsv` file.
+5. Set to `True` if you want to skip the differential analysis and only calculate PSI values for each sample.
+6. Significance threshold for differential splicing analysis.
+7. Minimum difference in PSI values between groups to be considered significant.
+8. Reference group for differential splicing analysis.
+9. Alternative group for differential splicing analysis.
+10. Minimum number of reads required to calculate PSI values.
+11. Set to `True` if you want to generate a file of splicing analysis results in excel format.
 
 ### 2. Run
 

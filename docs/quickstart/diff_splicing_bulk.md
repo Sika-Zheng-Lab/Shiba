@@ -61,46 +61,65 @@ Alt_2 /path/to/workdir/bam/Alt_2.bam  Alt
 
 ``` yaml
 workdir:
-  /path/to/workdir
+  /path/to/workdir # (1)!
 gtf:
-  /path/to/Mus_musculus.GRCm38.102.gtf
+  /path/to/Mus_musculus.GRCm38.102.gtf # (2)!
 experiment_table:
-  /path/to/experiment.tsv
+  /path/to/experiment.tsv # (3)!
 unannotated:
-  True # True if you want to include unannotated splicing events in the analysis. If False, only annotated events are considered.
+  True # (4)!
 
 # Junction read filtering
 minimum_anchor_length:
-  6 # Junctions having a minimum overlap of this much on both ends are reported
+  6 # (5)!
 minimum_intron_length:
-  70 # Minimum length of the intron sequence
+  70 # (6)!
 maximum_intron_length:
-  500000 # Maximum length of the intron sequence
+  500000 # (7)!
 strand:
-  XS # Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
+  XS # (8)!
 
 # PSI calculation
 only_psi:
-  False # True if you want to skip the differential analysis and only calculate PSI values for each sample
+  False # (9)!
 only_psi_group:
-  False # True if you want to skip the differential analysis and only calculate PSI values for each group
+  False # (10)!
 fdr:
-  0.05 # Significance threshold for differential splicing analysis
+  0.05 # (11)!
 delta_psi:
-  0.1 # Minimum difference in PSI values between groups to be considered significant
+  0.1 # (12)!
 reference_group:
-  Ref # Reference group for differential splicing analysis
+  Ref # (13)!
 alternative_group:
-  Alt # Alternative group for differential splicing analysis
+  Alt # (14)!
 minimum_reads:
-  10 # Minimum number of reads required to calculate PSI values
+  10 # (15)!
 individual_psi:
-  True # True if you want to print PSI values for each sample in the output file
+  True # (16)!
 ttest:
-  True # True if you want to perform t-test for differential splicing analysis
+  True # (17)!
 excel:
-  False # True if you want to generate a file of splicing analysis results in excel format
+  False # (18)!
 ```
+
+1. The path to the working directory. This is where the output files will be saved. Please make sure that you have write permission to this directory.
+2. The path to the gene annotation file in GTF format.
+3. The path to the `experiment.tsv` file.
+4. True if you want to include unannotated splicing events in the analysis. If False, only annotated events are considered.
+5. Junctions having a minimum overlap of this much on both ends are reported.
+6. Minimum length of the intron sequence.
+7. Maximum length of the intron sequence.
+8. Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
+9. True if you want to skip the differential analysis and only calculate PSI values for each sample.
+10. True if you want to skip the differential analysis and only calculate PSI values for each group.
+11. Significance threshold for differential splicing analysis.
+12. Minimum difference in PSI values between groups to be considered significant.
+13. Reference group for differential splicing analysis.
+14. Alternative group for differential splicing analysis.
+15. Minimum number of reads required to calculate PSI values.
+16. True if you want to print PSI values for each sample in the output file.
+17. True if you want to perform t-test for differential splicing analysis.
+18. True if you want to generate a file of splicing analysis results in excel format.
 
 ### 2. Run
 
@@ -151,42 +170,59 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 
 ``` yaml
 workdir:
-  /path/to/workdir
+  /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.5.5
+  docker://naotokubota/shiba:v0.5.5 # (2)!
 gtf:
-  /path/to/Mus_musculus.GRCm38.102.gtf
+  /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:
-  /path/to/experiment.tsv
+  /path/to/experiment.tsv # (4)!
 
 # Junction read filtering
 minimum_anchor_length:
-  6 # Junctions having a minimum overlap of this much on both ends are reported
+  6 # (5)!
 minimum_intron_length:
-  70 # Minimum length of the intron sequence
+  70 # (6)!
 maximum_intron_length:
-  500000 # Maximum length of the intron sequence
+  500000 # (7)!
 strand:
-  XS # Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
+  XS # (8)!
 
 # PSI calculation
 fdr:
-  0.05 # Significance threshold for differential splicing analysis
+  0.05 # (9)!
 delta_psi:
-  0.1 # Minimum difference in PSI values between groups to be considered significant
+  0.1 # (10)!
 reference_group:
-  Ref # Reference group for differential splicing analysis
+  Ref # (11)!
 alternative_group:
-  Alt # Alternative group for differential splicing analysis
+  Alt # (12)!
 minimum_reads:
-  10 # Minimum number of reads required to calculate PSI values
+  10 # (13)!
 individual_psi:
-  True # True if you want to print PSI values for each sample in the output file
+  True # (14)!
 ttest:
-  True # True if you want to perform t-test for differential splicing analysis
+  True # (15)!
 excel:
-  False # True if you want to generate a file of splicing analysis results in excel format
+  False # (16)!
 ```
+
+1. The path to the working directory. This is where the output files will be saved. Please make sure that you have write permission to this directory.
+2. The Docker image of **Shiba**.
+3. The path to the gene annotation file in GTF format.
+4. The path to the `experiment.tsv` file.
+5. Junctions having a minimum overlap of this much on both ends are reported.
+6. Minimum length of the intron sequence.
+7. Maximum length of the intron sequence.
+8. Strand specificity of RNA library preparation, where the options XS, use XS tags provided by aligner; RF, first-strand; FR, second-strand.
+9. Significance threshold for differential splicing analysis.
+10. Minimum difference in PSI values between groups to be considered significant.
+11. Reference group for differential splicing analysis.
+12. Alternative group for differential splicing analysis.
+13. Minimum number of reads required to calculate PSI values.
+14. True if you want to print PSI values for each sample in the output file.
+15. True if you want to perform t-test for differential splicing analysis.
+16. True if you want to generate a file of splicing analysis results in excel format.
 
 ### 2. Run
 

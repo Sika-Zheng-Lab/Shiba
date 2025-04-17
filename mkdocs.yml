@@ -11,24 +11,24 @@ theme:
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
-      primary: indigo
-      accent: indigo
+      primary: white
+      accent: white
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: white
+      accent: white
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: white
+      accent: white
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -46,7 +46,7 @@ theme:
     - content.code.copy
     - content.code.select
     - content.code.annotate
-  logo: assets/icon.png
+  logo: assets/icon_black.png
   favicon: assets/favicon.png
 
 markdown_extensions:

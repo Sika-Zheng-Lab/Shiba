@@ -117,9 +117,8 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 	When you use Singularity, you do not need to bind any paths as it automatically binds some paths in the host system to the container. In the default configuration, the system default bind points are `$HOME`, `/sys:/sys`, `/proc:/proc`, `/tmp:/tmp`, `/var/tmp:/var/tmp`, `/etc/resolv.conf:/etc/resolv.conf`, `/etc/passwd:/etc/passwd`, and `$PWD`. If files needed to be accessed are not in these paths, you can use the `--bind` option to bind the files to the container.
 
-!!! tip
+!!! bug "Did you encounter any problems?"
 
-	Did you encounter any problems?
 	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
 	docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.5.5 \

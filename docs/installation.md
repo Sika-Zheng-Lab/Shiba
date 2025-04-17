@@ -15,7 +15,7 @@ docker run -it --rm naotokubota/shiba:v0.5.5 bash
 docker run -it --rm naotokubota/shiba:v0.5.5 python /opt_shiba/Shiba/shiba.py -h
 ```
 
-!!! Important
+!!! Warning
 
 	You may need to allocate more memory to the container if you are using a large dataset. You can do this in the Docker Desktop settings:
 

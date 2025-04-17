@@ -46,6 +46,8 @@ theme:
     - content.code.copy
     - content.code.select
     - content.code.annotate
+  logo: assets/icon.png
+  favicon: assets/favicon.png
 
 markdown_extensions:
   - toc:

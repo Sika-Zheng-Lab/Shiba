@@ -103,8 +103,3 @@ nav:
   - scShiba: usage/scshiba.md
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
-
-plugins:
-  - social:
-      cards_layout_options:
-        font_family: Noto Sans SC

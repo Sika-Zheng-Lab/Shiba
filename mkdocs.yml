@@ -1,7 +1,7 @@
 site_name: Shiba
 site_description: Shiba documentation
 site_author: Naoto Kubota
-site_url: https://sika-zheng-lab/shiba
+site_url: https://sika-zheng-lab.github.io/Shiba/
 copyright: © 2024 Naoto Kubota
 repo_url: https://github.com/Sika-Zheng-Lab/Shiba
 repo_name: Sika-Zheng-Lab/Shiba
@@ -38,11 +38,14 @@ theme:
   features:
     - search.suggest
     - search.highlight
+    - search.share
     - navigation.instant
     - navigation.instant.progress
     - navigation.instant.prefetch
     - navigation.tracking
     - navigation.footer
+    - navigation.tabs
+    - navigation.tabs.sticky
     - content.code.copy
     - content.code.select
     - content.code.annotate
@@ -100,3 +103,8 @@ nav:
   - scShiba: usage/scshiba.md
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
+
+plugins:
+  - social:
+      cards_layout_options:
+        font_family: Noto Sans SC

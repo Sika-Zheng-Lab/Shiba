@@ -1,6 +1,6 @@
 # Differential RNA splicing analysis with single-cell/nucleus RNA-seq data
 
-!!! note
+!!! note "Please install Shiba first"
 
 	You need to install a Docker image of **Shiba** (and clone the **Shiba** GitHub repository to run **SnakeScShiba**). If you don't have them installed, please follow the instructions in the [Installation](../installation.md) section.
 
@@ -50,7 +50,7 @@ ATCGCCTAGACTCGAG Cluster-2
 ...
 ```
 
-!!! warning
+!!! warning "Make sure to use tabs"
 
     If you copy and paste the above example, your experiment.tsv file may contain **spaces** instead of tabs, which will causes an error when you run **scShiba**. Please make sure that you are using a **tab** character between the columns.
 
@@ -113,7 +113,7 @@ python /opt_shiba/Shiba/scshiba.py -p 4 /path/to/workdir/config.yaml
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
 
-!!! note
+!!! note "Binding paths in Singularity"
 
 	When you use Singularity, you do not need to bind any paths as it automatically binds some paths in the host system to the container. In the default configuration, the system default bind points are `$HOME`, `/sys:/sys`, `/proc:/proc`, `/tmp:/tmp`, `/var/tmp:/var/tmp`, `/etc/resolv.conf:/etc/resolv.conf`, `/etc/passwd:/etc/passwd`, and `$PWD`. If files needed to be accessed are not in these paths, you can use the `--bind` option to bind the files to the container.
 

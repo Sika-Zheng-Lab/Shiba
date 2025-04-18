@@ -10,3 +10,4 @@ test/*.tsv
 test/*.snakemake
 __pycache__
 .DS_Store
+.cache

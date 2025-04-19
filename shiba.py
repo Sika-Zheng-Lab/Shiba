@@ -22,7 +22,7 @@ Step 2: gtf2event.py
 Step 3: bam2junc.py
     - Extracts junction reads from BAM files.
 Step 4: psi.py
-    - Calculates PSI values and perform differential analysis.
+    - Calculates PSI values and performs differential analysis.
 Step 5: expression.py
     - Analyzes gene expression.
 Step 6: pca.py

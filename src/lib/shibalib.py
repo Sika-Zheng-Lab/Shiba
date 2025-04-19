@@ -7,7 +7,6 @@ import numpy as np
 import scipy.stats as stats
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
-from styleframe import StyleFrame, Styler, utils
 import logging
 logger = logging.getLogger(__name__)
 
@@ -1777,6 +1776,8 @@ def save_excel(output_path, SE_df, FIVE_df, THREE_df, MXE_df, RI_df, MSE_df, AFE
 
     """
 
+    from styleframe import StyleFrame, Styler, utils
+
     # Style
     style = Styler(
         horizontal_alignment = utils.horizontal_alignments.left,
@@ -1861,6 +1862,8 @@ def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df,
     - ALE_df (pd.DataFrame): DataFrame containing the differential splicing events for ALE events.
 
     """
+
+    from styleframe import StyleFrame, Styler, utils
 
     # Style
     style = Styler(

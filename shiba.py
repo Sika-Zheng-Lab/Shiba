@@ -22,7 +22,7 @@ Step 2: gtf2event.py
 Step 3: bam2junc.py
     - Extracts junction reads from BAM files.
 Step 4: psi.py
-    - Calculates PSI values and perform differential analysis
+    - Calculates PSI values and performs differential analysis.
 Step 5: expression.py
     - Analyzes gene expression.
 Step 6: pca.py
@@ -34,6 +34,7 @@ Step 7: plots.py
     parser.add_argument("config", help="Config file in yaml format")
     parser.add_argument("-p", "--process", type=int, default=1, help="Number of processors to use (default: 1)")
     parser.add_argument("-s", "--start-step", type=int, default=0, help="Start the pipeline from the specified step (default: 0, run all steps)")
+    parser.add_argument("--mame", action="store_true", help="Execute MameShiba, a lightweight version of Shiba, for only splicing analysis. Steps 5-7 will be skipped.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose mode")
     return parser.parse_args()
 
@@ -48,8 +49,13 @@ def main():
         level = logging.DEBUG if args.verbose else logging.INFO
     )
 
+    # Set up report name
+    report_name = "MameShiba" if args.mame else "Shiba"
+
     # Validate input and config
-    logger.info(f"Running Shiba ({VERSION})")
+    logger.info(f"Running {report_name} ({VERSION})")
+    if args.mame:
+        logger.info("Only splicing analysis will be performed.")
     time.sleep(1)
     logger.debug(f"Arguments: {args}")
     # Get number of processors
@@ -59,6 +65,9 @@ def main():
     logger.info("Loading configuration...")
     config_path = args.config
     config = general.load_config(config_path)
+    if config['excel'] and args.mame:
+        logger.warning("Excel output is not available in MameShiba mode. Disabling excel option.")
+        config['excel'] = False
 
     # Check essential config keys
     missing_keys = general.check_config(config, ["workdir", "experiment_table", "gtf"])
@@ -208,6 +217,10 @@ def main():
 
     logger.info("Starting pipeline execution...")
 
+    # Skip after Step 4 if MameShiba is enabled and disable excel option in config
+    if args.mame:
+        steps = steps[:4]
+
     # Get start step
     start_step = args.start_step
     if start_step > 0:
@@ -215,7 +228,7 @@ def main():
         steps = steps[start_step-1:]
 
     # Skip plots.py step when only_psi or only_psi_group is True
-    if only_psi or only_psi_group:
+    if not args.mame and (only_psi or only_psi_group):
         steps = steps[:-1]
 
     # Execute steps
@@ -231,9 +244,8 @@ def main():
             sys.exit(1)
 
     # Finish
-    logger.info(f"Shiba finished! Results saved in {output_dir}")
+    logger.info(f"{report_name} finished! Results saved in {output_dir}")
     # Generate report
-    report_name = "Shiba"
     general.generate_report(report_name, output_dir, VERSION, command_line, experiment_table)
 
 if __name__ == "__main__":

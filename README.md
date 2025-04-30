@@ -25,10 +25,29 @@ Shiba comprises four main steps:
 
 ## Installation
 
-A docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba).
+### Docker
+
+You need to install a Docker container to run whole Shiba pipeline, including gene expression and splicing analysis. The Docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba). You can pull the image using the following command:
 
 ```bash
 docker pull naotokubota/shiba:v0.5.5
+```
+
+### Conda
+
+If you want to perform only splicing analysis, you can install all dependencies using conda and run **MameShiba**, a lightweight version of Shiba. The following command will create a conda environment named `mameshiba` with all dependencies installed.
+
+```bash
+conda create -n mameshiba -c conda-forge -c bioconda python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
+```
+
+Please clone the repository and run Shiba with the `--mame` option. Make sure to activate the conda environment before running the command.
+
+```bash
+git clone https://github.com/Sika-Zheng-Lab/Shiba.git
+cd Shiba
+conda activate mameshiba
+python shiba.py --mame -p 4 config.yaml
 ```
 
 ## Usage
@@ -63,7 +82,7 @@ snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singulari
 
 Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi](https://github.com/Sika-Zheng-Lab/shiba2sashimi) 🍣 !
 
-<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/shiba2sashimi/main/img/sashimi_example.png" width=75%>
+<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/shiba2sashimi/main/img/sashimi_example.png" width=100%>
 
 ## Contributing
 

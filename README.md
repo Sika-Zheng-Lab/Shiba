@@ -60,6 +60,12 @@ Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https
 python shiba.py -p 4 config.yaml
 ```
 
+***MameShiba***, a lightweight version of Shiba
+
+```bash
+python shiba.py --mame -p 4 config.yaml
+```
+
 ***SnakeShiba***, Snakemake-based workflow of Shiba
 
 ```bash

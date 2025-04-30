@@ -2,7 +2,7 @@
 
 !!! note "Please install Shiba first"
 
-	You need to install a Docker image of **Shiba** (and clone the **Shiba** GitHub repository to run **SnakeShiba**). If you don't have them installed, please follow the instructions in the [Installation](../installation.md) section.
+	You need to install a Docker image of **Shiba** or install dependencies by conda for **MameShiba** and clone the **Shiba** GitHub repository. If you don't have them installed, please follow the instructions in the [Installation](../installation.md) section.
 
 ---
 
@@ -154,6 +154,38 @@ You are going to use 4 threads for parallelization. You can change the number of
 	python /opt_shiba/Shiba/shiba.py --verbose -p 4 /path/to/workdir/config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
+
+---
+
+## MameShiba
+
+**MameShiba** is a lightweight version of **Shiba** that can be run on a local machine without Docker or Singularity. It is designed for users who want to perform splicing analysis only and do not need the full functionality of **Shiba**.
+
+### 1. Prepare inputs
+
+`experiment.tsv`: A **tab-separated** text file of sample ID, path to bam files, and groups for differential analysis. This is the same as the input for **Shiba**.
+
+`config.yaml`: A yaml file of the configuration. This is the same as the configuration for **Shiba**.
+
+### 2. Run
+
+The following command will create a conda environment named `mameshiba` with all dependencies installed.
+
+``` bash
+conda create -n mameshiba -c conda-forge -c bioconda \
+python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 \
+pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 \
+regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
+```
+
+Please clone the repository and run Shiba with the `--mame` option. This option skips the steps that require Docker or Singularity. Make sure to activate the conda environment before running the command.
+
+``` bash
+git clone https://github.com/Sika-Zheng-Lab/Shiba.git
+cd Shiba
+conda activate mameshiba
+python shiba.py --mame -p 4 config.yaml
+```
 
 ---
 

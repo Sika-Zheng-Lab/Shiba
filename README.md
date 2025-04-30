@@ -25,7 +25,7 @@ Shiba comprises four main steps:
 
 ## Installation
 
-### Docker
+### Docker (Recommended)
 
 You need to install a Docker container to run whole Shiba pipeline, including gene expression and splicing analysis. The Docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba). You can pull the image using the following command:
 
@@ -33,7 +33,7 @@ You need to install a Docker container to run whole Shiba pipeline, including ge
 docker pull naotokubota/shiba:v0.5.5
 ```
 
-### Conda
+### Conda (For users who want to run only splicing analysis and do not need full pipeline)
 
 If you want to perform only splicing analysis, you can install all dependencies using conda and run **MameShiba**, a lightweight version of Shiba. The following command will create a conda environment named `mameshiba` with all dependencies installed.
 

@@ -2,14 +2,20 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
-## [v0.6.0] - 2025-??-??
+## [v0.6.0] - 2025-05-01
 
 > [!IMPORTANT]
-> Shiba can now handle **long-read RNA-seq data** (e.g. PacBio, ONT)! 🎉
+> 1. Shiba can now handle **long-read RNA-seq data** (e.g. PacBio, ONT)! 🎉
+> 2. **MameShiba** is available! 🎉 This is a lightweight version of Shiba, which is useful for users who want to run only splicing analysis and do not need full pipeline.
 
 ### Fixed
 
 - Fixed a way to check if a given BAM file is paired-end or single-end.
+
+### Added
+
+- Added `--mame` option to `shiba.py` for running **MameShiba**, a lightweight version of Shiba.
+- Added instructions for installing minimal depencencies for **MameShiba** using conda.
 
 ### Changed
 

@@ -13,7 +13,7 @@ A versatile computational method for systematic identification of differential R
 
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
-> [!IMPORTANT] New feature: Long-read RNA-seq data analysis
+> [!IMPORTANT]
 > Shiba now supports **long-read RNA-seq** data analysis! Please check the [manual](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/#shiba) for more details.
 
 ## Overview

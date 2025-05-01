@@ -24,7 +24,7 @@ Shiba comprises four main steps:
 3. **Read counting**: Count reads mapped to each splicing event using [RegTools](https://github.com/griffithlab/regtools) and [featureCounts](https://subread.sourceforge.net/)
 4. **Statistical analysis**: Identify DSEs based on Fisher's exact test
 
-<img src="img/Shiba_overview.png" width=75%>
+<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
 
 ## Installation
 
@@ -91,7 +91,7 @@ snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singulari
 
 Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi](https://github.com/Sika-Zheng-Lab/shiba2sashimi) 🍣 !
 
-<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/shiba2sashimi/main/img/sashimi_example.png" width=100%>
+<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/shiba2sashimi/main/img/sashimi_example.png" width=80%>
 
 ## Contributing
 

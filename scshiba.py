@@ -9,7 +9,7 @@ import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.5.5"
+VERSION = "v0.6.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(

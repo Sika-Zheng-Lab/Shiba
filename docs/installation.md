@@ -8,13 +8,13 @@ You don't have to build a local environment for running Shiba! We provide a Dock
 
 ``` bash
 # Pull the latest image
-docker pull naotokubota/shiba:v0.5.5
+docker pull naotokubota/shiba:v0.6.0
 
 # Login to the container
-docker run -it --rm naotokubota/shiba:v0.5.5 bash
+docker run -it --rm naotokubota/shiba:v0.6.0 bash
 
 # Run Shiba, for example, to see the help message
-docker run -it --rm naotokubota/shiba:v0.5.5 python /opt_shiba/Shiba/shiba.py -h
+docker run -it --rm naotokubota/shiba:v0.6.0 python /opt_shiba/Shiba/shiba.py -h
 ```
 
 !!! Warning "Memory allocation"
@@ -35,13 +35,13 @@ docker run -it --rm naotokubota/shiba:v0.5.5 python /opt_shiba/Shiba/shiba.py -h
 
 ``` bash
 # Pull the latest image
-singularity pull docker://naotokubota/shiba:v0.5.5
+singularity pull docker://naotokubota/shiba:v0.6.0
 
 # Login to the container
-singularity shell shiba_v0.5.5.sif
+singularity shell shiba_v0.6.0.sif
 
 # Run Shiba, for example, to see the help message
-singularity exec shiba_v0.5.5.sif python /opt_shiba/Shiba/shiba.py -h
+singularity exec shiba_v0.6.0.sif python /opt_shiba/Shiba/shiba.py -h
 ```
 
 ---

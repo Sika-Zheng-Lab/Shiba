@@ -39,7 +39,7 @@ Alt_2 /path/to/workdir/bam/Alt_2.bam  Alt
 
     If you copy and paste the above example, your experiment.tsv file may contain **spaces** instead of tabs, which will causes an error when you run **Shiba**. Please make sure that you are using a **tab** character between the columns.
 
-!!! info "Under development: you can try with naotokubota/shiba:develop"
+!!! info "Shiba supports long-read RNA-seq data"
 
     If you have **long-read RNA-seq data** (i.e., PacBio or ONT), please add the 4th column to the `experiment.tsv` file with the value `long` for long-read data and `short` for short-read data. For example:
 
@@ -53,7 +53,7 @@ Alt_2 /path/to/workdir/bam/Alt_2.bam  Alt
 
     The 4th column is optional. If you do not have long-read data, you can omit the 4th column. Blank values are also accepted and will be treated as `short`.
 
-    !!! tip
+    !!! tip "Use long-read data only for discovery of alternative RNA splicing events"
 
         If you want to use long-read RNA-seq data only for discovery of alternative RNA splicing events and **NOT** for differential analysis, you can set the 3rd column to different values than that of short-read data. For example, if you want to perform differential splicing analysis between `Ref` and `Alt` groups using short-read data, you can set `Ref` and `Alt` for short-read data, and set `Ref_long` and `Alt_long` for long-read data, so that the long-read data will be used only for transcript assembly and not for differential analysis.
 

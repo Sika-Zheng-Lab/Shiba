@@ -1,4 +1,5 @@
 library(DESeq2)
+library(data.table)
 
 args <- commandArgs(trailingOnly = T)
 experiment_table <- args[1]
@@ -7,24 +8,22 @@ REFGROUP <- args[3]
 ALTGROUP <- args[4]
 output <- args[5]
 
-experiment <- read.table(
-
+all_colnames <- names(fread(experiment_table, sep = "\t", nrows = 0))
+target_cols <- c("sample", "bam", "group")
+existing_cols <- intersect(target_cols, all_colnames)
+experiment <- fread(
     experiment_table,
     sep = "\t",
-    head = T,
-    check.names = FALSE
-
+    select = existing_cols
 )
 
 counts <- read.table(
-
     counts_table,
     sep = "\t",
     head = T,
     row.names = "gene_name",
     check.names = FALSE,
     stringsAsFactors = FALSE
-
 )
 counts_t <- t(counts)
 
@@ -52,12 +51,10 @@ res <- res[order(res$padj), ]
 
 # save
 write.table(
-
     res,
     file = output,
     sep = "\t",
     row.names = F,
     col.names = T,
     quote = F
-
 )

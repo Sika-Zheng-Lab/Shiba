@@ -2,6 +2,27 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.6.0] - 2025-05-01
+
+> [!IMPORTANT]
+> 1. Shiba can now handle **long-read RNA-seq data** (e.g. PacBio, ONT)! 🎉
+> 2. **MameShiba** is available! 🎉 This is a lightweight version of Shiba, which is useful for users who want to run only splicing analysis and do not need full pipeline.
+
+### Fixed
+
+- Fixed a way to check if a given BAM file is paired-end or single-end.
+
+### Added
+
+- Added `--mame` option to `shiba.py` for running **MameShiba**, a lightweight version of Shiba.
+- Added instructions for installing minimal depencencies for **MameShiba** using conda.
+
+### Changed
+
+- Support long-read RNA-seq data (e.g. PacBio, ONT) in `shiba.py` and `snakeshiba.smk`. Users can specify long-read data in the experiment table. [See the manual for more details](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/#1-prepare-inputs).
+- Update `subread` version from `2.0.3` to `2.1.0` in the Dockerfile.
+- Update `stringtie` version from `2.2.1` to `3.0.0` in the Dockerfile.
+
 ## [v0.5.5] - 2025-03-19
 
 ### Fixed

@@ -1,11 +1,11 @@
 
-VERSION = "v0.5.5"
+VERSION = "v0.6.0"
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
 
 Usage:
-    snakemake -s snakeshiba.smk --configfile config.yaml --cores 32 --use-singularity --singularity-args "--bind $HOME:$HOME"
+    snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity --singularity-args "--bind $HOME:$HOME"
 '''
 
 import os
@@ -17,10 +17,15 @@ def load_experiment(file):
     experiment_dict = {}
     with open(file, "r") as f:
         for line in f:
-            sample, bam, group = line.strip().split("\t")
-            if sample == "sample":
+            line = line.strip()
+            if not line or line.startswith("sample"):
                 continue
-            experiment_dict[sample] = {"bam": bam, "group": group}
+            try:
+                sample, bam, group, technology = line.split(maxsplit=3)
+            except ValueError:
+                sample, bam, group = line.split(maxsplit=2)
+                technology = "short"
+            experiment_dict[sample] = {"bam": bam, "group": group, "technology": technology}
     return experiment_dict
 experiment_dict = load_experiment(config["experiment_table"])
 juncfiles_list = []
@@ -82,11 +87,14 @@ rule bam2gtf:
         "benchmark/bam2gtf/{sample}.txt"
     log:
         "log/bam2gtf/{sample}.log"
+    params:
+        longread_option = lambda wildcards: "-L" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
         stringtie -p {threads} \
         -G {input.gtf} \
         -o {output} \
+        {params.longread_option} \
         {input.bam} >& {log}
         """
 
@@ -193,7 +201,8 @@ rule bam2junc_RI:
     log:
         "log/bam2junc/{sample}_featureCounts_RI.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
         python {params.base_dir}/src/bam2junc_RI_snakemake.py \
@@ -201,6 +210,7 @@ rule bam2junc_RI:
         -r {input.RI} \
         -o {output.junc} \
         -t {threads} \
+        {params.longread_option} \
         -v \
         &> {log}
         """
@@ -279,7 +289,8 @@ rule expression_featureCounts:
     log:
         "log/expression/{sample}_featureCounts.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
         python {params.base_dir}/src/expression_featureCounts_snakemake.py \
@@ -287,6 +298,7 @@ rule expression_featureCounts:
         -g {config[gtf]} \
         -o {output.counts} \
         -t {threads} \
+        {params.longread_option} \
         -v \
         &> {log}
         """

@@ -1,5 +1,5 @@
-sample	bam	group
-Ref_1	/path/to/workdir/bam/Ref_1.bam	Ref
-Ref_2	/path/to/workdir/bam/Ref_2.bam	Ref
-Alt_1	/path/to/workdir/bam/Alt_1.bam	Alt
-Alt_2	/path/to/workdir/bam/Alt_2.bam	Alt
+sample	bam	group	technology
+Ref_1	/path/to/workdir/bam/Ref_1.bam	Ref	short
+Ref_2	/path/to/workdir/bam/Ref_2.bam	Ref	long
+Alt_1	/path/to/workdir/bam/Alt_1.bam	Alt	short
+Alt_2	/path/to/workdir/bam/Alt_2.bam	Alt	long

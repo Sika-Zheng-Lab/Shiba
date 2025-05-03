@@ -31,29 +31,22 @@ Shiba comprises four main steps:
 
 ## Installation
 
-### Docker (Recommended)
-
-You need to install a Docker container to run whole Shiba pipeline, including gene expression and splicing analysis. The Docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba). You can pull the image using the following command:
+### Conda
 
 ```bash
-docker pull naotokubota/shiba:v0.6.0
+conda create -n shiba -c conda-forge -c bioconda shiba
 ```
 
-### Conda (For users who want to run only splicing analysis and do not need full pipeline)
-
-If you want to perform only splicing analysis, you can install all dependencies using conda and run **MameShiba**, a lightweight version of Shiba. The following command will create a conda environment named `mameshiba` with all dependencies installed.
+If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
 
 ```bash
 conda create -n mameshiba -c conda-forge -c bioconda mameshiba
 ```
 
-Please clone the repository and run Shiba with the `--mame` option. Make sure to activate the conda environment before running the command.
+### Docker
 
 ```bash
-git clone https://github.com/Sika-Zheng-Lab/Shiba.git
-cd Shiba
-conda activate mameshiba
-python shiba.py --mame -p 4 config.yaml
+docker pull naotokubota/shiba:v0.6.0
 ```
 
 ## Usage
@@ -63,13 +56,13 @@ Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https
 ***Shiba***
 
 ```bash
-python shiba.py -p 4 config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 ***MameShiba***, a lightweight version of Shiba
 
 ```bash
-python shiba.py --mame -p 4 config.yaml
+shiba.py --mame -p 4 config.yaml
 ```
 
 ***SnakeShiba***, Snakemake-based workflow of Shiba
@@ -81,7 +74,7 @@ snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
 ***scShiba***, a single-cell RNA-seq version of Shiba
 
 ```bash
-python scshiba.py -p 4 config.yaml
+scshiba.py -p 4 config.yaml
 ```
 
 ***SnakeScShiba***, Snakemake-based workflow of scShiba

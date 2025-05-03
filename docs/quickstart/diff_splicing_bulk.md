@@ -1,9 +1,5 @@
 # Differential RNA splicing analysis with bulk RNA-seq data
 
-!!! note "Please install Shiba first"
-
-	You need to install a Docker image of **Shiba** or install dependencies by conda for **MameShiba** and clone the **Shiba** GitHub repository. If you don't have them installed, please follow the instructions in the [Installation](../installation.md) section.
-
 ---
 
 ## Before you start
@@ -12,11 +8,26 @@
     - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
-Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
+---
+
+## Installation
+
+- **Shiba**:
 
 ``` bash
-wget https://ftp.ensembl.org/pub/release-102/gtf/mus_musculus/Mus_musculus.GRCm38.102.gtf.gz
-gzip -d Mus_musculus.GRCm38.102.gtf.gz
+# Install Shiba with conda
+conda create -n shiba -c conda-forge -c bioconda shiba
+# Activate the conda environment
+conda activate shiba
+```
+
+- **MameShiba**, a lightweight version of **Shiba**:
+
+``` bash
+# Install MameShiba with conda
+conda create -n mameshiba -c conda-forge -c bioconda mameshiba
+# Activate the conda environment
+conda activate mameshiba
 ```
 
 ---
@@ -123,35 +134,17 @@ excel:
 
 ### 2. Run
 
-Docker:
-
 ``` bash
-cp experiment.tsv config.yaml /path/to/workdir
-cd /path/to/workdir
-docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.6.0 \
-python /opt_shiba/Shiba/shiba.py -p 4 /path/to/workdir/config.yaml
-```
-
-Singularity:
-
-``` bash
-cp experiment.tsv config.yaml /path/to/workdir
-singularity exec docker://naotokubota/shiba:v0.6.0 \
-python /opt_shiba/Shiba/shiba.py -p 4 /path/to/workdir/config.yaml
+shiba.py -p 4 /path/to/workdir/config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
-
-!!! note "Binding paths in Singularity"
-
-	When you use Singularity, you do not need to bind any paths as it automatically binds some paths in the host system to the container. In the default configuration, the system default bind points are `$HOME`, `/sys:/sys`, `/proc:/proc`, `/tmp:/tmp`, `/var/tmp:/var/tmp`, `/etc/resolv.conf:/etc/resolv.conf`, `/etc/passwd:/etc/passwd`, and `$PWD`. If files needed to be accessed are not in these paths, you can use the `--bind` option to bind the files to the container.
 
 !!! bug "Did you encounter any problems?"
 
 	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.6.0 \
-	python /opt_shiba/Shiba/shiba.py --verbose -p 4 /path/to/workdir/config.yaml
+	shiba.py --verbose -p 4 /path/to/workdir/config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -169,22 +162,10 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 ### 2. Run
 
-The following command will create a conda environment named `mameshiba` with all dependencies installed.
+Make sure running with `--mame` option.
 
 ``` bash
-conda create -n mameshiba -c conda-forge -c bioconda \
-python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 \
-pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 \
-regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
-```
-
-Please clone the repository and run Shiba with the `--mame` option. This option skips the steps that require Docker or Singularity. Make sure to activate the conda environment before running the command.
-
-``` bash
-git clone https://github.com/Sika-Zheng-Lab/Shiba.git
-cd Shiba
-conda activate mameshiba
-python shiba.py --mame -p 4 config.yaml
+shiba.py --mame -p 4 config.yamls
 ```
 
 ---

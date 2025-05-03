@@ -66,8 +66,5 @@ You can also install minimal dependencies for **MameShiba**, a lightweight versi
 The following command will create a conda environment named `mameshiba` with all dependencies installed.
 
 ``` bash
-conda create -n mameshiba -c conda-forge -c bioconda \
-python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 \
-pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 \
-regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
+conda create -n mameshiba -c conda-forge -c bioconda mameshiba
 ```

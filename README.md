@@ -3,6 +3,9 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Sika-Zheng-Lab/Shiba?style=flat)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![GitHub Release Date](https://img.shields.io/github/release-date/Sika-Zheng-Lab/Shiba)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![Create Release and Build Docker Image](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml)
+[![Conda](https://img.shields.io/conda/v/bioconda/mameshiba?color=3EB049)](https://anaconda.org/bioconda/mameshiba)
+[![Conda - Downloads](https://img.shields.io/conda/dn/bioconda/mameshiba?label=Conda%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/mameshiba)
+[![Docker](https://img.shields.io/docker/v/naotokubota/shiba?color=blue&label=Docker)](https://hub.docker.com/r/naotokubota/shiba)
 [![Docker Pulls](https://img.shields.io/docker/pulls/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
@@ -41,7 +44,7 @@ docker pull naotokubota/shiba:v0.6.0
 If you want to perform only splicing analysis, you can install all dependencies using conda and run **MameShiba**, a lightweight version of Shiba. The following command will create a conda environment named `mameshiba` with all dependencies installed.
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
+conda create -n mameshiba -c conda-forge -c bioconda mameshiba
 ```
 
 Please clone the repository and run Shiba with the `--mame` option. Make sure to activate the conda environment before running the command.

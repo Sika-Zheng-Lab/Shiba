@@ -2,6 +2,13 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.6.1] - 2025-05-03
+
+### Changed
+
+- Changed the way to execute the main scripts: you can now run `shiba.py` and `scshiba.py` directly without using `python` command. This is to improve the usability of the software.
+- Update the Docker image to use `continuumio/miniconda3:23.10.0-1` as the base image.
+
 ## [v0.6.0] - 2025-05-01
 
 > [!IMPORTANT]

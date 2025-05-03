@@ -3,11 +3,14 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Sika-Zheng-Lab/Shiba?style=flat)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![GitHub Release Date](https://img.shields.io/github/release-date/Sika-Zheng-Lab/Shiba)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![Create Release and Build Docker Image](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml)
+[![Conda](https://img.shields.io/conda/v/bioconda/mameshiba?color=3EB049)](https://anaconda.org/bioconda/mameshiba)
+[![Conda - Downloads](https://img.shields.io/conda/dn/bioconda/mameshiba?label=Conda%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/mameshiba)
+[![Docker](https://img.shields.io/docker/v/naotokubota/shiba?color=blue&label=Docker)](https://hub.docker.com/r/naotokubota/shiba)
 [![Docker Pulls](https://img.shields.io/docker/pulls/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
 
-# Shiba (v0.6.0) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
+# Shiba (v0.6.1) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
@@ -28,29 +31,22 @@ Shiba comprises four main steps:
 
 ## Installation
 
-### Docker (Recommended)
-
-You need to install a Docker container to run whole Shiba pipeline, including gene expression and splicing analysis. The Docker image is available at [Docker Hub](https://hub.docker.com/r/naotokubota/shiba). You can pull the image using the following command:
+### Conda
 
 ```bash
-docker pull naotokubota/shiba:v0.6.0
+conda create -n shiba -c conda-forge -c bioconda shiba
 ```
 
-### Conda (For users who want to run only splicing analysis and do not need full pipeline)
-
-If you want to perform only splicing analysis, you can install all dependencies using conda and run **MameShiba**, a lightweight version of Shiba. The following command will create a conda environment named `mameshiba` with all dependencies installed.
+If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda python=3.11.0 pandas==1.5.3 statsmodels==0.13.5 numexpr==2.8.4 pysam==0.23.0 scanpy==1.9.5 numpy==1.26.4 pyyaml==6.0.2 regtools==1.0.0 subread==2.0.8 stringtie==3.0.0
+conda create -n mameshiba -c conda-forge -c bioconda mameshiba
 ```
 
-Please clone the repository and run Shiba with the `--mame` option. Make sure to activate the conda environment before running the command.
+### Docker
 
 ```bash
-git clone https://github.com/Sika-Zheng-Lab/Shiba.git
-cd Shiba
-conda activate mameshiba
-python shiba.py --mame -p 4 config.yaml
+docker pull naotokubota/shiba:v0.6.1
 ```
 
 ## Usage
@@ -60,13 +56,13 @@ Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https
 ***Shiba***
 
 ```bash
-python shiba.py -p 4 config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 ***MameShiba***, a lightweight version of Shiba
 
 ```bash
-python shiba.py --mame -p 4 config.yaml
+shiba.py --mame -p 4 config.yaml
 ```
 
 ***SnakeShiba***, Snakemake-based workflow of Shiba
@@ -78,7 +74,7 @@ snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
 ***scShiba***, a single-cell RNA-seq version of Shiba
 
 ```bash
-python scshiba.py -p 4 config.yaml
+scshiba.py -p 4 config.yaml
 ```
 
 ***SnakeScShiba***, Snakemake-based workflow of scShiba

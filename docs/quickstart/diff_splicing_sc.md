@@ -1,9 +1,5 @@
 # Differential RNA splicing analysis with single-cell/nucleus RNA-seq data
 
-!!! note "Please install Shiba first"
-
-	You need to install a Docker image of **Shiba** (and clone the **Shiba** GitHub repository to run **SnakeScShiba**). If you don't have them installed, please follow the instructions in the [Installation](../installation.md) section.
-
 ---
 
 ## Before you start
@@ -12,11 +8,15 @@
     - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
 - Download a gene annotataion file of your interest in GTF format.
 
-Here is an example code for downloading a mouse gene annotation file (Ensembl 102):
+---
+
+## Installation
 
 ``` bash
-wget https://ftp.ensembl.org/pub/release-102/gtf/mus_musculus/Mus_musculus.GRCm38.102.gtf.gz
-gzip -d Mus_musculus.GRCm38.102.gtf.gz
+# Install Shiba with conda
+conda create -n shiba -c conda-forge -c bioconda shiba
+# Activate the conda environment
+conda activate shiba
 ```
 
 ---
@@ -94,35 +94,17 @@ excel:
 
 ### 2. Run
 
-Docker:
-
 ``` bash
-cp experiment.tsv config.yaml /path/to/workdir
-cd /path/to/workdir
-docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.6.0 \
-python /opt_shiba/Shiba/scshiba.py -p 4 /path/to/workdir/config.yaml
-```
-
-Singularity:
-
-``` bash
-cp experiment.tsv config.yaml /path/to/workdir
-singularity exec docker://naotokubota/shiba:v0.6.0 \
-python /opt_shiba/Shiba/scshiba.py -p 4 /path/to/workdir/config.yaml
+scshiba.py -p 4 /path/to/workdir/config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
-
-!!! note "Binding paths in Singularity"
-
-	When you use Singularity, you do not need to bind any paths as it automatically binds some paths in the host system to the container. In the default configuration, the system default bind points are `$HOME`, `/sys:/sys`, `/proc:/proc`, `/tmp:/tmp`, `/var/tmp:/var/tmp`, `/etc/resolv.conf:/etc/resolv.conf`, `/etc/passwd:/etc/passwd`, and `$PWD`. If files needed to be accessed are not in these paths, you can use the `--bind` option to bind the files to the container.
 
 !!! bug "Did you encounter any problems?"
 
 	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	docker run --rm -v $(pwd):$(pwd) -u $(id -u):$(id -g) naotokubota/shiba:v0.6.0 \
-	python /opt_shiba/Shiba/scshiba.py --verbose -p 4 /path/to/workdir/config.yaml
+	scshiba.py --verbose -p 4 /path/to/workdir/config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -142,7 +124,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba:v0.6.0 # (2)!
+  docker://naotokubota/shiba:v0.6.1 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:

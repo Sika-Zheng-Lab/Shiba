@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import os
 import sys
@@ -9,7 +11,7 @@ import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.6.0"
+VERSION = "v0.6.1"
 
 def parse_args():
     parser = argparse.ArgumentParser(

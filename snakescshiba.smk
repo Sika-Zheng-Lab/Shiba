@@ -1,5 +1,5 @@
 
-VERSION = "v0.6.0"
+VERSION = "v0.6.1"
 
 '''
 SnakeScShiba: A snakemake-based workflow of scShiba

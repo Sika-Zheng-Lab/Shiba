@@ -3,7 +3,7 @@
 ``` bash
 usage: shiba.py [-h] [-p PROCESS] [-s START_STEP] [--mame] [-v] config
 
-Shiba v0.6.0 - Pipeline for identification of differential RNA splicing
+Shiba v0.6.1 - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
     - Assembles transcript structures based on mapped reads using StringTie2.

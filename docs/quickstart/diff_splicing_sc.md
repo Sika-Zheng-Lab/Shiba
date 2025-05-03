@@ -124,7 +124,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba:v0.6.0 # (2)!
+  docker://naotokubota/shiba:v0.6.1 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:

@@ -135,7 +135,7 @@ excel:
 ### 2. Run
 
 ``` bash
-shiba.py -p 4 /path/to/workdir/config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -144,7 +144,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	shiba.py --verbose -p 4 /path/to/workdir/config.yaml
+	shiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 

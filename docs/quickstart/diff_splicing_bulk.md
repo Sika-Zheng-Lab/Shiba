@@ -165,7 +165,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 Make sure running with `--mame` option.
 
 ``` bash
-shiba.py --mame -p 4 config.yamls
+shiba.py --mame -p 4 config.yaml
 ```
 
 ---

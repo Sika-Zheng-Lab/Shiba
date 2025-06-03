@@ -6,6 +6,8 @@ The following command will create a conda environment named `shiba` with all dep
 
 ``` bash
 conda create -n shiba -c conda-forge -c bioconda shiba
+conda activate shiba # Activate the conda environment
+pip install styleframe==4.1 # optional, for generating outputs in Excel format.
 ```
 
 You can also install minimal dependencies for **MameShiba**, a lightweight version of **Shiba** . If you want to perform only splicing analysis, this could be a good option. The following command will create a conda environment named `mameshiba` with minimal dependencies installed.

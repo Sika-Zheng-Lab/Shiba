@@ -19,6 +19,8 @@
 conda create -n shiba -c conda-forge -c bioconda shiba
 # Activate the conda environment
 conda activate shiba
+# Install styleframe for generating outputs in Excel format (optional)
+pip install styleframe==4.1
 ```
 
 - **MameShiba**, a lightweight version of **Shiba**:

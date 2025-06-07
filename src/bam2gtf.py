@@ -71,6 +71,14 @@ def main():
 			if technology.lower() == "long":
 				logger.debug(f"{sample} will be processed as a long read sequencing experiment.")
 
+			# Check if the BAM exists
+			if not os.path.isfile(bam_file):
+				logger.error(f"BAM file not found for sample {sample}: {bam_file}")
+				logger.error("Please check the experiment table and ensure all BAM files exist.")
+				sys.exit(1)
+			else:
+				logger.debug(f"Found BAM file for {sample}: {bam_file}")
+
 			# Check if BAM index exists
 			if not os.path.isfile(bam_index):
 				logger.error(f"BAM index file not found for {bam_file}")

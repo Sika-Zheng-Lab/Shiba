@@ -1592,22 +1592,25 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
     sample_group2 = [output_ind_df[i].values for i in sample_group2]
     p_col = []
     for index in range(output_ind_df.shape[0]):
-        PSI_group1 = [float(i[index]) for i in sample_group1]
-        PSI_group2 = [float(i[index]) for i in sample_group2]
+        PSI_group1 = [i[index] for i in sample_group1 if i[index] is not None]
+        PSI_group2 = [i[index] for i in sample_group2 if i[index] is not None]
         # t-test
-        try:
-            t, p = stats.ttest_ind(
-                PSI_group1,
-                PSI_group2,
-                equal_var = False,
-                nan_policy = "omit"
-            )
-        except ValueError:
-            logger.debug(f"Error in t-test for event {output_ind_df['event_id'][index]}.")
-            logger.debug(f"PSI group1: {PSI_group1}")
-            logger.debug(f"PSI group2: {PSI_group2}")
-            raise ValueError("Error in t-test.")
-        p_col.append(p)
+        if len(PSI_group1) == 0 or len(PSI_group2) == 0:
+            p_col.append(np.nan)
+        else:
+            try:
+                t, p = stats.ttest_ind(
+                    PSI_group1,
+                    PSI_group2,
+                    equal_var = False,
+                    nan_policy = "omit"
+                )
+                p_col.append(p)
+            except ValueError:
+                logger.debug(f"Error in t-test for event {output_ind_df['event_id'][index]}.")
+                logger.debug(f"PSI group1: {PSI_group1}")
+                logger.debug(f"PSI group2: {PSI_group2}")
+                raise ValueError("Error in t-test.")
     output_ind_df["p_ttest"] = p_col
     return(output_ind_df)
 

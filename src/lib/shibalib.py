@@ -493,7 +493,7 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if ((intron_a_count + intron_b_count) / 2 + intron_c_count) != 0:
                 psi = ((intron_a_count + intron_b_count) / 2) / ((intron_a_count + intron_b_count) / 2 + intron_c_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -746,7 +746,7 @@ def five_three_afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -
             if intron_a_count + intron_b_count != 0:
                 psi = intron_a_count / (intron_a_count + intron_b_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -890,7 +890,7 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if intron_a1_count + intron_a2_count + intron_b1_count + intron_b2_count != 0:
                 psi = (intron_a1_count + intron_a2_count) / ((intron_a1_count + intron_a2_count) + (intron_b1_count + intron_b2_count))
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -1030,7 +1030,7 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if ((intron_a_start_junc_count + intron_a_end_junc_count) / 2 + intron_a_count) != 0:
                 psi = ((intron_a_start_junc_count + intron_a_end_junc_count) / 2) / ((intron_a_start_junc_count + intron_a_end_junc_count) / 2 + intron_a_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)

@@ -28,10 +28,18 @@ body:
       required: true
 
   - type: textarea
+    attributes:
+      label: '⚠️ Error message'
+      description: |
+        Optional: If applicable, add the error message here.
+    validations:
+      required: false
+
+  - type: textarea
     id: experiment_table
     attributes:
       label: '🧪 Experiment Table'
-      description: 'Required: Copy and paste the experiment table that you are using.'
+      description: 'Optional: Copy and paste the experiment table that you are using.'
     validations:
       required: false
 
@@ -39,31 +47,7 @@ body:
     id: config_yaml
     attributes:
       label: '📄 Config YAML'
-      description: 'Required: Copy and paste the config YAML that you are using.'
-    validations:
-      required: false
-
-  - type: textarea
-    attributes:
-      label: '💬 Current Behavior'
-      description: |
-        Optional: A concise description of what you're experiencing.
-    validations:
-      required: false
-
-  - type: textarea
-    attributes:
-      label: '🎯 Expected Behavior'
-      description: |
-        Optional: A concise description of what you expected to happen.
-    validations:
-      required: false
-
-  - type: textarea
-    attributes:
-      label: '⚠️ Error message'
-      description: |
-        Optional: If applicable, add the error message here.
+      description: 'Optional: Copy and paste the config YAML that you are using.'
     validations:
       required: false
 

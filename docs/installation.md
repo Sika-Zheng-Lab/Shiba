@@ -6,6 +6,8 @@ The following command will create a conda environment named `shiba` with all dep
 
 ``` bash
 conda create -n shiba -c conda-forge -c bioconda shiba
+conda activate shiba # Activate the conda environment
+pip install styleframe==4.1 # optional, for generating outputs in Excel format.
 ```
 
 You can also install minimal dependencies for **MameShiba**, a lightweight version of **Shiba** . If you want to perform only splicing analysis, this could be a good option. The following command will create a conda environment named `mameshiba` with minimal dependencies installed.
@@ -22,13 +24,13 @@ We provide a Docker image for **Shiba**. You can use the following command to pu
 
 ``` bash
 # Pull the latest image
-docker pull naotokubota/shiba:v0.6.1
+docker pull naotokubota/shiba:v0.6.2
 
 # Login to the container
-docker run -it --rm naotokubota/shiba:v0.6.1 bash
+docker run -it --rm naotokubota/shiba:v0.6.2 bash
 
 # Run Shiba, for example, to see the help message
-docker run -it --rm naotokubota/shiba:v0.6.1 shiba.py -h
+docker run -it --rm naotokubota/shiba:v0.6.2 shiba.py -h
 ```
 
 !!! Warning "Memory allocation"

@@ -493,7 +493,7 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if ((intron_a_count + intron_b_count) / 2 + intron_c_count) != 0:
                 psi = ((intron_a_count + intron_b_count) / 2) / ((intron_a_count + intron_b_count) / 2 + intron_c_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -746,7 +746,7 @@ def five_three_afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -
             if intron_a_count + intron_b_count != 0:
                 psi = intron_a_count / (intron_a_count + intron_b_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -890,7 +890,7 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if intron_a1_count + intron_a2_count + intron_b1_count + intron_b2_count != 0:
                 psi = (intron_a1_count + intron_a2_count) / ((intron_a1_count + intron_a2_count) + (intron_b1_count + intron_b2_count))
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -1030,7 +1030,7 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             if ((intron_a_start_junc_count + intron_a_end_junc_count) / 2 + intron_a_count) != 0:
                 psi = ((intron_a_start_junc_count + intron_a_end_junc_count) / 2) / ((intron_a_start_junc_count + intron_a_end_junc_count) / 2 + intron_a_count)
             else:
-                psi = None
+                psi = np.nan
             psi_list += [psi]
         event_l += [psi_list]
     return(event_l)
@@ -1592,16 +1592,25 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
     sample_group2 = [output_ind_df[i].values for i in sample_group2]
     p_col = []
     for index in range(output_ind_df.shape[0]):
-        PSI_group1 = [i[index] for i in sample_group1]
-        PSI_group2 = [i[index] for i in sample_group2]
+        PSI_group1 = [i[index] for i in sample_group1 if i[index] is not None]
+        PSI_group2 = [i[index] for i in sample_group2 if i[index] is not None]
         # t-test
-        t, p = stats.ttest_ind(
-            PSI_group1,
-            PSI_group2,
-            equal_var = False,
-            nan_policy = "omit"
-        )
-        p_col.append(p)
+        if len(PSI_group1) == 0 or len(PSI_group2) == 0:
+            p_col.append(np.nan)
+        else:
+            try:
+                t, p = stats.ttest_ind(
+                    PSI_group1,
+                    PSI_group2,
+                    equal_var = False,
+                    nan_policy = "omit"
+                )
+                p_col.append(p)
+            except ValueError:
+                logger.debug(f"Error in t-test for event {output_ind_df['event_id'][index]}.")
+                logger.debug(f"PSI group1: {PSI_group1}")
+                logger.debug(f"PSI group2: {PSI_group2}")
+                raise ValueError("Error in t-test.")
     output_ind_df["p_ttest"] = p_col
     return(output_ind_df)
 

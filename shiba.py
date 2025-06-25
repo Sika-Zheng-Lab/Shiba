@@ -11,7 +11,7 @@ import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.6.1"
+VERSION = "v0.6.2"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -243,6 +243,8 @@ def main():
         returncode = general.execute_command(command_to_run)
         if returncode != 0:
             logger.error(f"Error executing {step['name']}. Exiting...")
+            logger.error("You could try to run the command with --verbose to catch the more detailed error message.")
+            logger.error("If you think this is a bug, please report it at https://github.com/Sika-Zheng-Lab/Shiba/issues")
             sys.exit(1)
 
     # Finish

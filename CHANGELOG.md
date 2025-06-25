@@ -2,6 +2,12 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.6.2] - 2025-06-24
+
+### Fixed
+
+- Fixed a bug ([#56](https://github.com/Sika-Zheng-Lab/Shiba/issues/56)): Avoid `NoneTypeError` in t-test for differential splicing analysis when there are NaN values in the PSI values.
+
 ## [v0.6.1] - 2025-05-03
 
 ### Changed

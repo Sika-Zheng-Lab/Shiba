@@ -19,6 +19,8 @@
 conda create -n shiba -c conda-forge -c bioconda shiba
 # Activate the conda environment
 conda activate shiba
+# Install styleframe for generating outputs in Excel format (optional)
+pip install styleframe==4.1
 ```
 
 - **MameShiba**, a lightweight version of **Shiba**:
@@ -135,7 +137,7 @@ excel:
 ### 2. Run
 
 ``` bash
-shiba.py -p 4 /path/to/workdir/config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -144,7 +146,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	shiba.py --verbose -p 4 /path/to/workdir/config.yaml
+	shiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -165,7 +167,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 Make sure running with `--mame` option.
 
 ``` bash
-shiba.py --mame -p 4 config.yamls
+shiba.py --mame -p 4 config.yaml
 ```
 
 ---
@@ -184,7 +186,7 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.6.1 # (2)!
+  docker://naotokubota/shiba:v0.6.2 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:

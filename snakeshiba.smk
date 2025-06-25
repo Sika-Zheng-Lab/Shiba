@@ -1,5 +1,5 @@
 
-VERSION = "v0.6.1"
+VERSION = "v0.6.2"
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples

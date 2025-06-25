@@ -23,7 +23,7 @@ See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.m
 ## Overview
 
 Shiba comprises four main steps:
-1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie2](https://github.com/skovaka/stringtie2)
+1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie](https://github.com/gpertea/stringtie)
 2. **Splicing event identification**: Identify alternative mRNA splicing events from assembled transcripts
 3. **Read counting**: Count reads mapped to each splicing event using [RegTools](https://github.com/griffithlab/regtools) and [featureCounts](https://subread.sourceforge.net/)
 4. **Statistical analysis**: Identify DSEs based on Fisher's exact test

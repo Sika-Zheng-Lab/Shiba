@@ -279,6 +279,7 @@ rule expression_featureCounts:
         sample = "|".join(experiment_dict)
     input:
         bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"],
+        gtf = config["gtf"]
     output:
         counts = temp("results/expression/{sample}_counts.txt"),
         counts_summary = temp("results/expression/{sample}_counts.txt.summary")
@@ -295,7 +296,7 @@ rule expression_featureCounts:
         """
         python {params.base_dir}/src/expression_featureCounts_snakemake.py \
         -b {input.bam} \
-        -g {config[gtf]} \
+        -g {input.gtf} \
         -o {output.counts} \
         -t {threads} \
         {params.longread_option} \

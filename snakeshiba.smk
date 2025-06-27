@@ -322,6 +322,7 @@ rule expression_tpm:
         python {params.base_dir}/src/tpm_snakemake.py \
         --countfiles {input.counts} \
         --output results/expression/ \
+        --excel {config[excel]} \
         -v \
         &> {log}
         """

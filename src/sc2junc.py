@@ -92,12 +92,15 @@ def grouping_read_count_each(adata, sample_group_dict, group, j):
 	'''
 
 	# Sample list
-	sample_list = list(sample_group_dict[group])
-	adata = adata[:, sample_list]
-	count_sum = adata.X.sum(axis = 1).flatten().tolist()[0]
-	# Summarize junction read counts
-	count_df = pd.DataFrame({"SJ": list(adata.obs.index), j: count_sum})
-	count_df = count_df[count_df[j] != 0]
+	if group not in sample_group_dict:
+		count_df = pd.DataFrame()
+	else:
+		sample_list = list(sample_group_dict[group])
+		adata = adata[:, sample_list]
+		count_sum = adata.X.sum(axis = 1).flatten().tolist()[0]
+		# Summarize junction read counts
+		count_df = pd.DataFrame({"SJ": list(adata.obs.index), j: count_sum})
+		count_df = count_df[count_df[j] != 0]
 
 	return(count_df)
 
@@ -183,6 +186,9 @@ def main():
 		for j in range(len(adata_list)):
 			logger.debug(f"Sample: {j}")
 			tmp_df = grouping_read_count_each(adata_list[j], sample_group_dict_list[j], group, j)
+			if tmp_df.empty:
+				logger.warning(f"No junction read counts found for group {group} in sample {j}.")
+				continue
 			sj_tmp_df = pd.merge(sj_tmp_df, tmp_df, on="SJ", how="outer").fillna(0) if not sj_tmp_df.empty else tmp_df
 
 		sj_tmp_df = sj_tmp_df.set_index("SJ")

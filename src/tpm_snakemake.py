@@ -28,6 +28,7 @@ def get_args():
 	parser.add_argument("--onlypsi", type = str2bool, help = "Onlypsi", nargs = "?", const = True, default = False)
 	parser.add_argument("--onlypsi-group", type = str2bool, help = "Onlypsi-group", nargs = "?", const = True, default = False)
 	parser.add_argument("--output", type = str, help = "Output directory")
+	parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
 	parser.add_argument("-v", "--verbose", action="store_true", help="Increase output verbosity")
 	args = parser.parse_args()
 	return(args)
@@ -96,22 +97,23 @@ def main():
 	cpm_df.to_csv(os.path.join(args.output, "CPM.txt"), sep = "\t", index = False)
 
 	# Excel file
-	logger.info("Exporting results to Excel...")
-	# StyleFrame
-	style = Styler(
-		horizontal_alignment = utils.horizontal_alignments.left,
-		border_type = utils.borders.default_grid,
-		wrap_text = False
-	)
-	with StyleFrame.ExcelWriter(os.path.join(args.output, "TPM_CPM.xlsx")) as writer:
-		tpm_sf = StyleFrame(tpm_df)
-		tpm_sf.set_column_width(columns = tpm_df.columns, width = 20)
-		tpm_sf.apply_column_style(cols_to_style = tpm_df.columns, styler_obj = style, style_header = True)
-		tpm_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "TPM")
-		cpm_sf = StyleFrame(cpm_df)
-		cpm_sf.set_column_width(columns = cpm_df.columns, width = 20)
-		cpm_sf.apply_column_style(cols_to_style = cpm_df.columns, styler_obj = style, style_header = True)
-		cpm_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "CPM")
+	if args.excel:
+		logger.info("Exporting results to Excel...")
+		# StyleFrame
+		style = Styler(
+			horizontal_alignment = utils.horizontal_alignments.left,
+			border_type = utils.borders.default_grid,
+			wrap_text = False
+		)
+		with StyleFrame.ExcelWriter(os.path.join(args.output, "TPM_CPM.xlsx")) as writer:
+			tpm_sf = StyleFrame(tpm_df)
+			tpm_sf.set_column_width(columns = tpm_df.columns, width = 20)
+			tpm_sf.apply_column_style(cols_to_style = tpm_df.columns, styler_obj = style, style_header = True)
+			tpm_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "TPM")
+			cpm_sf = StyleFrame(cpm_df)
+			cpm_sf.set_column_width(columns = cpm_df.columns, width = 20)
+			cpm_sf.apply_column_style(cols_to_style = cpm_df.columns, styler_obj = style, style_header = True)
+			cpm_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "CPM")
 
 	logger.info("TPM and CPM calculation completed")
 

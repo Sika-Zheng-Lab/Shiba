@@ -2,6 +2,14 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.6.3] - 2025-07-05
+
+### Fixed
+
+- Fixed a bug ([#59](https://github.com/Sika-Zheng-Lab/Shiba/issues/59)): Avoid an error in `SnakeShiba` that produces an excel file even when the excel option is disabled in the configuration file.
+
+- Fixed a bug ([#61](https://github.com/Sika-Zheng-Lab/Shiba/issues/61)): Avoid an error in `scshiba.py` when there are missing groups in a single barcode tsv file.
+
 ## [v0.6.2] - 2025-06-24
 
 ### Fixed

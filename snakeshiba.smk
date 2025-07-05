@@ -1,5 +1,5 @@
 
-VERSION = "v0.6.2"
+VERSION = "v0.6.3"
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
@@ -279,6 +279,7 @@ rule expression_featureCounts:
         sample = "|".join(experiment_dict)
     input:
         bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"],
+        gtf = config["gtf"]
     output:
         counts = temp("results/expression/{sample}_counts.txt"),
         counts_summary = temp("results/expression/{sample}_counts.txt.summary")
@@ -295,7 +296,7 @@ rule expression_featureCounts:
         """
         python {params.base_dir}/src/expression_featureCounts_snakemake.py \
         -b {input.bam} \
-        -g {config[gtf]} \
+        -g {input.gtf} \
         -o {output.counts} \
         -t {threads} \
         {params.longread_option} \
@@ -321,6 +322,7 @@ rule expression_tpm:
         python {params.base_dir}/src/tpm_snakemake.py \
         --countfiles {input.counts} \
         --output results/expression/ \
+        --excel {config[excel]} \
         -v \
         &> {log}
         """

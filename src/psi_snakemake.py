@@ -95,9 +95,8 @@ def main():
         group_df = shibalib.read_group(paths["group"])
         group_list = shibalib.set_group(group_df, params["onlypsi_group"], params["reference"], params["alternative"])
         sample_list_diff = shibalib.sample_in_group_list(group_df, group_list) if not params["onlypsi_group"] else None
-        junc_group_df = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list)
-        junc_dict_group = shibalib.junc_dict(junc_group_df)
-        group_data = {"group_list": group_list, "group_df": group_df, "junc_group_df": junc_group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
+        junc_dict_group = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list)
+        group_data = {"group_list": group_list, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
         logger.debug(f"group_list: {group_list}")
         logger.debug(f"sample_list_diff: {sample_list_diff}")
 

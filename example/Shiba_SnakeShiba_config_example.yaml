@@ -1,7 +1,7 @@
 workdir:
   /path/to/workdir/output
 container:
-  docker://naotokubota/shiba:v0.6.3
+  docker://naotokubota/shiba:v0.7.0
 gtf:
   /path/to/workdir/annotation.gtf
 experiment_table:

@@ -2,6 +2,20 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.7.0] - 2025-08-07
+
+> [!IMPORTANT]
+> The logic to identify alternative first exon (AFE) and alternative last exon (ALE) events has been changed. From this version, not only single exon but also complex AFE and ALE events can be identified. This change may affect the results of AFE and ALE events in previous versions because the definition of AFE and ALE events has been changed. Please check the [Manual](https://sika-zheng-lab.github.io/Shiba/output/shiba/#psi_afetxt-and-psi_aletxt) for more details.
+
+<img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/develop/img/update_v0.7.0.png" width=100%>
+
+### Changed
+
+- The logic to identify alternative first exon (AFE) and alternative last exon (ALE) events has been changed. From this version, not only single exon but also complex AFE and ALE events can be identified ([#65](https://github.com/Sika-Zheng-Lab/Shiba/issues/65)).
+  - AFE and ALE events are now defined as follows:
+    - **AFE**: An event where the first exon is alternative, which can include multiple exons.
+    - **ALE**: An event where the last exon is alternative, which can include multiple exons.
+
 ## [v0.6.3] - 2025-07-05
 
 ### Fixed

@@ -128,13 +128,13 @@ def main():
     # Define events and functions
     event_definitions = {
         "SE": (shibalib.event_for_analysis_se, shibalib.se, shibalib.col_se, shibalib.diff_se, shibalib.se_ind),
-        "FIVE": (shibalib.event_for_analysis_five_three_afe_ale, shibalib.five_three_afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_five_three_afe_ale, shibalib.five_three_afe_ale_ind),
-        "THREE": (shibalib.event_for_analysis_five_three_afe_ale, shibalib.five_three_afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_five_three_afe_ale, shibalib.five_three_afe_ale_ind),
+        "FIVE": (shibalib.event_for_analysis_five_three, shibalib.five_three, shibalib.col_five_three_afe_ale, shibalib.diff_five_three, shibalib.five_three_ind),
+        "THREE": (shibalib.event_for_analysis_five_three, shibalib.five_three, shibalib.col_five_three_afe_ale, shibalib.diff_five_three, shibalib.five_three_ind),
         "MXE": (shibalib.event_for_analysis_mxe, shibalib.mxe, shibalib.col_mxe, shibalib.diff_mxe, shibalib.mxe_ind),
         "RI": (shibalib.event_for_analysis_ri, shibalib.ri, shibalib.col_ri, shibalib.diff_ri, shibalib.ri_ind),
         "MSE": (shibalib.event_for_analysis_mse, shibalib.mse, shibalib.col_mse, shibalib.diff_mse, shibalib.mse_ind),
-        "AFE": (shibalib.event_for_analysis_five_three_afe_ale, shibalib.five_three_afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_five_three_afe_ale, shibalib.five_three_afe_ale_ind),
-        "ALE": (shibalib.event_for_analysis_five_three_afe_ale, shibalib.five_three_afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_five_three_afe_ale, shibalib.five_three_afe_ale_ind),
+        "AFE": (shibalib.event_for_analysis_afe_ale, shibalib.afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_afe_ale, shibalib.afe_ale_ind),
+        "ALE": (shibalib.event_for_analysis_afe_ale, shibalib.afe_ale, shibalib.col_five_three_afe_ale, shibalib.diff_afe_ale, shibalib.afe_ale_ind)
     }
 
     # Process each event

@@ -281,17 +281,17 @@ def event_for_analysis_mse(event_df, junc_set) -> pd.DataFrame:
     
     return event_df[mask]
 
-def event_for_analysis_five_three_afe_ale(event_df, junc_set) -> pd.DataFrame:
+def event_for_analysis_five_three(event_df, junc_set) -> pd.DataFrame:
     """
-    Select FIVE, THREE, AFE, and ALE events for analysis based on whether they contain junctions in the junction set.
+    Select FIVE and THREE events for analysis based on whether they contain junctions in the junction set.
     Uses memory-efficient approach with numpy arrays.
 
     Args:
-    - event_df (pd.DataFrame): DataFrame containing FIVE, THREE, AFE, and ALE event information.
+    - event_df (pd.DataFrame): DataFrame containing FIVE and THREE event information.
     - junc_set (set): Set containing all junctions.
 
     Returns:
-    - pd.DataFrame: DataFrame containing selected FIVE, THREE, AFE, and ALE events for analysis.
+    - pd.DataFrame: DataFrame containing selected FIVE and THREE events for analysis.
     """
 
     # Use numpy arrays for faster processing
@@ -301,6 +301,31 @@ def event_for_analysis_five_three_afe_ale(event_df, junc_set) -> pd.DataFrame:
     # Create boolean mask for events to keep
     mask = np.array([
         (intron_a in junc_set) or (intron_b in junc_set)
+        for intron_a, intron_b in zip(intron_a_values, intron_b_values)
+    ])
+    
+    return event_df[mask]
+
+def event_for_analysis_afe_ale(event_df, junc_set) -> pd.DataFrame:
+    """
+    Select AFE and ALE events for analysis based on whether they contain junctions in the junction set.
+    Uses memory-efficient approach with numpy arrays.
+
+    Args:
+    - event_df (pd.DataFrame): DataFrame containing AFE and ALE event information.
+    - junc_set (set): Set containing all junctions.
+
+    Returns:
+    - pd.DataFrame: DataFrame containing selected AFE and ALE events for analysis.
+    """
+
+    # Use numpy arrays for faster processing
+    intron_a_values = event_df["intron_a"].values
+    intron_b_values = event_df["intron_b"].values
+
+    # Create boolean mask for events to keep
+    mask = np.array([
+        len((set(intron_a.split(";")) | set(intron_b.split(";"))) & junc_set) > 0
         for intron_a, intron_b in zip(intron_a_values, intron_b_values)
     ])
     
@@ -661,7 +686,7 @@ def col_five_three_afe_ale(sample_id, group_or_not) -> list:
     col = ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"] + col
     return(col)
 
-def five_three_afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> list:
+def five_three(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> list:
     """
     Calculates PSI for each sample.
 
@@ -721,7 +746,7 @@ def five_three_afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_
         event_l += [psi_list]
     return(event_l)
 
-def five_three_afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
+def five_three_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     """
     Calculates PSI for each sample in a given event DataFrame for a specific sample ID.
 
@@ -761,6 +786,130 @@ def five_three_afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -
             # PSI
             if intron_a_count + intron_b_count != 0:
                 psi = intron_a_count / (intron_a_count + intron_b_count)
+            else:
+                psi = np.nan
+            psi_list += [psi]
+        event_l += [psi_list]
+    return(event_l)
+
+def afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> list:
+    """
+    Calculates PSI for each sample.
+
+    Args:
+    - junc_dict_all: a dictionary containing junction reads for each sample
+    - sample_id: a list of sample IDs
+    - event_df: a pandas DataFrame containing AS event information
+    - num_process (int): The number of processes.
+    - minimum_reads (int): The minimum number of reads for each junction.
+    - k: an integer representing the index of the current process
+
+    Returns:
+    - event_l: a list of lists containing PSI values for each sample
+    """
+
+    event_l = []
+    # Sample ID
+    sample_size = len(sample_id)
+    # event list
+    AS_event_l = list(set(event_df["event_id"]))
+    # split
+    event_num_split = np.array_split(AS_event_l, num_process)
+    event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
+    event_split_df = event_split_df.reset_index()
+    event_values = event_split_df.event_id.values
+    pos_values = event_split_df.pos_id.values
+    exon_a_values = event_split_df.exon_a.values
+    exon_b_values = event_split_df.exon_b.values
+    intron_a_values = event_split_df.intron_a.values
+    intron_b_values = event_split_df.intron_b.values
+    strand_values = event_split_df.strand.values
+    gene_id_values = event_split_df.gene_id.values
+    gene_name_values = event_split_df.gene_name.values
+    label_values = event_split_df.label.values
+    for index in range(event_split_df.shape[0]):
+        psi_list = [event_values[index], pos_values[index], exon_a_values[index], exon_b_values[index], intron_a_values[index], intron_b_values[index], strand_values[index], gene_id_values[index], gene_name_values[index], label_values[index]]
+        for i in sample_id:
+            junc_list = junc_dict_all[i]
+            intron_a_list = intron_a_values[index].split(";")
+            intron_b_list = intron_b_values[index].split(";")
+            intron_a_count_list = []
+            intron_b_count_list = []
+            for j in range(len(intron_a_list)):
+                try:
+                    intron_a_count = junc_list[intron_a_list[j]]
+                except:
+                    intron_a_count = 0
+                intron_a_count_list.append(intron_a_count)
+            for j in range(len(intron_b_list)):
+                try:
+                    intron_b_count = junc_list[intron_b_list[j]]
+                except:
+                    intron_b_count = 0
+                intron_b_count_list.append(intron_b_count)
+            # Check minimum junction read count
+            if (sum(intron_a_count_list) >= minimum_reads*len(intron_a_count_list)) or (sum(intron_b_count_list) >= minimum_reads*len(intron_b_count_list)):
+                # PSI
+                if (sum(intron_a_count_list) + sum(intron_b_count_list)) != 0:
+                    psi = sum(intron_a_count_list) / (sum(intron_a_count_list) + sum(intron_b_count_list))
+                else:
+                    psi = np.nan
+            else:
+                psi = np.nan
+            intron_a_count_concat = ";".join([str(x) for x in intron_a_count_list])
+            intron_b_count_concat = ";".join([str(x) for x in intron_b_count_list])
+            psi_list += [intron_a_count_concat, intron_b_count_concat, psi]
+        event_l += [psi_list]
+    return(event_l)
+
+def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
+    """
+    Calculates PSI for each sample in a given event DataFrame for a specific sample ID.
+
+    Args:
+    - junc_dict_all (dict): A dictionary containing junction counts for each sample.
+    - event_df (pd.DataFrame): A DataFrame containing event information.
+    - sample_id (list): A list of sample IDs to calculate PSI for.
+    - num_process (int): The number of processes.
+    - k (int): The index of the current process.
+
+    Returns:
+    - list: A list of lists containing the event ID and PSI values for each sample.
+    """
+
+    event_l = []
+    # event list
+    AS_event_l = list(set(event_df["event_id"]))
+    # split
+    event_num_split = np.array_split(AS_event_l, num_process)
+    event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
+    event_split_df = event_split_df.reset_index()
+    event_values = event_split_df.event_id.values
+    intron_a_values = event_split_df.intron_a.values
+    intron_b_values = event_split_df.intron_b.values
+    for index in range(event_split_df.shape[0]):
+        psi_list = [event_values[index]]
+        for i in sample_id:
+            junc_list = junc_dict_all[i]
+            intron_a_list = intron_a_values[index].split(";")
+            intron_b_list = intron_b_values[index].split(";")
+            intron_a_count_list = []
+            intron_b_count_list = []
+            for j in range(len(intron_a_list)):
+                try:
+                    intron_a_count = junc_list[intron_a_list[j]]
+                except:
+                    intron_a_count = 0
+                intron_a_count_list.append(intron_a_count)
+            for j in range(len(intron_b_list)):
+                try:
+                    intron_b_count = junc_list[intron_b_list[j]]
+                except:
+                    intron_b_count = 0
+                intron_b_count_list.append(intron_b_count)
+            # PSI
+            if (sum(intron_a_count_list) + sum(intron_b_count_list)) != 0:
+                psi = sum(intron_a_count_list) / (sum(intron_a_count_list) + sum(intron_b_count_list))
             else:
                 psi = np.nan
             psi_list += [psi]
@@ -1256,7 +1405,7 @@ def diff_mse(df, group_list, FDR, dPSI) -> pd.DataFrame:
     })
     return(result_df)
 
-def diff_five_three_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
+def diff_five_three(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for FIVE, THREE, AFE, and ALE events.
 
@@ -1328,6 +1477,112 @@ def diff_five_three_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
             "Diff events"
         ] = "No"
         result_df.loc[result_df["q"] == 0, "q"] = 1e-323
+    # Rename columns
+    result_df = result_df.rename(columns = {
+        group1 + "_junction_a": "ref_junction_a",
+        group1 + "_junction_b": "ref_junction_b",
+        group1 + "_PSI": "ref_PSI",
+        group2 + "_junction_a": "alt_junction_a",
+        group2 + "_junction_b": "alt_junction_b",
+        group2 + "_PSI": "alt_PSI"
+    })
+    return(result_df)
+
+def diff_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """
+    Differential splicing analysis for AFE and ALE events.
+
+    Args:
+    - df: pandas DataFrame containing the PSI values for each sample and each event
+    - group_list: list of two strings containing the names of the two groups to compare
+    - FDR (float): False discovery rate
+    - dPSI (float): Minimum delta PSI
+
+    Returns:
+    - result_df: pandas DataFrame containing the differential splicing analysis results for FIVE, THREE, AFE, and ALE events
+    """
+
+    result_df = df
+    # Drop rows with nan values
+    result_df = result_df.dropna()
+    result_df = result_df.reset_index()
+    group1 = group_list[0]
+    group2 = group_list[1]
+    group1_junction_a = group1 + "_junction_a"
+    group1_junction_b = group1 + "_junction_b"
+    group1_PSI = group1 + "_PSI"
+    group2_junction_a = group2 + "_junction_a"
+    group2_junction_b = group2 + "_junction_b"
+    group2_PSI = group2 + "_PSI"
+    # Keep columns of junctions and PSI of the two groups
+    result_df = result_df[
+        ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"] + \
+        [group1_junction_a, group1_junction_b, group1_PSI, group2_junction_a, group2_junction_b, group2_PSI]
+    ]
+    if result_df.shape[0] != 0:
+        # delta PSI
+        result_df.loc[:, 'dPSI'] = result_df.loc[:, group2_PSI] - result_df.loc[:, group1_PSI]
+        # Fisher's exact test, Odds ratio
+        result_df = result_df.reset_index()
+        result_df = result_df.drop(columns = "index")
+        group1_junction_a_values = result_df[group1_junction_a].values
+        group1_junction_b_values = result_df[group1_junction_b].values
+        group2_junction_a_values = result_df[group2_junction_a].values
+        group2_junction_b_values = result_df[group2_junction_b].values
+        oddsr_junction_col = []
+        oddsr_diff_up_col = []
+        oddsr_diff_down_col = []
+        p_junction_col = []
+        p_maximum_col = []
+        for index in range(result_df.shape[0]):
+            oddsr_junction_list = []
+            oddsr_diff_up_list = []
+            oddsr_diff_down_list = []
+            p_junction_list = []
+            group1_junction_a_count_list = [int(x) for x in group1_junction_a_values[index].split(";")]
+            group1_junction_b_count_list = [int(x) for x in group1_junction_b_values[index].split(";")]
+            group2_junction_a_count_list = [int(x) for x in group2_junction_a_values[index].split(";")]
+            group2_junction_b_count_list = [int(x) for x in group2_junction_b_values[index].split(";")]
+            for i in range(len(group1_junction_a_count_list)):
+                for j in range(len(group1_junction_b_count_list)):
+                    group1_junction_a_count = group1_junction_a_count_list[i]
+                    group1_junction_b_count = group1_junction_b_count_list[j]
+                    group2_junction_a_count = group2_junction_a_count_list[i]
+                    group2_junction_b_count = group2_junction_b_count_list[j]
+                    # Make 2x2 table
+                    table_2x2_intron = [
+                        [group1_junction_a_count, group1_junction_b_count],
+                        [group2_junction_a_count, group2_junction_b_count]
+                    ]
+                    # Fisher's exact test
+                    oddsr, p = stats.fisher_exact(table_2x2_intron, alternative = 'two-sided')
+                    oddsr_diff_up_list.append(oddsr >= 3/2)
+                    oddsr_diff_down_list.append(oddsr <= 2/3)
+                    oddsr_junction_list.append(oddsr)
+                    p_junction_list.append(p)
+            oddsr_diff_up = all(oddsr_diff_up_list)
+            oddsr_diff_down = all(oddsr_diff_down_list)
+            oddsr_junction_concat = ";".join([str(x) for x in oddsr_junction_list])
+            p_junction_concat = ";".join([str(x) for x in p_junction_list])
+            oddsr_junction_col.append(oddsr_junction_concat)
+            oddsr_diff_up_col.append(oddsr_diff_up)
+            oddsr_diff_down_col.append(oddsr_diff_down)
+            p_junction_col.append(p_junction_concat)
+            p_maximum_col.append(max(p_junction_list))
+        result_df["OR_junction"] = oddsr_junction_col
+        result_df["OR_diff_up"] = oddsr_diff_up_col
+        result_df["OR_diff_down"] = oddsr_diff_down_col
+        result_df["p_junction"] = p_junction_col
+        result_df["p_maximum"] = p_maximum_col
+        # FDR correction
+        result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
+        result_df["Diff events"] = result_df.apply(
+            lambda x: "Yes" if (x["OR_diff_up"] or x["OR_diff_down"]) and (x["q"] < FDR) and (abs(x["dPSI"]) >= dPSI) else "No",
+            axis = 1
+        )
+        result_df["q"] = result_df["q"].apply(lambda x: 1e-323 if x == 0 else x)
+        # Drop columns
+        result_df = result_df.drop(columns = ["OR_diff_up", "OR_diff_down"])
     # Rename columns
     result_df = result_df.rename(columns = {
         group1 + "_junction_a": "ref_junction_a",

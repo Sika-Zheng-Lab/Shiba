@@ -166,16 +166,16 @@ The following sub directories are added when **SnakeShiba** is used:
 	<figcaption>Alternative first and last exons</figcaption>
 </figure>
 
-- **exon_a**: Genomic coordinates of the distal exon.
-- **exon_b**: Genomic coordinates of the proximal exon.
-- **intron_a**: Genomic coordinates of the intron associated with the distal exon.
-- **intron_b**: Genomic coordinates of the intron associated with the proximal exon.
-- **ref_junction_a**: Junction read counts of the intron associated with the distal exon in the reference group.
-- **ref_junction_b**: Junction read counts of the intron associated with the proximal exon in the reference group.
-- **alt_junction_a**: Junction read counts of the intron associated with the distal exon in the alternative group.
-- **alt_junction_b**: Junction read counts of the intron associated with the proximal exon in the alternative group.
-- **OR**: Odds ratio comparing junction read counts of the intron associated with the distal exon to those of the intron associated with the proximal exon, reference group against alternative group.
-- **p**: *P*-value of Fisher's exact test for the junction read counts of the intron associated with the distal exon to those of the intron associated with the proximal exon, reference group against alternative group.
+- **exon_a**: Genomic coordinates of the distal exons, separated by semi-colons from the distal to the proximal (e.g., `chr11:30267948-30268175;chr11:30219579-30219772`).
+- **exon_b**: Genomic coordinates of the proximal exons, separated by semi-colons from the distal to the proximal (e.g., `chr11:30197724-30198257`).
+- **intron_a**: Genomic coordinates of the introns associated with the distal exon, separated by semi-colons from the distal to the proximal (e.g., `chr11:30219772-30267948;chr11:30159445-30219579`).
+- **intron_b**: Genomic coordinates of the introns associated with the proximal exon, separated by semi-colons from the distal to the proximal (e.g., `chr11:30159445-30197724`).
+- **ref_junction_a**: Junction read counts of the introns associated with the distal exon in the reference group, separated by semi-colons from the distal to the proximal (e.g., `184;451`).
+- **ref_junction_b**: Junction read counts of the introns associated with the proximal exon in the reference group, separated by semi-colons from the distal to the proximal (e.g., `136`).
+- **alt_junction_a**: Junction read counts of the introns associated with the distal exon in the alternative group, separated by semi-colons from the distal to the proximal (e.g., `975;3058`).
+- **alt_junction_b**: Junction read counts of the introns associated with the proximal exon in the alternative group, separated by semi-colons from the distal to the proximal (e.g., `4`).
+- **OR_junction**: Odds ratio comparing junction read counts of the introns associated with the distal exon to those of the introns associated with the proximal exon, reference group against alternative group, separated by semi-colons from the distal to the proximal. (e.g., `0.00555052790346908;0.0043377063055438005`).
+- **p_junction**: *P*-value of Fisher's exact test for the junction read counts of the introns associated with the distal exon to those of the introns associated with the proximal exon, reference group against alternative group, separated by semi-colons from the distal to the proximal (e.g., `3.952031792878382e-88;5.615960667265659e-108`).
 
 ---
 

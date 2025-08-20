@@ -2,6 +2,19 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.7.1] - 2025-08-20
+
+> [!IMPORTANT]
+> This version includes a **hotfix** for the PSI calculation of AFE and ALE events. Please ensure that you are using the latest version to avoid any issues.
+
+### Fixed
+
+- Hotfix for PSI calculation of AFE and ALE events: Ensure that the new definitions are correctly applied in the PSI calculations.
+
+### Added
+
+- Create a bar plot of numbers of differentially spliced events. The plot will be saved in `plots/png/barplot_splicing_summary.png` ([#70](https://github.com/Sika-Zheng-Lab/Shiba/issues/70)).
+
 ## [v0.7.0] - 2025-08-06
 
 > [!IMPORTANT]

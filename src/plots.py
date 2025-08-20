@@ -6,6 +6,8 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
 import html
 import logging
 
@@ -803,6 +805,47 @@ def write_summary_html(shiba_command: str, output_dir: str):
 		f.write(summary_html)
 	return 0
 
+def load_splicing_summary_table(input_dir: str) -> pd.DataFrame:
+	summary_df = pd.read_csv(os.path.join(input_dir, "splicing", "summary.txt"), sep = "\t")
+	return summary_df
+
+def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
+	
+	g = sns.catplot(
+		data = summary_df,
+		x = "Number",
+		y = "AS",
+		order = ["SE", "FIVE", "THREE", "MXE", "RI", "AFE", "ALE", "MSE"],
+		hue = "Direction",
+		hue_order = ["Up", "Down"],
+		col = "Label",
+		col_order = ["annotated", "unannotated"],
+		palette = ["#d01c8b", "#4dac26"],
+		kind = "bar",
+		linewidth = 1,
+		edgecolor = "black",
+		height = 4, aspect = 0.8,
+	)
+	g.set_axis_labels("# DSEs", "")
+	g.set_titles(col_template="{col_name}")
+	sns.move_legend(g, "upper right", bbox_to_anchor=(1.05, 0.95), title = "Direction")
+	
+	# Set x-axis limit to 50 if max value is less than 40
+	max_value = summary_df["Number"].max()
+	if max_value < 40:
+		for ax in g.axes.flatten():
+			ax.set_xlim(0, 50)
+	
+	# Add bar labels for all facets and all containers
+	for ax in g.axes.flatten():
+		for c in ax.containers:
+			# Only add labels for bars with non-zero values
+			labels = [str(int(v)) if v != 0 else '' for v in c.datavalues]
+			ax.bar_label(c, labels=labels, label_type='edge', padding=2)
+	# Adjust spacing between subplots
+	plt.subplots_adjust(wspace=0.3)  # Increase horizontal spacing between plots
+	plt.savefig(fig_path, dpi = 400, bbox_inches = "tight")
+
 def main():
 
 	# Get arguments
@@ -839,9 +882,14 @@ def main():
 	# Write summary html
 	logger.info("Writing summary html....")
 	write_summary_html(args.shiba_command, output_dir)
+	# Splicing summary
+	logger.info("Making barplot for splicing summary....")
+	png_dir = os.path.join(output_dir, "png")
+	os.makedirs(png_dir, exist_ok=True)
+	fig_path = os.path.join(png_dir, "barplot_splicing_summary.png")
+	barplot_splicing(load_splicing_summary_table(input_dir), fig_path)
 
 	logger.info("Making plots completed!")
 
 if __name__ == '__main__':
-
     main()

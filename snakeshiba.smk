@@ -1,5 +1,5 @@
 
-VERSION = "v0.7.0"
+VERSION = "v0.7.1"
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
@@ -45,6 +45,18 @@ container: config["container"]
 
 rule all:
     input:
+        event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
+        PSI = expand("results/splicing/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
+        summary = "plots/summary.html",
+        barplot_splicing_summary = "plots/png/barplot_splicing_summary.png",
+        tpm = "results/expression/TPM.txt",
+        cpm = "results/expression/CPM.txt",
+        counts = "results/expression/counts.txt",
+        deg = "results/expression/DEG.txt",
+        tpm_pca = "results/pca/tpm_pca.tsv",
+        tpm_contribution = "results/pca/tpm_contribution.tsv",
+        psi_pca = "results/pca/psi_pca.tsv",
+        psi_contribution = "results/pca/psi_contribution.tsv",
         report = "report.txt"
 
 rule generate_report:
@@ -52,6 +64,7 @@ rule generate_report:
         event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         PSI = expand("results/splicing/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         summary = "plots/summary.html",
+        barplot_splicing_summary = "plots/png/barplot_splicing_summary.png",
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
         counts = "results/expression/counts.txt",
@@ -384,7 +397,8 @@ rule plots:
         psi_pca = "results/pca/psi_pca.tsv",
         psi_contribution = "results/pca/psi_contribution.tsv"
     output:
-        summary = "plots/summary.html"
+        summary = "plots/summary.html",
+        barplot_splicing_summary = "plots/png/barplot_splicing_summary.png"
     benchmark:
         "benchmark/plots.txt"
     log:

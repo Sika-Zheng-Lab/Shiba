@@ -609,7 +609,8 @@ def mse(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> li
             if (sum(inclusion_intron_count_list) >= minimum_reads*len(inclusion_intron_count_list)) or (exclusion_intron_count >= minimum_reads):
                 # PSI
                 if (sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) + exclusion_intron_count != 0:
-                    psi = (sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) / ((sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) + exclusion_intron_count)
+                    inclusion_mean = np.mean(inclusion_intron_count_list) if inclusion_intron_count_list else 0
+                    psi = inclusion_mean / (inclusion_mean + exclusion_intron_count) if (inclusion_mean + exclusion_intron_count) != 0 else np.nan
                 else:
                     psi = np.nan
             else:
@@ -661,7 +662,8 @@ def mse_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             exclusion_intron_count = intron_count_list[-1]
             # PSI
             if (sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) + exclusion_intron_count != 0:
-                psi = (sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) / ((sum(inclusion_intron_count_list) / len(inclusion_intron_count_list)) + exclusion_intron_count)
+                inclusion_mean = np.mean(inclusion_intron_count_list) if inclusion_intron_count_list else 0
+                psi = inclusion_mean / (inclusion_mean + exclusion_intron_count) if (inclusion_mean + exclusion_intron_count) != 0 else np.nan
             else:
                 psi = np.nan
             psi_list += [psi]
@@ -851,7 +853,9 @@ def afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -
             if (sum(intron_a_count_list) >= minimum_reads*len(intron_a_count_list)) or (sum(intron_b_count_list) >= minimum_reads*len(intron_b_count_list)):
                 # PSI
                 if (sum(intron_a_count_list) + sum(intron_b_count_list)) != 0:
-                    psi = sum(intron_a_count_list) / (sum(intron_a_count_list) + sum(intron_b_count_list))
+                    intron_a_mean = np.mean(intron_a_count_list) if intron_a_count_list else 0
+                    intron_b_mean = np.mean(intron_b_count_list) if intron_b_count_list else 0
+                    psi = intron_a_mean / (intron_a_mean + intron_b_mean) if (intron_a_mean + intron_b_mean) != 0 else np.nan
                 else:
                     psi = np.nan
             else:
@@ -909,7 +913,9 @@ def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
                 intron_b_count_list.append(intron_b_count)
             # PSI
             if (sum(intron_a_count_list) + sum(intron_b_count_list)) != 0:
-                psi = sum(intron_a_count_list) / (sum(intron_a_count_list) + sum(intron_b_count_list))
+                intron_a_mean = np.mean(intron_a_count_list) if intron_a_count_list else 0
+                intron_b_mean = np.mean(intron_b_count_list) if intron_b_count_list else 0
+                psi = intron_a_mean / (intron_a_mean + intron_b_mean) if (intron_a_mean + intron_b_mean) != 0 else np.nan
             else:
                 psi = np.nan
             psi_list += [psi]

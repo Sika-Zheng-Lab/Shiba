@@ -27,6 +27,8 @@ command = command.replace(configfile_path, os.path.join(str(configfile_dir_path)
 
 rule all:
     input:
+        event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
+        PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
         report = "report.txt"
 
 rule generate_report:

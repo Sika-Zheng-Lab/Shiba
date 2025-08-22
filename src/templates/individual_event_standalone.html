@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shiba Results - {event_title}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Embedded CSS - same as styles.css but inline */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #64748b;
+            --accent-color: #0ea5e9;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.125rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 1.875rem;
+            
+            --spacing-1: 0.25rem;
+            --spacing-2: 0.5rem;
+            --spacing-3: 0.75rem;
+            --spacing-4: 1rem;
+            --spacing-5: 1.25rem;
+            --spacing-6: 1.5rem;
+            --spacing-8: 2rem;
+            --spacing-12: 3rem;
+            --spacing-16: 4rem;
+            
+            --border-radius: 0.5rem;
+            --border-radius-lg: 0.75rem;
+            --border-width: 1px;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            
+            --navbar-height: 64px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            line-height: 1.6;
+            color: var(--gray-700);
+            background-color: var(--gray-50);
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--navbar-height);
+            background: var(--white);
+            border-bottom: var(--border-width) solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--spacing-6);
+            z-index: 1000;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .nav-brand i {
+            font-size: var(--font-size-2xl);
+            color: var(--primary-color);
+        }
+
+        .nav-brand h1 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-4);
+            background-color: var(--primary-color);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .container.single-page {
+            display: block;
+        }
+
+        .main-content.centered {
+            margin-left: 0;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-8) var(--spacing-6);
+            margin-top: var(--navbar-height);
+        }
+
+        .content-section {
+            margin-bottom: var(--spacing-16);
+        }
+
+        .section-header {
+            margin-bottom: var(--spacing-8);
+        }
+
+        .section-header h2 {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .section-header h2 i {
+            color: var(--primary-color);
+        }
+
+        .section-description {
+            font-size: var(--font-size-lg);
+            color: var(--gray-600);
+            max-width: 600px;
+        }
+
+        .plot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-6);
+            margin-bottom: var(--spacing-8);
+        }
+
+        .plot-card {
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-6);
+            box-shadow: var(--shadow);
+            border: var(--border-width) solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .plot-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .plot-card h3 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .plot-description {
+            font-size: var(--font-size-sm);
+            color: var(--gray-500);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 420px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: var(--gray-50);
+            border: var(--border-width) solid var(--gray-200);
+        }
+
+        .plot-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .footer {
+            background: var(--white);
+            border-top: var(--border-width) solid var(--gray-200);
+            padding: var(--spacing-8) 0;
+            margin-top: var(--spacing-16);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-4);
+        }
+
+        .footer-content p {
+            color: var(--gray-600);
+            font-size: var(--font-size-sm);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--spacing-4);
+        }
+
+        .footer-link {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-size: var(--font-size-sm);
+            transition: color 0.2s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .plot-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-4);
+            }
+            
+            .plot-card {
+                padding: var(--spacing-4);
+            }
+            
+            .plot-container {
+                height: 300px;
+            }
+            
+            .main-content.centered {
+                padding: var(--spacing-4);
+            }
+            
+            .section-header h2 {
+                font-size: var(--font-size-2xl);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-dna"></i>
+            <h1>Shiba Results - {event_title}</h1>
+        </div>
+        <div class="nav-actions">
+            <button onclick="window.history.back()" class="nav-button">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </button>
+        </div>
+    </nav>
+
+    <div class="container single-page">
+        <main class="main-content centered">
+            <section class="content-section">
+                <div class="section-header">
+                    <h2><i class="{event_icon}"></i> {event_title}</h2>
+                    <p class="section-description">{event_description}</p>
+                </div>
+                
+                <div class="plot-grid">
+                    <div class="plot-card">
+                        <h3>Volcano Plot</h3>
+                        <p class="plot-description">Differential splicing significance vs. magnitude</p>
+                        <div class="plot-container">
+                            <iframe srcdoc="{volcano_content}"></iframe>
+                        </div>
+                    </div>
+                    <div class="plot-card">
+                        <h3>Scatter Plot</h3>
+                        <p class="plot-description">PSI correlation between conditions</p>
+                        <div class="plot-container">
+                            <iframe srcdoc="{scatter_content}"></iframe>
+                        </div>
+                    </div>
+                    <div class="plot-card">
+                        <h3>Event Count</h3>
+                        <p class="plot-description">Number of differential splicing events</p>
+                        <div class="plot-container">
+                            <iframe srcdoc="{bar_content}"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Naoto Kubota | Shiba Splicing Analysis Tool</p>
+            <div class="footer-links">
+                <span class="footer-link">Standalone Version</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Embedded JavaScript for standalone functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add smooth scrolling for any internal links
+            const links = document.querySelectorAll('a[href^="#"]');
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Add loading animation for iframes
+            const iframes = document.querySelectorAll('.plot-container iframe');
+            iframes.forEach(iframe => {
+                iframe.addEventListener('load', function() {
+                    this.style.opacity = '1';
+                });
+            });
+
+            // Add print styles
+            const printStyles = document.createElement('style');
+            printStyles.textContent = `
+                @media print {
+                    .navbar,
+                    .footer {
+                        display: none !important;
+                    }
+                    
+                    .main-content.centered {
+                        margin-top: 0 !important;
+                    }
+                    
+                    .plot-card {
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                }
+            `;
+            document.head.appendChild(printStyles);
+        });
+    </script>
+</body>
+</html>

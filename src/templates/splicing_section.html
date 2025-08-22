@@ -1,0 +1,29 @@
+<section id="{section_id}" class="content-section">
+    <div class="section-header">
+        <h2><i class="{icon_class}"></i> {section_title}</h2>
+        <p class="section-description">{section_description}</p>
+    </div>
+    <div class="plot-grid">
+        <div class="plot-card">
+            <h3>Volcano Plot</h3>
+            <p class="plot-description">Differential splicing events with statistical significance</p>
+            <div class="plot-container">
+                <iframe srcdoc="{volcano_content}"></iframe>
+            </div>
+        </div>
+        <div class="plot-card">
+            <h3>Scatter Plot</h3>
+            <p class="plot-description">PSI comparison between conditions</p>
+            <div class="plot-container">
+                <iframe srcdoc="{scatter_content}"></iframe>
+            </div>
+        </div>
+        <div class="plot-card">
+            <h3>Event Counts</h3>
+            <p class="plot-description">Number of differential splicing events</p>
+            <div class="plot-container">
+                <iframe srcdoc="{bar_content}"></iframe>
+            </div>
+        </div>
+    </div>
+</section>

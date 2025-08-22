@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import html
 import logging
+from template_renderer import HTMLTemplateRenderer, get_splicing_event_config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -320,490 +321,102 @@ def plots(AS: str, input_dir: str, output_dir: str):
 	fig.write_html(os.path.join(output_dir, "data", "bar_" + AS + ".html"), include_plotlyjs = "cdn")
 
 def write_summary_html(shiba_command: str, output_dir: str):
-
-	# PCA
-	lines_strip_pca_dict = {}
-	for pca in ["TPM", "PSI"]:
-		with open(os.path.join(output_dir, "data", "pca_" + pca + ".html"), 'r') as f:
-			lines = f.readlines()
-		lines_strip = [html.escape(line.strip()) for line in lines[2:6]]
-		lines_strip_pca_dict[pca] = lines_strip
-	# Splicing events
-	events = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]
-	plottypes = ["volcano", "scatter", "bar"]
-	lines_strip_dict = {}
-	for event in events:
-		lines_strip_dict[event] = {}
-		for plottype in plottypes:
-			with open(os.path.join(output_dir, "data", plottype + "_" + event + ".html"), 'r') as f:
-				lines = f.readlines()
-			lines_strip = [html.escape(line.strip()) for line in lines[2:6]]
-			lines_strip_dict[event][plottype] = lines_strip
-
-	summary_html = '''
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Shiba Results Summary</title>
-		<style>
-			html {{
-				scroll-behavior: smooth;
-			}}
-
-			body {{
-				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-				margin: 0;
-				display: flex;
-				flex-direction: column;
-				min-height: 100vh;
-				width: 95vw;
-				background: linear-gradient(135deg, #000000, #3b003b, #7b0067);
-				color: #ffffff;
-			}}
-
-			header {{
-				width: 100vw;
-				box-sizing: border-box;
-				padding: 20px;
-				margin: 0;
-				background-color: #1e1e1e;
-				text-align: center;
-				box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-			}}
-
-			header h1 {{
-				margin: 0;
-				color: #b300b3;
-				font-size: 52px;
-			}}
-
-			.sidebar {{
-				height: calc(100vh - 240px); /* Adjusted to account for header and footer height, and text size */
-				width: 250px;
-				position: fixed;
-				top: 120px; /* Adjusted to account for header height */
-				left: 0;
-				background-color: #1e1e1e;
-				padding-top: 20px;
-				display: flex;
-				flex-direction: column;
-				box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-				align-items: center;
-			}}
-
-			.sidebar a {{
-				padding: 15px 20px;
-				text-decoration: none;
-				font-size: 18px;
-				color: white;
-				display: block;
-				transition: 0.3s;
-				width: 80%;
-				text-align: left;
-			}}
-
-			.sidebar a:hover {{
-				background-color: #7b0067;
-			}}
-
-			.sidebar a.active {{
-				background-color: #b300b3;
-				color: white;
-			}}
-
-			.content {{
-				margin-left: 250px;
-				padding: 20px;
-				width: calc(100% - 250px);
-				overflow-y: auto; /* Enable vertical scrolling for the content */
-				overflow-x: hidden; /* Disable horizontal scrolling */
-				flex: 1;
-			}}
-
-			.plot {{
-				padding: 12px;
-				background: rgba(255, 255, 255, 0.1);
-				width: calc(100%);
-				margin-bottom: 20px;
-				border-radius: 12px;
-				box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-			}}
-
-			.plot h2 {{
-				margin-top: 0;
-				color: #b300b3;
-			}}
-
-			.plot-container {{
-				display: flex;
-				gap: 20px;
-				justify-content: flex-start; /* Align items to the start of the container */
-				flex-wrap: nowrap; /* Prevent wrapping */
-				overflow-x: auto; /* Enable horizontal scrolling if necessary */
-			}}
-
-			.plot-container iframe {{
-				flex: 0 0 32%; /* Set a flex width for iframes */
-				height: 420px; /* Set a fixed height for iframes */
-				width: 100%; /* Ensure iframes fill the container */
-				border: none;
-				border-radius: 12px;
-				box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-			}}
-
-			footer {{
-				width: 100vw;
-				box-sizing: border-box;
-				padding: 20px;
-				margin: 0;
-				background-color: #1e1e1e;
-				text-align: center;
-				box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.5);
-				position: relative;
-			}}
-		</style>
-	</head>
-	<body>
-		<header>
-			<h1>Shiba Results Summary</h1>
-		</header>
-		<div class="sidebar">
-			<a href="#Shiba command">Shiba command</a>
-			<a href="#PCA">PCA</a>
-			<a href="#SE">Skipped exon (SE)</a>
-			<a href="#FIVE">Alternative 5'ss (FIVE)</a>
-			<a href="#THREE">Alternative 3'ss (THREE)</a>
-			<a href="#MXE">Mutually exclusive exons (MXE)</a>
-			<a href="#RI">Retained intron (RI)</a>
-			<a href="#MSE">Multiple skipped exons (MSE)</a>
-			<a href="#AFE">Alternative first exon (AFE)</a>
-			<a href="#ALE">Alternative last exon (ALE)</a>
-		</div>
-
-		<div class="content">
-			<div id="Shiba command" class="plot">
-				<h2>Shiba command</h2>
-				<p class="intro-text">{shiba_command}</p>
-			</div>
-			<div id="PCA" class="plot">
-				<h2>Principal component analysis (PCA)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{pca_tpm_l1}
-						{pca_tpm_l2}
-						{pca_tpm_l3}
-						{pca_tpm_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{pca_psi_l1}
-						{pca_psi_l2}
-						{pca_psi_l3}
-						{pca_psi_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="SE" class="plot">
-				<h2>Skipped exon (SE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_se_l1}
-						{volcano_se_l2}
-						{volcano_se_l3}
-						{volcano_se_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_se_l1}
-						{scatter_se_l2}
-						{scatter_se_l3}
-						{scatter_se_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_se_l1}
-						{bar_se_l2}
-						{bar_se_l3}
-						{bar_se_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="FIVE" class="plot">
-				<h2>Alternative 5'ss (FIVE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_five_l1}
-						{volcano_five_l2}
-						{volcano_five_l3}
-						{volcano_five_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_five_l1}
-						{scatter_five_l2}
-						{scatter_five_l3}
-						{scatter_five_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_five_l1}
-						{bar_five_l2}
-						{bar_five_l3}
-						{bar_five_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="THREE" class="plot">
-				<h2>Alternative 3'ss (THREE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_three_l1}
-						{volcano_three_l2}
-						{volcano_three_l3}
-						{volcano_three_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_three_l1}
-						{scatter_three_l2}
-						{scatter_three_l3}
-						{scatter_three_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_three_l1}
-						{bar_three_l2}
-						{bar_three_l3}
-						{bar_three_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="MXE" class="plot">
-				<h2>Mutually exclusive exons (MXE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_mxe_l1}
-						{volcano_mxe_l2}
-						{volcano_mxe_l3}
-						{volcano_mxe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_mxe_l1}
-						{scatter_mxe_l2}
-						{scatter_mxe_l3}
-						{scatter_mxe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_mxe_l1}
-						{bar_mxe_l2}
-						{bar_mxe_l3}
-						{bar_mxe_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="RI" class="plot">
-				<h2>Retained intron (RI)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_ri_l1}
-						{volcano_ri_l2}
-						{volcano_ri_l3}
-						{volcano_ri_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_ri_l1}
-						{scatter_ri_l2}
-						{scatter_ri_l3}
-						{scatter_ri_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_ri_l1}
-						{bar_ri_l2}
-						{bar_ri_l3}
-						{bar_ri_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="MSE" class="plot">
-				<h2>Multiple skipped exons (MSE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_mse_l1}
-						{volcano_mse_l2}
-						{volcano_mse_l3}
-						{volcano_mse_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_mse_l1}
-						{scatter_mse_l2}
-						{scatter_mse_l3}
-						{scatter_mse_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_mse_l1}
-						{bar_mse_l2}
-						{bar_mse_l3}
-						{bar_mse_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="AFE" class="plot">
-				<h2>Alternative first exon (AFE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_afe_l1}
-						{volcano_afe_l2}
-						{volcano_afe_l3}
-						{volcano_afe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_afe_l1}
-						{scatter_afe_l2}
-						{scatter_afe_l3}
-						{scatter_afe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_afe_l1}
-						{bar_afe_l2}
-						{bar_afe_l3}
-						{bar_afe_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="ALE" class="plot">
-				<h2>Alternative last exon (ALE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_ale_l1}
-						{volcano_ale_l2}
-						{volcano_ale_l3}
-						{volcano_ale_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_ale_l1}
-						{scatter_ale_l2}
-						{scatter_ale_l3}
-						{scatter_ale_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_ale_l1}
-						{bar_ale_l2}
-						{bar_ale_l3}
-						{bar_ale_l4}
-					"></iframe>
-				</div>
-			</div>
-		</div>
-		<footer>
-			<p>© 2024 Naoto Kubota</p>
-		</footer>
-	</body>
-	</html>
-	'''.format(
-		shiba_command = shiba_command,
-		pca_tpm_l1 = lines_strip_pca_dict["TPM"][0],
-		pca_tpm_l2 = lines_strip_pca_dict["TPM"][1],
-		pca_tpm_l3 = lines_strip_pca_dict["TPM"][2],
-		pca_tpm_l4 = lines_strip_pca_dict["TPM"][3],
-		pca_psi_l1 = lines_strip_pca_dict["PSI"][0],
-		pca_psi_l2 = lines_strip_pca_dict["PSI"][1],
-		pca_psi_l3 = lines_strip_pca_dict["PSI"][2],
-		pca_psi_l4 = lines_strip_pca_dict["PSI"][3],
-		volcano_se_l1 = lines_strip_dict["SE"]["volcano"][0],
-		volcano_se_l2 = lines_strip_dict["SE"]["volcano"][1],
-		volcano_se_l3 = lines_strip_dict["SE"]["volcano"][2],
-		volcano_se_l4 = lines_strip_dict["SE"]["volcano"][3],
-		scatter_se_l1 = lines_strip_dict["SE"]["scatter"][0],
-		scatter_se_l2 = lines_strip_dict["SE"]["scatter"][1],
-		scatter_se_l3 = lines_strip_dict["SE"]["scatter"][2],
-		scatter_se_l4 = lines_strip_dict["SE"]["scatter"][3],
-		bar_se_l1 = lines_strip_dict["SE"]["bar"][0],
-		bar_se_l2 = lines_strip_dict["SE"]["bar"][1],
-		bar_se_l3 = lines_strip_dict["SE"]["bar"][2],
-		bar_se_l4 = lines_strip_dict["SE"]["bar"][3],
-		volcano_five_l1 = lines_strip_dict["FIVE"]["volcano"][0],
-		volcano_five_l2 = lines_strip_dict["FIVE"]["volcano"][1],
-		volcano_five_l3 = lines_strip_dict["FIVE"]["volcano"][2],
-		volcano_five_l4 = lines_strip_dict["FIVE"]["volcano"][3],
-		scatter_five_l1 = lines_strip_dict["FIVE"]["scatter"][0],
-		scatter_five_l2 = lines_strip_dict["FIVE"]["scatter"][1],
-		scatter_five_l3 = lines_strip_dict["FIVE"]["scatter"][2],
-		scatter_five_l4 = lines_strip_dict["FIVE"]["scatter"][3],
-		bar_five_l1 = lines_strip_dict["FIVE"]["bar"][0],
-		bar_five_l2 = lines_strip_dict["FIVE"]["bar"][1],
-		bar_five_l3 = lines_strip_dict["FIVE"]["bar"][2],
-		bar_five_l4 = lines_strip_dict["FIVE"]["bar"][3],
-		volcano_three_l1 = lines_strip_dict["THREE"]["volcano"][0],
-		volcano_three_l2 = lines_strip_dict["THREE"]["volcano"][1],
-		volcano_three_l3 = lines_strip_dict["THREE"]["volcano"][2],
-		volcano_three_l4 = lines_strip_dict["THREE"]["volcano"][3],
-		scatter_three_l1 = lines_strip_dict["THREE"]["scatter"][0],
-		scatter_three_l2 = lines_strip_dict["THREE"]["scatter"][1],
-		scatter_three_l3 = lines_strip_dict["THREE"]["scatter"][2],
-		scatter_three_l4 = lines_strip_dict["THREE"]["scatter"][3],
-		bar_three_l1 = lines_strip_dict["THREE"]["bar"][0],
-		bar_three_l2 = lines_strip_dict["THREE"]["bar"][1],
-		bar_three_l3 = lines_strip_dict["THREE"]["bar"][2],
-		bar_three_l4 = lines_strip_dict["THREE"]["bar"][3],
-		volcano_mxe_l1 = lines_strip_dict["MXE"]["volcano"][0],
-		volcano_mxe_l2 = lines_strip_dict["MXE"]["volcano"][1],
-		volcano_mxe_l3 = lines_strip_dict["MXE"]["volcano"][2],
-		volcano_mxe_l4 = lines_strip_dict["MXE"]["volcano"][3],
-		scatter_mxe_l1 = lines_strip_dict["MXE"]["scatter"][0],
-		scatter_mxe_l2 = lines_strip_dict["MXE"]["scatter"][1],
-		scatter_mxe_l3 = lines_strip_dict["MXE"]["scatter"][2],
-		scatter_mxe_l4 = lines_strip_dict["MXE"]["scatter"][3],
-		bar_mxe_l1 = lines_strip_dict["MXE"]["bar"][0],
-		bar_mxe_l2 = lines_strip_dict["MXE"]["bar"][1],
-		bar_mxe_l3 = lines_strip_dict["MXE"]["bar"][2],
-		bar_mxe_l4 = lines_strip_dict["MXE"]["bar"][3],
-		volcano_ri_l1 = lines_strip_dict["RI"]["volcano"][0],
-		volcano_ri_l2 = lines_strip_dict["RI"]["volcano"][1],
-		volcano_ri_l3 = lines_strip_dict["RI"]["volcano"][2],
-		volcano_ri_l4 = lines_strip_dict["RI"]["volcano"][3],
-		scatter_ri_l1 = lines_strip_dict["RI"]["scatter"][0],
-		scatter_ri_l2 = lines_strip_dict["RI"]["scatter"][1],
-		scatter_ri_l3 = lines_strip_dict["RI"]["scatter"][2],
-		scatter_ri_l4 = lines_strip_dict["RI"]["scatter"][3],
-		bar_ri_l1 = lines_strip_dict["RI"]["bar"][0],
-		bar_ri_l2 = lines_strip_dict["RI"]["bar"][1],
-		bar_ri_l3 = lines_strip_dict["RI"]["bar"][2],
-		bar_ri_l4 = lines_strip_dict["RI"]["bar"][3],
-		volcano_mse_l1 = lines_strip_dict["MSE"]["volcano"][0],
-		volcano_mse_l2 = lines_strip_dict["MSE"]["volcano"][1],
-		volcano_mse_l3 = lines_strip_dict["MSE"]["volcano"][2],
-		volcano_mse_l4 = lines_strip_dict["MSE"]["volcano"][3],
-		scatter_mse_l1 = lines_strip_dict["MSE"]["scatter"][0],
-		scatter_mse_l2 = lines_strip_dict["MSE"]["scatter"][1],
-		scatter_mse_l3 = lines_strip_dict["MSE"]["scatter"][2],
-		scatter_mse_l4 = lines_strip_dict["MSE"]["scatter"][3],
-		bar_mse_l1 = lines_strip_dict["MSE"]["bar"][0],
-		bar_mse_l2 = lines_strip_dict["MSE"]["bar"][1],
-		bar_mse_l3 = lines_strip_dict["MSE"]["bar"][2],
-		bar_mse_l4 = lines_strip_dict["MSE"]["bar"][3],
-		volcano_afe_l1 = lines_strip_dict["AFE"]["volcano"][0],
-		volcano_afe_l2 = lines_strip_dict["AFE"]["volcano"][1],
-		volcano_afe_l3 = lines_strip_dict["AFE"]["volcano"][2],
-		volcano_afe_l4 = lines_strip_dict["AFE"]["volcano"][3],
-		scatter_afe_l1 = lines_strip_dict["AFE"]["scatter"][0],
-		scatter_afe_l2 = lines_strip_dict["AFE"]["scatter"][1],
-		scatter_afe_l3 = lines_strip_dict["AFE"]["scatter"][2],
-		scatter_afe_l4 = lines_strip_dict["AFE"]["scatter"][3],
-		bar_afe_l1 = lines_strip_dict["AFE"]["bar"][0],
-		bar_afe_l2 = lines_strip_dict["AFE"]["bar"][1],
-		bar_afe_l3 = lines_strip_dict["AFE"]["bar"][2],
-		bar_afe_l4 = lines_strip_dict["AFE"]["bar"][3],
-		volcano_ale_l1 = lines_strip_dict["ALE"]["volcano"][0],
-		volcano_ale_l2 = lines_strip_dict["ALE"]["volcano"][1],
-		volcano_ale_l3 = lines_strip_dict["ALE"]["volcano"][2],
-		volcano_ale_l4 = lines_strip_dict["ALE"]["volcano"][3],
-		scatter_ale_l1 = lines_strip_dict["ALE"]["scatter"][0],
-		scatter_ale_l2 = lines_strip_dict["ALE"]["scatter"][1],
-		scatter_ale_l3 = lines_strip_dict["ALE"]["scatter"][2],
-		scatter_ale_l4 = lines_strip_dict["ALE"]["scatter"][3],
-		bar_ale_l1 = lines_strip_dict["ALE"]["bar"][0],
-		bar_ale_l2 = lines_strip_dict["ALE"]["bar"][1],
-		bar_ale_l3 = lines_strip_dict["ALE"]["bar"][2],
-		bar_ale_l4 = lines_strip_dict["ALE"]["bar"][3]
-	)
-	with open(os.path.join(output_dir, "summary.html"), 'w') as f:
-		f.write(summary_html)
+	"""Write summary HTML using modern template system with individual event files."""
+	
+	# Initialize template renderer
+	template_dir = os.path.join(os.path.dirname(__file__), "templates")
+	renderer = HTMLTemplateRenderer(template_dir)
+	
+	# Copy static files (CSS, JS) to output directory
+	renderer.copy_static_files(output_dir)
+	
+	# Load PCA content
+	pca_tpm_content = load_plot_content(output_dir, "pca_TPM.html")
+	pca_psi_content = load_plot_content(output_dir, "pca_PSI.html")
+	
+	# Prepare splicing events data
+	splicing_events = []
+	event_configs = get_splicing_event_config()
+	
+	for config in event_configs:
+		event_data = {
+			'id': config['id'],
+			'icon': config['icon'],
+			'title': config['title'],
+			'description': config['description'],
+			'volcano_content': load_plot_content(output_dir, f"volcano_{config['code']}.html"),
+			'scatter_content': load_plot_content(output_dir, f"scatter_{config['code']}.html"),
+			'bar_content': load_plot_content(output_dir, f"bar_{config['code']}.html")
+		}
+		splicing_events.append(event_data)
+		
+		# Generate standalone individual HTML file for this event (main file)
+		standalone_individual_html = renderer.render_individual_event_standalone_html(event_data)
+		individual_filename = f"{config['id']}.html"
+		with open(os.path.join(output_dir, individual_filename), 'w', encoding='utf-8') as f:
+			f.write(standalone_individual_html)
+		logger.info(f"Generated standalone individual HTML: {individual_filename}")
+	
+	# Prepare template data for index page
+	template_data = {
+		'shiba_command': shiba_command,
+		'pca_tpm_content': pca_tpm_content,
+		'pca_psi_content': pca_psi_content,
+		'splicing_events': splicing_events
+	}
+	
+	# Generate standalone index/overview HTML (main entry point)
+	standalone_index_content = renderer.render_index_standalone_html(template_data)
+	with open(os.path.join(output_dir, "index.html"), 'w', encoding='utf-8') as f:
+		f.write(standalone_index_content)
+	
+	# Generate standalone summary HTML (traditional single-page version)
+	standalone_html_content = renderer.render_standalone_summary_html(template_data)
+	with open(os.path.join(output_dir, "summary.html"), 'w', encoding='utf-8') as f:
+		f.write(standalone_html_content)
+	
+	logger.info("HTML files generated successfully!")
+	logger.info("  - index.html (main overview with embedded CSS/JS)")
+	logger.info("  - Individual event files (se.html, five.html, etc.) - completely self-contained")
+	logger.info("  - summary.html (traditional single-page version with embedded CSS/JS)")
+	logger.info("All files are standalone and can be moved anywhere!")
 	return 0
+
+def load_plot_content(output_dir: str, filename: str) -> str:
+	"""Load plot content from an HTML file."""
+	file_path = os.path.join(output_dir, "data", filename)
+	
+	try:
+		with open(file_path, 'r', encoding='utf-8') as f:
+			content = f.read()
+			
+		# For PCA files, return the full content for direct embedding
+		if filename.startswith('pca_'):
+			return content
+		
+		# For other plot files, extract just the essential lines for iframe embedding
+		lines = content.split('\n')
+		essential_lines = [html.escape(line.strip()) for line in lines[2:6]]
+		return '\n'.join(essential_lines)
+		
+	except FileNotFoundError:
+		logger.warning(f"Plot file not found: {filename}")
+		return create_empty_plot_content("Plot not available")
+	except Exception as e:
+		logger.warning(f"Error loading plot file {filename}: {e}")
+		return create_empty_plot_content("Plot not available")
+
+def create_empty_plot_content(message: str) -> str:
+	"""Create content for empty/missing plots."""
+	return f'''
+		<div style="display: flex; align-items: center; justify-content: center; height: 100%; 
+		           font-family: Arial, sans-serif; color: #64748b; text-align: center;">
+			<div>
+				<i class="fas fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+				<p style="font-size: 1.1rem; margin: 0;">{html.escape(message)}</p>
+			</div>
+		</div>
+	'''
 
 def load_splicing_summary_table(input_dir: str) -> pd.DataFrame:
 	summary_df = pd.read_csv(os.path.join(input_dir, "splicing", "summary.txt"), sep = "\t")

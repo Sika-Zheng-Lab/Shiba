@@ -11,3 +11,7 @@ test/*.snakemake
 __pycache__
 .DS_Store
 .cache
+src/demo_output
+src/*md
+src/*demo*
+src/*test*

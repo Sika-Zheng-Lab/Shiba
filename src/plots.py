@@ -386,9 +386,9 @@ def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
 		f.write(standalone_index_content)
 	
 	logger.info("HTML files generated successfully!")
-	logger.info("  - summary.html (main overview with embedded CSS/JS)")
+	logger.info("  - summary.html (main overview page with links to individual event files)")
 	logger.info("  - Individual event files in data/ (data/se.html, data/five.html, etc.) - completely self-contained")
-	logger.info("All files are standalone and can be moved anywhere!")
+	logger.info("Note: summary.html requires the data/ directory with individual event files to function properly.")
 	return 0
 
 def load_plot_content(output_dir: str, filename: str) -> str:
@@ -485,7 +485,7 @@ def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
 		edgecolor = "black",
 		height = 4, aspect = 0.8,
 	)
-	g.set_axis_labels("# DSEs", "")
+	g.set_axis_labels("# Differentially spliced events", "")
 	g.set_titles(col_template="{col_name}")
 	sns.move_legend(g, "upper right", bbox_to_anchor=(1.05, 0.95), title = "Direction")
 	

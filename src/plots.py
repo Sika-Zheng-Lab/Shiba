@@ -384,15 +384,9 @@ def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
 	with open(os.path.join(output_dir, "index.html"), 'w', encoding='utf-8') as f:
 		f.write(standalone_index_content)
 	
-	# Generate standalone summary HTML (traditional single-page version)
-	standalone_html_content = renderer.render_standalone_summary_html(template_data)
-	with open(os.path.join(output_dir, "summary.html"), 'w', encoding='utf-8') as f:
-		f.write(standalone_html_content)
-	
 	logger.info("HTML files generated successfully!")
 	logger.info("  - index.html (main overview with embedded CSS/JS)")
 	logger.info("  - Individual event files (se.html, five.html, etc.) - completely self-contained")
-	logger.info("  - summary.html (traditional single-page version with embedded CSS/JS)")
 	logger.info("All files are standalone and can be moved anywhere!")
 	return 0
 

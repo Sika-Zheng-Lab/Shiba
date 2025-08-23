@@ -33,7 +33,6 @@ class HTMLTemplateRenderer:
         result = result.replace('{section_description}', str(event_data['description']))
         result = result.replace('{volcano_content}', str(event_data['volcano_content']))
         result = result.replace('{scatter_content}', str(event_data['scatter_content']))
-        result = result.replace('{bar_content}', str(event_data['bar_content']))
         
         return result
     
@@ -112,17 +111,6 @@ class HTMLTemplateRenderer:
                         </div>
                         <p class="plot-description">PSI correlation between conditions</p>
                     </div>
-                    
-                    <div class="plot-container">
-                        <h3 class="plot-title">
-                            <i class="fas fa-chart-bar"></i>
-                            Bar Plot
-                        </h3>
-                        <div class="plot-frame">
-                            {event_data['bar_content']}
-                        </div>
-                        <p class="plot-description">Number of differential splicing events</p>
-                    </div>
                 </div>
             </section>
         '''
@@ -138,7 +126,6 @@ class HTMLTemplateRenderer:
         result = result.replace('{event_description}', str(event_data['description']))
         result = result.replace('{volcano_content}', str(event_data['volcano_content']))
         result = result.replace('{scatter_content}', str(event_data['scatter_content']))
-        result = result.replace('{bar_content}', str(event_data['bar_content']))
         
         return result
 
@@ -159,7 +146,7 @@ class HTMLTemplateRenderer:
                         <i class="fas fa-arrow-right"></i>
                     </span>
                     <span class="event-count">
-                        {event_data.get('event_count', 'N/A')} events
+                        {event_data.get('event_count', 0)} events
                     </span>
                 </div>
             </a>
@@ -180,6 +167,7 @@ class HTMLTemplateRenderer:
         result = result.replace('{shiba_command}', str(data['shiba_command']))
         result = result.replace('{pca_tpm_content}', str(data['pca_tpm_content']))
         result = result.replace('{pca_psi_content}', str(data['pca_psi_content']))
+        result = result.replace('{splicing_summary_content}', str(data.get('splicing_summary_content', '')))
         result = result.replace('{event_cards}', '\n'.join(event_cards))
         
         return result
@@ -199,6 +187,7 @@ class HTMLTemplateRenderer:
         result = result.replace('{shiba_command}', str(data['shiba_command']))
         result = result.replace('{pca_tpm_content}', str(data['pca_tpm_content']))
         result = result.replace('{pca_psi_content}', str(data['pca_psi_content']))
+        result = result.replace('{splicing_summary_content}', str(data.get('splicing_summary_content', '')))
         result = result.replace('{event_cards}', '\n'.join(event_cards))
         
         return result
@@ -214,7 +203,6 @@ class HTMLTemplateRenderer:
         result = result.replace('{event_description}', str(event_data['description']))
         result = result.replace('{volcano_content}', str(event_data['volcano_content']))
         result = result.replace('{scatter_content}', str(event_data['scatter_content']))
-        result = result.replace('{bar_content}', str(event_data['bar_content']))
         
         return result
 
@@ -237,19 +225,19 @@ def get_splicing_event_config():
             'code': 'SE',
             'title': 'Skipped Exon (SE)',
             'icon': 'fas fa-minus-square',
-            'description': 'Alternative splicing events where an exon is either included or skipped in the mature mRNA.'
+            'description': 'Events where an exon is either included or skipped.'
         },
         {
             'id': 'five',
             'code': 'FIVE',
-            'title': 'Alternative 5′ Splice Site',
+            'title': 'Alternative 5′ Splice Site (FIVE)',
             'icon': 'fas fa-arrow-left',
             'description': 'Events involving alternative donor splice sites at the 5′ end of introns.'
         },
         {
             'id': 'three',
             'code': 'THREE',
-            'title': 'Alternative 3′ Splice Site',
+            'title': 'Alternative 3′ Splice Site (THREE)',
             'icon': 'fas fa-arrow-right',
             'description': 'Events involving alternative acceptor splice sites at the 3′ end of introns.'
         },
@@ -258,21 +246,21 @@ def get_splicing_event_config():
             'code': 'MXE',
             'title': 'Mutually Exclusive Exons (MXE)',
             'icon': 'fas fa-exchange-alt',
-            'description': 'Alternative splicing where only one of two or more exons is included in the mature mRNA.'
+            'description': 'Events where one exon is included while the other is skipped, but never both in the same transcript.'
         },
         {
             'id': 'ri',
             'code': 'RI',
             'title': 'Retained Intron (RI)',
             'icon': 'fas fa-pause',
-            'description': 'Events where an intron is retained in the mature mRNA instead of being spliced out.'
+            'description': 'Events where an intron is retained instead of being spliced out.'
         },
         {
             'id': 'mse',
             'code': 'MSE',
             'title': 'Multiple Skipped Exons (MSE)',
             'icon': 'fas fa-ellipsis-h',
-            'description': 'Alternative splicing events involving the coordinated skipping of multiple consecutive exons.'
+            'description': 'Events involving the coordinated skipping of multiple consecutive exons.'
         },
         {
             'id': 'afe',

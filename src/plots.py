@@ -363,9 +363,10 @@ def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
 		# Generate standalone individual HTML file for this event (main file)
 		standalone_individual_html = renderer.render_individual_event_standalone_html(event_data)
 		individual_filename = f"{config['id']}.html"
-		with open(os.path.join(output_dir, individual_filename), 'w', encoding='utf-8') as f:
+		individual_filepath = os.path.join(output_dir, "data", individual_filename)
+		with open(individual_filepath, 'w', encoding='utf-8') as f:
 			f.write(standalone_individual_html)
-		logger.info(f"Generated standalone individual HTML: {individual_filename}")
+		logger.info(f"Generated standalone individual HTML: data/{individual_filename}")
 	
 	# Load splicing summary image
 	splicing_summary_content = load_splicing_summary_image(output_dir)
@@ -381,12 +382,12 @@ def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
 	
 	# Generate standalone index/overview HTML (main entry point)
 	standalone_index_content = renderer.render_index_standalone_html(template_data)
-	with open(os.path.join(output_dir, "index.html"), 'w', encoding='utf-8') as f:
+	with open(os.path.join(output_dir, "summary.html"), 'w', encoding='utf-8') as f:
 		f.write(standalone_index_content)
 	
 	logger.info("HTML files generated successfully!")
-	logger.info("  - index.html (main overview with embedded CSS/JS)")
-	logger.info("  - Individual event files (se.html, five.html, etc.) - completely self-contained")
+	logger.info("  - summary.html (main overview with embedded CSS/JS)")
+	logger.info("  - Individual event files in data/ (data/se.html, data/five.html, etc.) - completely self-contained")
 	logger.info("All files are standalone and can be moved anywhere!")
 	return 0
 

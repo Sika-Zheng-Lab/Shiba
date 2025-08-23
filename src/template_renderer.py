@@ -132,7 +132,7 @@ class HTMLTemplateRenderer:
     def render_event_card(self, event_data: Dict) -> str:
         """Render an event card for the index page."""
         return f'''
-            <a href="{event_data['id']}.html" class="event-card">
+            <a href="data/{event_data['id']}.html" class="event-card">
                 <div class="event-header">
                     <div class="event-icon">
                         <i class="{event_data['icon']}"></i>

@@ -259,7 +259,7 @@ def get_splicing_event_config():
             'id': 'mse',
             'code': 'MSE',
             'title': 'Multiple Skipped Exons (MSE)',
-            'icon': 'fas fa-ellipsis-h',
+            'icon': 'fas fa-layer-group',
             'description': 'Events involving the coordinated skipping of multiple consecutive exons.'
         },
         {

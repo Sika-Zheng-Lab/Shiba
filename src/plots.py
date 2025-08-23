@@ -311,6 +311,24 @@ def calculate_event_count(input_dir: str, AS: str) -> int:
 		logger.warning(f"Error calculating event count for {AS}: {e}")
 		return 0
 
+def get_shiba_version() -> str:
+	"""Get Shiba version from VERSION file."""
+	try:
+		# Get the directory where this script is located
+		script_dir = os.path.dirname(os.path.abspath(__file__))
+		# Go up one level to the main Shiba directory
+		version_path = os.path.join(os.path.dirname(script_dir), "VERSION")
+		
+		with open(version_path, 'r', encoding='utf-8') as f:
+			version = f.read().strip()
+			return version
+	except FileNotFoundError:
+		logger.warning("VERSION file not found")
+		return "unknown"
+	except Exception as e:
+		logger.warning(f"Error reading VERSION file: {e}")
+		return "unknown"
+
 def load_splicing_summary_image(output_dir: str) -> str:
 	"""Load the splicing summary PNG and convert to base64 for embedding."""
 	import base64
@@ -371,9 +389,13 @@ def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
 	# Load splicing summary image
 	splicing_summary_content = load_splicing_summary_image(output_dir)
 	
+	# Get Shiba version
+	shiba_version = get_shiba_version()
+	
 	# Prepare template data for index page
 	template_data = {
 		'shiba_command': shiba_command,
+		'shiba_version': shiba_version,
 		'pca_tpm_content': pca_tpm_content,
 		'pca_psi_content': pca_psi_content,
 		'splicing_summary_content': splicing_summary_content,

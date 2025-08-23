@@ -165,6 +165,7 @@ class HTMLTemplateRenderer:
         # Use replace instead of format to avoid conflicts with CSS braces
         result = template
         result = result.replace('{shiba_command}', str(data['shiba_command']))
+        result = result.replace('{shiba_version}', str(data.get('shiba_version', 'unknown')))
         result = result.replace('{pca_tpm_content}', str(data['pca_tpm_content']))
         result = result.replace('{pca_psi_content}', str(data['pca_psi_content']))
         result = result.replace('{splicing_summary_content}', str(data.get('splicing_summary_content', '')))
@@ -185,6 +186,7 @@ class HTMLTemplateRenderer:
         # Use replace instead of format to avoid conflicts with CSS braces
         result = template
         result = result.replace('{shiba_command}', str(data['shiba_command']))
+        result = result.replace('{shiba_version}', str(data.get('shiba_version', 'unknown')))
         result = result.replace('{pca_tpm_content}', str(data['pca_tpm_content']))
         result = result.replace('{pca_psi_content}', str(data['pca_psi_content']))
         result = result.replace('{splicing_summary_content}', str(data.get('splicing_summary_content', '')))

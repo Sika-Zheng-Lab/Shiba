@@ -115,7 +115,15 @@
             padding: var(--spacing-6);
             margin-bottom: var(--spacing-8);
             box-shadow: var(--shadow);
-            border-left: 4px solid var(--primary-color);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .command-section:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+            border-color: var(--gray-300);
         }
 
         .command-section h2 {

@@ -115,20 +115,6 @@ class HTMLTemplateRenderer:
             </section>
         '''
 
-    def render_individual_event_html(self, event_data: Dict) -> str:
-        """Render HTML for an individual splicing event (requires external CSS/JS)."""
-        template = self.load_template('individual_event.html')
-        
-        # Use replace instead of format to avoid conflicts with CSS braces
-        result = template
-        result = result.replace('{event_title}', str(event_data['title']))
-        result = result.replace('{event_icon}', str(event_data['icon']))
-        result = result.replace('{event_description}', str(event_data['description']))
-        result = result.replace('{volcano_content}', str(event_data['volcano_content']))
-        result = result.replace('{scatter_content}', str(event_data['scatter_content']))
-        
-        return result
-
     def render_event_card(self, event_data: Dict) -> str:
         """Render an event card for the index page."""
         return f'''
@@ -152,27 +138,6 @@ class HTMLTemplateRenderer:
             </a>
         '''
     
-    def render_index_html(self, data: Dict) -> str:
-        """Render the main index/overview HTML (requires external CSS/JS)."""
-        template = self.load_template('index.html')
-        
-        # Render all event cards
-        event_cards = []
-        for event in data['splicing_events']:
-            card_html = self.render_event_card(event)
-            event_cards.append(card_html)
-        
-        # Use replace instead of format to avoid conflicts with CSS braces
-        result = template
-        result = result.replace('{shiba_command}', str(data['shiba_command']))
-        result = result.replace('{shiba_version}', str(data.get('shiba_version', 'unknown')))
-        result = result.replace('{pca_tpm_content}', str(data['pca_tpm_content']))
-        result = result.replace('{pca_psi_content}', str(data['pca_psi_content']))
-        result = result.replace('{splicing_summary_content}', str(data.get('splicing_summary_content', '')))
-        result = result.replace('{event_cards}', '\n'.join(event_cards))
-        
-        return result
-
     def render_index_standalone_html(self, data: Dict) -> str:
         """Render standalone index HTML with embedded CSS/JS."""
         template = self.load_template('index_standalone.html')

@@ -490,7 +490,7 @@ def load_splicing_summary_table(input_dir: str) -> pd.DataFrame:
 	summary_df = pd.read_csv(os.path.join(input_dir, "splicing", "summary.txt"), sep = "\t")
 	return summary_df
 
-def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
+def barplot_splicing(summary_df: pd.DataFrame, png_path: str, pdf_path: str):
 	
 	g = sns.catplot(
 		data = summary_df,
@@ -525,7 +525,10 @@ def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
 			ax.bar_label(c, labels=labels, label_type='edge', padding=2)
 	# Adjust spacing between subplots
 	plt.subplots_adjust(wspace=0.3)  # Increase horizontal spacing between plots
-	plt.savefig(fig_path, dpi = 400, bbox_inches = "tight")
+	
+	# Save both PNG and PDF
+	plt.savefig(png_path, dpi = 400, bbox_inches = "tight")
+	plt.savefig(pdf_path, dpi = 400, bbox_inches = "tight", format = "pdf")
 
 def main():
 
@@ -547,9 +550,12 @@ def main():
 	# Splicing summary
 	logger.info("Making barplot for splicing summary....")
 	png_dir = os.path.join(output_dir, "png")
+	pdf_dir = os.path.join(output_dir, "pdf")
 	os.makedirs(png_dir, exist_ok=True)
-	fig_path = os.path.join(png_dir, "barplot_splicing_summary.png")
-	barplot_splicing(load_splicing_summary_table(input_dir), fig_path)
+	os.makedirs(pdf_dir, exist_ok=True)
+	png_path = os.path.join(png_dir, "barplot_splicing_summary.png")
+	pdf_path = os.path.join(pdf_dir, "barplot_splicing_summary.pdf")
+	barplot_splicing(load_splicing_summary_table(input_dir), png_path, pdf_path)
 
 	# Load experiment table
 	logger.info("Loading experiment table....")

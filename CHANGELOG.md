@@ -2,6 +2,20 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.7.2] - 2025-??-??
+
+### Added
+
+- PDF output for splicing summary barplot (`pdf/barplot_splicing_summary.pdf`) alongside existing PNG format
+
+### Changed
+
+- **Improved HTML reports with modern design**:
+  - Embedded splicing summary chart directly in main overview page
+  - Reorganized file structure: main file renamed to `summary.html`, individual event files moved to `data/` directory
+  - All HTML files are now self-contained with embedded CSS/JS (no external dependencies)
+  - Enhanced plot interactivity with direct embedding instead of iframes
+
 ## [v0.7.1] - 2025-08-20
 
 > [!IMPORTANT]

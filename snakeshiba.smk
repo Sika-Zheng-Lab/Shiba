@@ -57,7 +57,7 @@ rule all:
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
         psi_contribution = "results/pca/psi_contribution.tsv",
-        report = "report.txt"
+        report = "report.json"
 
 rule generate_report:
     input:
@@ -74,7 +74,7 @@ rule generate_report:
         psi_pca = "results/pca/psi_pca.tsv",
         psi_contribution = "results/pca/psi_contribution.tsv"
     output:
-        report = "report.txt"
+        report = "report.json"
     params:
         workdir = config["workdir"],
         version = VERSION,
@@ -83,7 +83,7 @@ rule generate_report:
     shell:
         """
         export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
-        python -c 'from general import generate_report; import sys; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
+        python -c 'from general import generate_report; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
         """
 
 rule bam2gtf:

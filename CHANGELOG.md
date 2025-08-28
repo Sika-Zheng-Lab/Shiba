@@ -6,7 +6,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
-- PDF output for splicing summary barplot (`pdf/barplot_splicing_summary.pdf`) alongside existing PNG format
+- PDF output for splicing summary barplot (`pdf/barplot_splicing_summary.pdf`) alongside existing PNG format.
 
 ### Changed
 
@@ -15,6 +15,12 @@ All notable changes to this Shiba project will be documented in this file.
   - Reorganized file structure: main file renamed to `summary.html`, individual event files moved to `data/` directory
   - All HTML files are now self-contained with embedded CSS/JS (no external dependencies)
   - Enhanced plot interactivity with direct embedding instead of iframes
+
+- **Report generation updated to JSON format**:
+  - Pipeline execution reports are now generated as `report.json` instead of `report.txt`
+  - JSON format includes structured information about tool version, execution timing, and experiment parameters
+  - Added execution duration tracking
+  - Enhanced error handling and logging for report generation
 
 ## [v0.7.1] - 2025-08-20
 

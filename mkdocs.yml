@@ -52,6 +52,9 @@ theme:
   logo: assets/icon_black.png
   favicon: assets/favicon.png
 
+extra_css:
+  - stylesheets/header-gradient.css
+
 markdown_extensions:
   - toc:
       permalink: true

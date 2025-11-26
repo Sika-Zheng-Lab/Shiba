@@ -37,6 +37,9 @@ def load_tpm_table(tpm_file: str) -> pd.DataFrame:
     '''
 
     tpm_df = pd.read_csv(tpm_file, sep="\t", index_col=0)
+    # Drop 'gene_name' column if exists
+    if 'gene_name' in tpm_df.columns:
+        tpm_df = tpm_df.drop(columns = ["gene_name"])
     # Drop rows with all zeros
     logger.debug("Dropping rows with all zeros...")
     tpm_df = tpm_df.loc[(tpm_df != 0).any(axis=1)]

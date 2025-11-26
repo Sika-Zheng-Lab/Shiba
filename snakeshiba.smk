@@ -319,7 +319,8 @@ rule expression_featureCounts:
 
 rule expression_tpm:
     input:
-        counts = expand("results/expression/{sample}_counts.txt", sample = experiment_dict)
+        counts = expand("results/expression/{sample}_counts.txt", sample = experiment_dict),
+        gtf = config["gtf"]
     output:
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
@@ -334,6 +335,7 @@ rule expression_tpm:
         """
         python {params.base_dir}/src/tpm_snakemake.py \
         --countfiles {input.counts} \
+        --reference-gtf {input.gtf} \
         --output results/expression/ \
         --excel {config[excel]} \
         -v \

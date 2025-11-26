@@ -46,3 +46,28 @@ class ExpressionProcessor:
 # processor = ExpressionProcessor(df)
 # df_tpm = processor.TPM()
 # df_cpm = processor.CPM()
+
+def gene_id_to_name(gtf):
+	gene_dict = {}
+	try:
+		with open(gtf, "r") as gtf_file:
+			for line in gtf_file:
+				if line.startswith("#"):
+					continue
+				fields = line.strip().split("\t")
+				if fields[2] != "gene":
+					continue
+				attributes = fields[8].split("; ")
+				gene_id = ""
+				gene_name = ""
+				for attribute in attributes:
+					if attribute.startswith("gene_id"):
+						gene_id = attribute.split(" ")[1].replace('"', '')
+					elif attribute.startswith("gene_name"):
+						gene_name = attribute.split(" ")[1].replace('"', '')
+				if gene_id and gene_name:
+					gene_dict[gene_id] = gene_name
+		return gene_dict
+	except FileNotFoundError:
+		logger.error(f"GTF file not found: {gtf}")
+		sys.exit(1)

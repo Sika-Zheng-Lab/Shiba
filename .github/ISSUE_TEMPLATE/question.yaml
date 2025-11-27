@@ -17,7 +17,7 @@ body:
     attributes:
         label: "🔖 Shiba Version"
         description: "Specify the Shiba version you are using. You can find this information in the `shiba.py -h` command."
-        placeholder: "e.g., v0.7.1"
+        placeholder: "e.g., v0.8.0"
     validations:
         required: false
 

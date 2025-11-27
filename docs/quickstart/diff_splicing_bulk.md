@@ -186,7 +186,7 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.7.1 # (2)!
+  docker://naotokubota/shiba:v0.8.0 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:

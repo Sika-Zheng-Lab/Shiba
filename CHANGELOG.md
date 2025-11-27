@@ -2,6 +2,31 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.8.0] - 2025-11-26
+
+### Added
+
+- PDF output for splicing summary barplot (`pdf/barplot_splicing_summary.pdf`) alongside existing PNG format.
+
+### Changed
+
+- **Improved HTML reports with modern design**:
+  - Embedded splicing summary chart directly in main overview page
+  - Reorganized file structure: main file renamed to `summary.html`, individual event files moved to `data/` directory
+  - All HTML files are now self-contained with embedded CSS/JS (no external dependencies)
+  - Enhanced plot interactivity with direct embedding instead of iframes
+
+- **Report generation updated to JSON format**:
+  - Pipeline execution reports are now generated as `report.json` instead of `report.txt`
+  - JSON format includes structured information about tool version, execution timing, and experiment parameters
+  - Added execution duration tracking
+  - Enhanced error handling and logging for report generation
+
+- Update `gene_id` and `gene_name` columns in gene expression output files (`counts.txt`, `TPM.txt`, `CPM.txt`, and `DEG.txt`) to facilitate interpretation of results ([#80](https://github.com/Sika-Zheng-Lab/Shiba/issues/80)).
+  - Previously, `gene_name` column contained gene IDs; now `gene_id` contains gene IDs and `gene_name` contains actual gene names for better clarity.
+
+- Convert PSI values to logit scale before PCA analysis to improve statistical properties and interpretability.
+
 ## [v0.7.1] - 2025-08-20
 
 > [!IMPORTANT]

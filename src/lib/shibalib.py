@@ -168,7 +168,7 @@ def sum_reads(onlypsi_group, junc_df, group_df, group_list) -> dict:
     
     # Get junction IDs and sample columns
     junction_ids = junc_df["ID"].values
-    sample_columns = [col for col in junc_df.columns if col != "ID"]
+    sample_columns = junc_df.columns[4:]
     
     logger.debug(f"Processing {len(junction_ids)} junctions across {len(sample_columns)} samples")
     

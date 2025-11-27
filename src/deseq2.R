@@ -21,10 +21,21 @@ counts <- read.table(
     counts_table,
     sep = "\t",
     head = T,
-    row.names = "gene_name",
+    row.names = "gene_id",
     check.names = FALSE,
     stringsAsFactors = FALSE
 )
+# Make map of gene_id to gene_name
+gene_id_to_name <- NULL
+if ("gene_name" %in% colnames(counts)) {
+    gene_id_to_name <- counts$gene_name
+    names(gene_id_to_name) <- rownames(counts)
+}
+# Drop gene_name column if exists
+if ("gene_name" %in% colnames(counts)) {
+    counts <- counts[, colnames(counts) != "gene_name"]
+}
+# Transpose
 counts_t <- t(counts)
 
 # Merged
@@ -45,8 +56,14 @@ dds <- DESeqDataSetFromMatrix(countData = counts, colData = group, design = ~ co
 dds$con <- relevel(dds$con, ref = REFGROUP)
 dds <- DESeq(dds)
 res <- results(dds)
-res$gene_name <- row.names(res)
-res <- res[, c("gene_name", "baseMean", "log2FoldChange", "lfcSE", "stat", "pvalue", "padj")]
+res$gene_id <- row.names(res)
+res <- res[, c("gene_id", "baseMean", "log2FoldChange", "lfcSE", "stat", "pvalue", "padj")]
+# Add gene_name if possible
+if (!is.null(gene_id_to_name)) {
+    res$gene_name <- gene_id_to_name[res$gene_id]
+    res <- res[, c("gene_id", "gene_name", "baseMean", "log2FoldChange", "lfcSE", "stat", "pvalue", "padj")]
+}
+# Order by padj
 res <- res[order(res$padj), ]
 
 # save

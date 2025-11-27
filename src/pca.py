@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 import logging
 import scipy.stats as stats
+import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.impute import KNNImputer
 
@@ -37,6 +38,9 @@ def load_tpm_table(tpm_file: str) -> pd.DataFrame:
     '''
 
     tpm_df = pd.read_csv(tpm_file, sep="\t", index_col=0)
+    # Drop 'gene_name' column if exists
+    if 'gene_name' in tpm_df.columns:
+        tpm_df = tpm_df.drop(columns = ["gene_name"])
     # Drop rows with all zeros
     logger.debug("Dropping rows with all zeros...")
     tpm_df = tpm_df.loc[(tpm_df != 0).any(axis=1)]
@@ -44,6 +48,25 @@ def load_tpm_table(tpm_file: str) -> pd.DataFrame:
     logger.debug("Dropping rows with NaN...")
     tpm_df = tpm_df.dropna()
     return tpm_df
+
+def logit_conversion(psi: float, epsilon: float = 1e-6) -> float:
+    '''
+    Convert PSI value to logit scale
+
+    Args:
+    - psi (float): PSI value
+
+    Returns:
+    - logit_psi (float): logit-transformed PSI value
+    '''
+    
+    # Avoid division by zero or log of zero
+    if psi <= 0:
+        psi = epsilon
+    elif psi >= 1:
+        psi = 1 - epsilon
+    logit_psi = np.log(psi / (1 - psi))
+    return logit_psi
 
 def load_psi_table(psi_file: str) -> pd.DataFrame:
     '''
@@ -77,6 +100,9 @@ def load_psi_table(psi_file: str) -> pd.DataFrame:
         logger.debug("Number of NaN values: {}".format(psi_df.isnull().sum().sum()))
         logger.debug("Dropping rows with NaN...")
         psi_df = psi_df.dropna()
+    # Logit conversion
+    logger.info("Performing logit conversion...")
+    psi_df = psi_df.applymap(logit_conversion)
     return psi_df
 
 def mtx2pca(df, genes) -> pd.DataFrame:

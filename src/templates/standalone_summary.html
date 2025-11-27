@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shiba Results Summary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Modern CSS Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Color Palette - Modern and Professional */
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #64748b;
+            --accent-color: #0ea5e9;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            
+            /* Neutral Colors */
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.125rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 1.875rem;
+            
+            /* Spacing */
+            --spacing-1: 0.25rem;
+            --spacing-2: 0.5rem;
+            --spacing-3: 0.75rem;
+            --spacing-4: 1rem;
+            --spacing-5: 1.25rem;
+            --spacing-6: 1.5rem;
+            --spacing-8: 2rem;
+            --spacing-12: 3rem;
+            --spacing-16: 4rem;
+            
+            /* Borders */
+            --border-radius: 0.5rem;
+            --border-radius-lg: 0.75rem;
+            --border-width: 1px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            
+            /* Layout */
+            --sidebar-width: 280px;
+            --navbar-height: 64px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            line-height: 1.6;
+            color: var(--gray-700);
+            background-color: var(--gray-50);
+            overflow-x: hidden;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--navbar-height);
+            background: var(--white);
+            border-bottom: var(--border-width) solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--spacing-6);
+            z-index: 1000;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .nav-brand i {
+            font-size: var(--font-size-2xl);
+            color: var(--primary-color);
+        }
+
+        .nav-brand h1 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: var(--font-size-lg);
+            color: var(--gray-600);
+            cursor: pointer;
+            padding: var(--spacing-2);
+            border-radius: var(--border-radius);
+            transition: all 0.2s ease;
+        }
+
+        .nav-toggle:hover {
+            background-color: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        /* Container */
+        .container {
+            display: flex;
+            margin-top: var(--navbar-height);
+            min-height: calc(100vh - var(--navbar-height));
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--white);
+            border-right: var(--border-width) solid var(--gray-200);
+            padding: var(--spacing-6) 0;
+            position: fixed;
+            height: calc(100vh - var(--navbar-height));
+            overflow-y: auto;
+            z-index: 900;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 0 var(--spacing-6) var(--spacing-4);
+            border-bottom: var(--border-width) solid var(--gray-200);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .sidebar-header h3 {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .sidebar-nav {
+            padding: 0 var(--spacing-4);
+        }
+
+        .nav-section {
+            margin-top: var(--spacing-6);
+        }
+
+        .nav-section h4 {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--spacing-3);
+            padding: 0 var(--spacing-2);
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+            padding: var(--spacing-3) var(--spacing-2);
+            color: var(--gray-600);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: all 0.2s ease;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-1);
+        }
+
+        .nav-link:hover {
+            background-color: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .nav-link.active {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .nav-link i {
+            width: 16px;
+            text-align: center;
+            font-size: var(--font-size-sm);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: var(--spacing-8) var(--spacing-6);
+            max-width: calc(100vw - var(--sidebar-width));
+        }
+
+        /* Content Sections */
+        .content-section {
+            margin-bottom: var(--spacing-16);
+        }
+
+        .section-header {
+            margin-bottom: var(--spacing-8);
+        }
+
+        .section-header h2 {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .section-header h2 i {
+            color: var(--primary-color);
+        }
+
+        .section-description {
+            font-size: var(--font-size-lg);
+            color: var(--gray-600);
+            max-width: 600px;
+        }
+
+        /* Command Card */
+        .command-card {
+            background: var(--gray-900);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-6);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: var(--spacing-8);
+        }
+
+        .command-text {
+            color: var(--gray-100);
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            word-break: break-all;
+        }
+
+        /* Plot Grid */
+        .plot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-6);
+            margin-bottom: var(--spacing-8);
+        }
+
+        /* Plot Cards */
+        .plot-card {
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-6);
+            box-shadow: var(--shadow);
+            border: var(--border-width) solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .plot-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .plot-card h3 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .plot-description {
+            font-size: var(--font-size-sm);
+            color: var(--gray-500);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 420px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: var(--gray-50);
+            border: var(--border-width) solid var(--gray-200);
+            position: relative;
+        }
+
+        .plot-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .plot-container iframe.loaded {
+            opacity: 1;
+        }
+
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--gray-500);
+            z-index: 10;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--white);
+            border-top: var(--border-width) solid var(--gray-200);
+            padding: var(--spacing-8) 0;
+            margin-top: var(--spacing-16);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-4);
+        }
+
+        .footer-content p {
+            color: var(--gray-600);
+            font-size: var(--font-size-sm);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--spacing-4);
+        }
+
+        .footer-link {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-size: var(--font-size-sm);
+            transition: color 0.2s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .plot-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-content {
+                padding: var(--spacing-6) var(--spacing-4);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-toggle {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                max-width: 100vw;
+                padding: var(--spacing-4);
+            }
+            
+            .section-header h2 {
+                font-size: var(--font-size-2xl);
+            }
+            
+            .plot-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-4);
+            }
+            
+            .plot-card {
+                padding: var(--spacing-4);
+            }
+            
+            .plot-container {
+                height: 300px;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-brand h1 {
+                font-size: var(--font-size-lg);
+            }
+            
+            .section-header h2 {
+                font-size: var(--font-size-xl);
+            }
+            
+            .command-card {
+                padding: var(--spacing-4);
+            }
+            
+            .command-text {
+                font-size: var(--font-size-sm);
+            }
+        }
+
+        /* Focus styles for accessibility */
+        .nav-link:focus,
+        .nav-toggle:focus,
+        .footer-link:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Print styles */
+        @media print {
+            .navbar,
+            .sidebar,
+            .footer {
+                display: none !important;
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+                max-width: none !important;
+            }
+            
+            .plot-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            
+            .content-section {
+                page-break-before: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-dna"></i>
+            <h1>Shiba Results</h1>
+        </div>
+        <button class="nav-toggle" id="navToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <div class="container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#command" class="nav-link active">
+                    <i class="fas fa-terminal"></i>
+                    Command
+                </a>
+                <a href="#pca" class="nav-link">
+                    <i class="fas fa-chart-scatter"></i>
+                    PCA Analysis
+                </a>
+                <div class="nav-section">
+                    <h4>Splicing Events</h4>
+                    <a href="#se" class="nav-link">
+                        <i class="fas fa-cut"></i>
+                        Skipped Exon (SE)
+                    </a>
+                    <a href="#five" class="nav-link">
+                        <i class="fas fa-angle-left"></i>
+                        Alternative 5'ss
+                    </a>
+                    <a href="#three" class="nav-link">
+                        <i class="fas fa-angle-right"></i>
+                        Alternative 3'ss
+                    </a>
+                    <a href="#mxe" class="nav-link">
+                        <i class="fas fa-exchange-alt"></i>
+                        Mutually Exclusive (MXE)
+                    </a>
+                    <a href="#ri" class="nav-link">
+                        <i class="fas fa-pause"></i>
+                        Retained Intron (RI)
+                    </a>
+                    <a href="#mse" class="nav-link">
+                        <i class="fas fa-layer-group"></i>
+                        Multiple Skipped (MSE)
+                    </a>
+                    <a href="#afe" class="nav-link">
+                        <i class="fas fa-play"></i>
+                        Alternative First (AFE)
+                    </a>
+                    <a href="#ale" class="nav-link">
+                        <i class="fas fa-stop"></i>
+                        Alternative Last (ALE)
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <section id="command" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-terminal"></i> Shiba Command</h2>
+                </div>
+                <div class="command-card">
+                    <code class="command-text">{shiba_command}</code>
+                </div>
+            </section>
+
+            <section id="pca" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-scatter"></i> Principal Component Analysis</h2>
+                    <p class="section-description">PCA visualization of sample relationships based on gene expression and splicing patterns.</p>
+                </div>
+                <div class="plot-grid">
+                    <div class="plot-card">
+                        <h3>Gene Expression (TPM)</h3>
+                        <div class="plot-container">
+                            <iframe srcdoc="{pca_tpm_content}"></iframe>
+                        </div>
+                    </div>
+                    <div class="plot-card">
+                        <h3>Splicing Patterns (PSI)</h3>
+                        <div class="plot-container">
+                            <iframe srcdoc="{pca_psi_content}"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {splicing_sections}
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Naoto Kubota | Shiba Splicing Analysis Tool</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link">Documentation</a>
+                <a href="#" class="footer-link">Support</a>
+                <a href="#" class="footer-link">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Modern JavaScript for enhanced interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile navigation toggle
+            const navToggle = document.getElementById('navToggle');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (navToggle && sidebar) {
+                navToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('open');
+                });
+                
+                // Close sidebar when clicking outside on mobile
+                document.addEventListener('click', function(event) {
+                    if (window.innerWidth <= 768) {
+                        if (!sidebar.contains(event.target) && !navToggle.contains(event.target)) {
+                            sidebar.classList.remove('open');
+                        }
+                    }
+                });
+            }
+            
+            // Smooth scrolling for navigation links
+            const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    
+                    if (targetElement) {
+                        // Update active link
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        // Smooth scroll to target
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                        
+                        // Close mobile sidebar
+                        if (window.innerWidth <= 768) {
+                            sidebar.classList.remove('open');
+                        }
+                    }
+                });
+            });
+            
+            // Update active navigation link on scroll
+            const sections = document.querySelectorAll('.content-section');
+            const observerOptions = {
+                root: null,
+                rootMargin: '-20% 0px -70% 0px',
+                threshold: 0
+            };
+            
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const targetId = entry.target.id;
+                        const correspondingLink = document.querySelector(`.nav-link[href="#${targetId}"]`);
+                        
+                        if (correspondingLink) {
+                            navLinks.forEach(link => link.classList.remove('active'));
+                            correspondingLink.classList.add('active');
+                        }
+                    }
+                });
+            }, observerOptions);
+            
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+            
+            // Add loading animation for iframes
+            const iframes = document.querySelectorAll('.plot-container iframe');
+            iframes.forEach(iframe => {
+                const container = iframe.closest('.plot-container');
+                
+                // Add loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading-indicator';
+                loadingDiv.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>Loading plot...</p>
+                `;
+                
+                container.appendChild(loadingDiv);
+                
+                iframe.addEventListener('load', function() {
+                    loadingDiv.remove();
+                    iframe.classList.add('loaded');
+                });
+            });
+            
+            // Add animation to plot cards on scroll
+            const plotCards = document.querySelectorAll('.plot-card');
+            const cardObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+            
+            plotCards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                cardObserver.observe(card);
+            });
+            
+            // Add keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                // Press 'T' to toggle sidebar on mobile
+                if (e.key === 't' || e.key === 'T') {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.toggle('open');
+                    }
+                }
+                
+                // Press 'Escape' to close sidebar on mobile
+                if (e.key === 'Escape') {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('open');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

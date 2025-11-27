@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import html
 import logging
+from template_renderer import HTMLTemplateRenderer, get_splicing_event_config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -119,8 +120,8 @@ def plots_pca(name: str, pca_df: pd.DataFrame, contribution_PC1: str, contributi
 		)
 	)
 	fig.update_layout(
-		width = 550,
-		height = 400,
+		# Remove fixed width to allow responsive sizing
+		height = 500,  # Increased from 400 to 500 for taller plots
 		font ={
 			"family": "Arial",
 			"size": 18
@@ -128,8 +129,21 @@ def plots_pca(name: str, pca_df: pd.DataFrame, contribution_PC1: str, contributi
 		xaxis_title = "PC1 ({}%)".format(contribution_PC1),
 		yaxis_title = "PC2 ({}%)".format(contribution_PC2),
 		legend_title = "Group",
+		# Add responsive layout settings
+		autosize = True,
+		margin = dict(l=60, r=60, t=80, b=60)
 	)
-	fig.write_html(os.path.join(output_dir, "data", "pca_" + name + ".html"), include_plotlyjs = "cdn")
+	# Use responsive configuration when writing HTML
+	fig.write_html(
+		os.path.join(output_dir, "data", "pca_" + name + ".html"), 
+		include_plotlyjs = "cdn",
+		config = {
+			'responsive': True,
+			'displayModeBar': True,
+			'displaylogo': False,
+			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
+		}
+	)
 
 def plots(AS: str, input_dir: str, output_dir: str):
 
@@ -140,11 +154,11 @@ def plots(AS: str, input_dir: str, output_dir: str):
 	)
 	if not df.empty:
 		# Round dPSI and others
-		df["dPSI"] = df["dPSI"].round(2)
+		df["dPSI"] = df["dPSI"].round(4)
 		df['-log10(q)'] = -np.log10(df["q"])
-		df['-log10(q)'] = df['-log10(q)'].round(2)
-		df["ref_PSI"] = df["ref_PSI"].round(2)
-		df["alt_PSI"] = df["alt_PSI"].round(2)
+		df['-log10(q)'] = df['-log10(q)'].round(4)
+		df["ref_PSI"] = df["ref_PSI"].round(4)
+		df["alt_PSI"] = df["alt_PSI"].round(4)
 	# Volcano plot
 	if not df.empty:
 		df.loc[(df["Diff events"] == "Yes") & (df["dPSI"] > 0.1), "group"] = "up"
@@ -158,7 +172,7 @@ def plots(AS: str, input_dir: str, output_dir: str):
 			symbol="label",
 			opacity = 0.5,
 			category_orders = {"group": ["up", "down", "others"], "label": ["annotated", "unannotated"]},
-			color_discrete_sequence = ["salmon", "steelblue", "lightgrey"],
+			color_discrete_sequence = ["#d01c8b", "#4dac26", "lightgrey"],
 			hover_data = ["gene_name", "event_id", "ref_PSI", "alt_PSI", "q"]
 		)
 		fig.update_traces(
@@ -167,16 +181,8 @@ def plots(AS: str, input_dir: str, output_dir: str):
 				line = dict(width = 0, color = 'DarkSlateGrey')),
 				selector = dict(mode = 'markers')
 		)
-		fig.update_layout(
-			title = dict(
-				text = "Volcano plot",
-				font = dict(size = 26, color = 'black'),
-				xref = 'paper',
-				x = 0.5,
-				y = 0.95,
-				xanchor = 'center'
-			)
-		)
+		# Remove the title from the volcano plot
+		fig.update_layout(title=None)
 	else:
 		# If there is no data, make empty plot
 		fig = px.scatter(
@@ -197,15 +203,28 @@ def plots(AS: str, input_dir: str, output_dir: str):
 			font = dict(size = 26, color = 'black')
 		)
 	fig.update_layout(
-		width = 550,
+		# Remove fixed width for responsive sizing
 		height = 400,
 		font ={
 			"family": "Arial",
 			"size": 16
 		},
 		legend_title = "Group, Label",
+		# Add responsive layout settings
+		autosize = True,
+		margin = dict(l=60, r=60, t=80, b=60)
 	)
-	fig.write_html(os.path.join(output_dir, "data", "volcano_" + AS + ".html"), include_plotlyjs = "cdn")
+	# Use responsive configuration when writing HTML
+	fig.write_html(
+		os.path.join(output_dir, "data", "volcano_" + AS + ".html"), 
+		include_plotlyjs = "cdn",
+		config = {
+			'responsive': True,
+			'displayModeBar': True,
+			'displaylogo': False,
+			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
+		}
+	)
 
 	# Scatter
 	if not df.empty:
@@ -217,7 +236,7 @@ def plots(AS: str, input_dir: str, output_dir: str):
 			symbol="label",
 			opacity = 0.5,
 			category_orders = {"group": ["up", "down", "others"], "label": ["annotated", "unannotated"]},
-			color_discrete_sequence = ["salmon", "steelblue", "lightgrey"],
+			color_discrete_sequence = ["#d01c8b", "#4dac26", "lightgrey"],
 			hover_data = ["gene_name", "event_id", "dPSI", "q"]
 		)
 		fig.update_traces(
@@ -225,15 +244,7 @@ def plots(AS: str, input_dir: str, output_dir: str):
 							line=dict(width=0, color='DarkSlateGrey')),
 							selector=dict(mode='markers')
 		)
-		fig.update_layout(title=dict(text = "Scatter plot",
-										font=dict(size=26,
-												color='black'),
-										xref='paper',
-										x=0.5,
-										y=0.95,
-										xanchor='center'
-									)
-							)
+		fig.update_layout(title=None)
 	else:
 		# If there is no data, make empty plot
 		fig = px.scatter(
@@ -254,8 +265,8 @@ def plots(AS: str, input_dir: str, output_dir: str):
 			font = dict(size = 26, color = 'black')
 		)
 	fig.update_layout(
-		width = 550,
-		height= 400,
+		# Remove fixed width for responsive sizing
+		height = 400,
 		font ={
 			"family": "Arial",
 			"size": 16
@@ -263,553 +274,223 @@ def plots(AS: str, input_dir: str, output_dir: str):
 		xaxis_title = "PSI (Reference)",
 		yaxis_title = "PSI (Alternative)",
 		legend_title = "Group, Label",
+		# Add responsive layout settings
+		autosize = True,
+		margin = dict(l=60, r=60, t=80, b=60)
 	)
-	fig.write_html(os.path.join(output_dir, "data", "scatter_" + AS + ".html"), include_plotlyjs = "cdn")
-
-	# Bar
-	if not df.empty:
-		count_df = df[df["group"] != "others"].groupby(["group", "label"], as_index = False).count()[["group", "label", "event_id"]]
-		fig = px.bar(
-			count_df,
-			x = "group",
-			y = "event_id",
-			color = "label",
-			labels = {"event_id": "Count"},
-			category_orders = {"group": ["up", "down"], "label": ["annotated", "unannotated"]},
-			color_discrete_sequence = ["#9ebcda", "#810f7c"],
-			barmode = "relative"
-		)
-		fig.update_layout(title=dict(text = "Number of DSEs",
-										font=dict(size=26,
-												color='black'),
-										xref='paper',
-										x=0.5,
-										y=0.95,
-										xanchor='center'
-									)
-							)
-	else:
-		# if there is no data, make empty plot
-		fig = px.bar(
-			x = [0],
-			y = [0]
-		)
-		# Remove xlabel and ylabel
-		fig.update_xaxes(title = None)
-		fig.update_yaxes(title = None)
-		# Add "No data" text to the empty plot
-		fig.add_annotation(
-			text = "No data",
-			xref = "paper",
-			yref = "paper",
-			x = 0.5,
-			y = 0.5,
-			showarrow = False,
-			font = dict(size = 26, color = 'black')
-		)
-	fig.update_layout(
-		width = 550,
-		height = 400,
-		font ={
-			"family": "Arial",
-			"size": 16
-		},
-		xaxis_title = None,
-		legend_title = "Group, Label",
+	# Use responsive configuration when writing HTML
+	fig.write_html(
+		os.path.join(output_dir, "data", "scatter_" + AS + ".html"), 
+		include_plotlyjs = "cdn",
+		config = {
+			'responsive': True,
+			'displayModeBar': True,
+			'displaylogo': False,
+			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
+		}
 	)
-	fig.write_html(os.path.join(output_dir, "data", "bar_" + AS + ".html"), include_plotlyjs = "cdn")
 
-def write_summary_html(shiba_command: str, output_dir: str):
+def calculate_event_count(input_dir: str, AS: str) -> int:
+	"""Calculate the number of differential splicing events for a given AS type."""
+	try:
+		df = pd.read_csv(
+			os.path.join(input_dir, "splicing", "PSI_" + AS + ".txt"),
+			sep = "\t"
+		)
+		if df.empty:
+			return 0
+		
+		# Count all events
+		all_events_count = len(df)
+		return all_events_count
 
-	# PCA
-	lines_strip_pca_dict = {}
-	for pca in ["TPM", "PSI"]:
-		with open(os.path.join(output_dir, "data", "pca_" + pca + ".html"), 'r') as f:
-			lines = f.readlines()
-		lines_strip = [html.escape(line.strip()) for line in lines[2:6]]
-		lines_strip_pca_dict[pca] = lines_strip
-	# Splicing events
-	events = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]
-	plottypes = ["volcano", "scatter", "bar"]
-	lines_strip_dict = {}
-	for event in events:
-		lines_strip_dict[event] = {}
-		for plottype in plottypes:
-			with open(os.path.join(output_dir, "data", plottype + "_" + event + ".html"), 'r') as f:
-				lines = f.readlines()
-			lines_strip = [html.escape(line.strip()) for line in lines[2:6]]
-			lines_strip_dict[event][plottype] = lines_strip
+	except FileNotFoundError:
+		logger.warning(f"PSI file not found for {AS}")
+		return 0
+	except Exception as e:
+		logger.warning(f"Error calculating event count for {AS}: {e}")
+		return 0
 
-	summary_html = '''
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Shiba Results Summary</title>
-		<style>
-			html {{
-				scroll-behavior: smooth;
-			}}
+def get_shiba_version() -> str:
+	"""Get Shiba version from VERSION file."""
+	try:
+		# Get the directory where this script is located
+		script_dir = os.path.dirname(os.path.abspath(__file__))
+		# Go up one level to the main Shiba directory
+		version_path = os.path.join(os.path.dirname(script_dir), "VERSION")
+		
+		with open(version_path, 'r', encoding='utf-8') as f:
+			version = f.read().strip()
+			return version
+	except FileNotFoundError:
+		logger.warning("VERSION file not found")
+		return "unknown"
+	except Exception as e:
+		logger.warning(f"Error reading VERSION file: {e}")
+		return "unknown"
 
-			body {{
-				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-				margin: 0;
-				display: flex;
-				flex-direction: column;
-				min-height: 100vh;
-				width: 95vw;
-				background: linear-gradient(135deg, #000000, #3b003b, #7b0067);
-				color: #ffffff;
-			}}
+def load_splicing_summary_image(output_dir: str) -> str:
+	"""Load the splicing summary PNG and convert to base64 for embedding."""
+	import base64
+	
+	png_path = os.path.join(output_dir, "png", "barplot_splicing_summary.png")
+	
+	try:
+		with open(png_path, 'rb') as img_file:
+			img_data = img_file.read()
+			img_base64 = base64.b64encode(img_data).decode('utf-8')
+			return f'<img src="data:image/png;base64,{img_base64}" alt="Differential Splicing Events Summary" class="splicing-summary-image">'
+	except FileNotFoundError:
+		logger.warning(f"Splicing summary image not found: {png_path}")
+		return '<p style="text-align: center; color: #64748b;">Summary chart not available</p>'
+	except Exception as e:
+		logger.warning(f"Error loading splicing summary image: {e}")
+		return '<p style="text-align: center; color: #64748b;">Summary chart not available</p>'
 
-			header {{
-				width: 100vw;
-				box-sizing: border-box;
-				padding: 20px;
-				margin: 0;
-				background-color: #1e1e1e;
-				text-align: center;
-				box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-			}}
-
-			header h1 {{
-				margin: 0;
-				color: #b300b3;
-				font-size: 52px;
-			}}
-
-			.sidebar {{
-				height: calc(100vh - 240px); /* Adjusted to account for header and footer height, and text size */
-				width: 250px;
-				position: fixed;
-				top: 120px; /* Adjusted to account for header height */
-				left: 0;
-				background-color: #1e1e1e;
-				padding-top: 20px;
-				display: flex;
-				flex-direction: column;
-				box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-				align-items: center;
-			}}
-
-			.sidebar a {{
-				padding: 15px 20px;
-				text-decoration: none;
-				font-size: 18px;
-				color: white;
-				display: block;
-				transition: 0.3s;
-				width: 80%;
-				text-align: left;
-			}}
-
-			.sidebar a:hover {{
-				background-color: #7b0067;
-			}}
-
-			.sidebar a.active {{
-				background-color: #b300b3;
-				color: white;
-			}}
-
-			.content {{
-				margin-left: 250px;
-				padding: 20px;
-				width: calc(100% - 250px);
-				overflow-y: auto; /* Enable vertical scrolling for the content */
-				overflow-x: hidden; /* Disable horizontal scrolling */
-				flex: 1;
-			}}
-
-			.plot {{
-				padding: 12px;
-				background: rgba(255, 255, 255, 0.1);
-				width: calc(100%);
-				margin-bottom: 20px;
-				border-radius: 12px;
-				box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-			}}
-
-			.plot h2 {{
-				margin-top: 0;
-				color: #b300b3;
-			}}
-
-			.plot-container {{
-				display: flex;
-				gap: 20px;
-				justify-content: flex-start; /* Align items to the start of the container */
-				flex-wrap: nowrap; /* Prevent wrapping */
-				overflow-x: auto; /* Enable horizontal scrolling if necessary */
-			}}
-
-			.plot-container iframe {{
-				flex: 0 0 32%; /* Set a flex width for iframes */
-				height: 420px; /* Set a fixed height for iframes */
-				width: 100%; /* Ensure iframes fill the container */
-				border: none;
-				border-radius: 12px;
-				box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-			}}
-
-			footer {{
-				width: 100vw;
-				box-sizing: border-box;
-				padding: 20px;
-				margin: 0;
-				background-color: #1e1e1e;
-				text-align: center;
-				box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.5);
-				position: relative;
-			}}
-		</style>
-	</head>
-	<body>
-		<header>
-			<h1>Shiba Results Summary</h1>
-		</header>
-		<div class="sidebar">
-			<a href="#Shiba command">Shiba command</a>
-			<a href="#PCA">PCA</a>
-			<a href="#SE">Skipped exon (SE)</a>
-			<a href="#FIVE">Alternative 5'ss (FIVE)</a>
-			<a href="#THREE">Alternative 3'ss (THREE)</a>
-			<a href="#MXE">Mutually exclusive exons (MXE)</a>
-			<a href="#RI">Retained intron (RI)</a>
-			<a href="#MSE">Multiple skipped exons (MSE)</a>
-			<a href="#AFE">Alternative first exon (AFE)</a>
-			<a href="#ALE">Alternative last exon (ALE)</a>
-		</div>
-
-		<div class="content">
-			<div id="Shiba command" class="plot">
-				<h2>Shiba command</h2>
-				<p class="intro-text">{shiba_command}</p>
-			</div>
-			<div id="PCA" class="plot">
-				<h2>Principal component analysis (PCA)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{pca_tpm_l1}
-						{pca_tpm_l2}
-						{pca_tpm_l3}
-						{pca_tpm_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{pca_psi_l1}
-						{pca_psi_l2}
-						{pca_psi_l3}
-						{pca_psi_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="SE" class="plot">
-				<h2>Skipped exon (SE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_se_l1}
-						{volcano_se_l2}
-						{volcano_se_l3}
-						{volcano_se_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_se_l1}
-						{scatter_se_l2}
-						{scatter_se_l3}
-						{scatter_se_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_se_l1}
-						{bar_se_l2}
-						{bar_se_l3}
-						{bar_se_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="FIVE" class="plot">
-				<h2>Alternative 5'ss (FIVE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_five_l1}
-						{volcano_five_l2}
-						{volcano_five_l3}
-						{volcano_five_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_five_l1}
-						{scatter_five_l2}
-						{scatter_five_l3}
-						{scatter_five_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_five_l1}
-						{bar_five_l2}
-						{bar_five_l3}
-						{bar_five_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="THREE" class="plot">
-				<h2>Alternative 3'ss (THREE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_three_l1}
-						{volcano_three_l2}
-						{volcano_three_l3}
-						{volcano_three_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_three_l1}
-						{scatter_three_l2}
-						{scatter_three_l3}
-						{scatter_three_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_three_l1}
-						{bar_three_l2}
-						{bar_three_l3}
-						{bar_three_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="MXE" class="plot">
-				<h2>Mutually exclusive exons (MXE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_mxe_l1}
-						{volcano_mxe_l2}
-						{volcano_mxe_l3}
-						{volcano_mxe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_mxe_l1}
-						{scatter_mxe_l2}
-						{scatter_mxe_l3}
-						{scatter_mxe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_mxe_l1}
-						{bar_mxe_l2}
-						{bar_mxe_l3}
-						{bar_mxe_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="RI" class="plot">
-				<h2>Retained intron (RI)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_ri_l1}
-						{volcano_ri_l2}
-						{volcano_ri_l3}
-						{volcano_ri_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_ri_l1}
-						{scatter_ri_l2}
-						{scatter_ri_l3}
-						{scatter_ri_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_ri_l1}
-						{bar_ri_l2}
-						{bar_ri_l3}
-						{bar_ri_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="MSE" class="plot">
-				<h2>Multiple skipped exons (MSE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_mse_l1}
-						{volcano_mse_l2}
-						{volcano_mse_l3}
-						{volcano_mse_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_mse_l1}
-						{scatter_mse_l2}
-						{scatter_mse_l3}
-						{scatter_mse_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_mse_l1}
-						{bar_mse_l2}
-						{bar_mse_l3}
-						{bar_mse_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="AFE" class="plot">
-				<h2>Alternative first exon (AFE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_afe_l1}
-						{volcano_afe_l2}
-						{volcano_afe_l3}
-						{volcano_afe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_afe_l1}
-						{scatter_afe_l2}
-						{scatter_afe_l3}
-						{scatter_afe_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_afe_l1}
-						{bar_afe_l2}
-						{bar_afe_l3}
-						{bar_afe_l4}
-					"></iframe>
-				</div>
-			</div>
-			<div id="ALE" class="plot">
-				<h2>Alternative last exon (ALE)</h2>
-				<div class="plot-container">
-					<iframe srcdoc="
-						{volcano_ale_l1}
-						{volcano_ale_l2}
-						{volcano_ale_l3}
-						{volcano_ale_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{scatter_ale_l1}
-						{scatter_ale_l2}
-						{scatter_ale_l3}
-						{scatter_ale_l4}
-					"></iframe>
-					<iframe srcdoc="
-						{bar_ale_l1}
-						{bar_ale_l2}
-						{bar_ale_l3}
-						{bar_ale_l4}
-					"></iframe>
-				</div>
-			</div>
-		</div>
-		<footer>
-			<p>© 2024 Naoto Kubota</p>
-		</footer>
-	</body>
-	</html>
-	'''.format(
-		shiba_command = shiba_command,
-		pca_tpm_l1 = lines_strip_pca_dict["TPM"][0],
-		pca_tpm_l2 = lines_strip_pca_dict["TPM"][1],
-		pca_tpm_l3 = lines_strip_pca_dict["TPM"][2],
-		pca_tpm_l4 = lines_strip_pca_dict["TPM"][3],
-		pca_psi_l1 = lines_strip_pca_dict["PSI"][0],
-		pca_psi_l2 = lines_strip_pca_dict["PSI"][1],
-		pca_psi_l3 = lines_strip_pca_dict["PSI"][2],
-		pca_psi_l4 = lines_strip_pca_dict["PSI"][3],
-		volcano_se_l1 = lines_strip_dict["SE"]["volcano"][0],
-		volcano_se_l2 = lines_strip_dict["SE"]["volcano"][1],
-		volcano_se_l3 = lines_strip_dict["SE"]["volcano"][2],
-		volcano_se_l4 = lines_strip_dict["SE"]["volcano"][3],
-		scatter_se_l1 = lines_strip_dict["SE"]["scatter"][0],
-		scatter_se_l2 = lines_strip_dict["SE"]["scatter"][1],
-		scatter_se_l3 = lines_strip_dict["SE"]["scatter"][2],
-		scatter_se_l4 = lines_strip_dict["SE"]["scatter"][3],
-		bar_se_l1 = lines_strip_dict["SE"]["bar"][0],
-		bar_se_l2 = lines_strip_dict["SE"]["bar"][1],
-		bar_se_l3 = lines_strip_dict["SE"]["bar"][2],
-		bar_se_l4 = lines_strip_dict["SE"]["bar"][3],
-		volcano_five_l1 = lines_strip_dict["FIVE"]["volcano"][0],
-		volcano_five_l2 = lines_strip_dict["FIVE"]["volcano"][1],
-		volcano_five_l3 = lines_strip_dict["FIVE"]["volcano"][2],
-		volcano_five_l4 = lines_strip_dict["FIVE"]["volcano"][3],
-		scatter_five_l1 = lines_strip_dict["FIVE"]["scatter"][0],
-		scatter_five_l2 = lines_strip_dict["FIVE"]["scatter"][1],
-		scatter_five_l3 = lines_strip_dict["FIVE"]["scatter"][2],
-		scatter_five_l4 = lines_strip_dict["FIVE"]["scatter"][3],
-		bar_five_l1 = lines_strip_dict["FIVE"]["bar"][0],
-		bar_five_l2 = lines_strip_dict["FIVE"]["bar"][1],
-		bar_five_l3 = lines_strip_dict["FIVE"]["bar"][2],
-		bar_five_l4 = lines_strip_dict["FIVE"]["bar"][3],
-		volcano_three_l1 = lines_strip_dict["THREE"]["volcano"][0],
-		volcano_three_l2 = lines_strip_dict["THREE"]["volcano"][1],
-		volcano_three_l3 = lines_strip_dict["THREE"]["volcano"][2],
-		volcano_three_l4 = lines_strip_dict["THREE"]["volcano"][3],
-		scatter_three_l1 = lines_strip_dict["THREE"]["scatter"][0],
-		scatter_three_l2 = lines_strip_dict["THREE"]["scatter"][1],
-		scatter_three_l3 = lines_strip_dict["THREE"]["scatter"][2],
-		scatter_three_l4 = lines_strip_dict["THREE"]["scatter"][3],
-		bar_three_l1 = lines_strip_dict["THREE"]["bar"][0],
-		bar_three_l2 = lines_strip_dict["THREE"]["bar"][1],
-		bar_three_l3 = lines_strip_dict["THREE"]["bar"][2],
-		bar_three_l4 = lines_strip_dict["THREE"]["bar"][3],
-		volcano_mxe_l1 = lines_strip_dict["MXE"]["volcano"][0],
-		volcano_mxe_l2 = lines_strip_dict["MXE"]["volcano"][1],
-		volcano_mxe_l3 = lines_strip_dict["MXE"]["volcano"][2],
-		volcano_mxe_l4 = lines_strip_dict["MXE"]["volcano"][3],
-		scatter_mxe_l1 = lines_strip_dict["MXE"]["scatter"][0],
-		scatter_mxe_l2 = lines_strip_dict["MXE"]["scatter"][1],
-		scatter_mxe_l3 = lines_strip_dict["MXE"]["scatter"][2],
-		scatter_mxe_l4 = lines_strip_dict["MXE"]["scatter"][3],
-		bar_mxe_l1 = lines_strip_dict["MXE"]["bar"][0],
-		bar_mxe_l2 = lines_strip_dict["MXE"]["bar"][1],
-		bar_mxe_l3 = lines_strip_dict["MXE"]["bar"][2],
-		bar_mxe_l4 = lines_strip_dict["MXE"]["bar"][3],
-		volcano_ri_l1 = lines_strip_dict["RI"]["volcano"][0],
-		volcano_ri_l2 = lines_strip_dict["RI"]["volcano"][1],
-		volcano_ri_l3 = lines_strip_dict["RI"]["volcano"][2],
-		volcano_ri_l4 = lines_strip_dict["RI"]["volcano"][3],
-		scatter_ri_l1 = lines_strip_dict["RI"]["scatter"][0],
-		scatter_ri_l2 = lines_strip_dict["RI"]["scatter"][1],
-		scatter_ri_l3 = lines_strip_dict["RI"]["scatter"][2],
-		scatter_ri_l4 = lines_strip_dict["RI"]["scatter"][3],
-		bar_ri_l1 = lines_strip_dict["RI"]["bar"][0],
-		bar_ri_l2 = lines_strip_dict["RI"]["bar"][1],
-		bar_ri_l3 = lines_strip_dict["RI"]["bar"][2],
-		bar_ri_l4 = lines_strip_dict["RI"]["bar"][3],
-		volcano_mse_l1 = lines_strip_dict["MSE"]["volcano"][0],
-		volcano_mse_l2 = lines_strip_dict["MSE"]["volcano"][1],
-		volcano_mse_l3 = lines_strip_dict["MSE"]["volcano"][2],
-		volcano_mse_l4 = lines_strip_dict["MSE"]["volcano"][3],
-		scatter_mse_l1 = lines_strip_dict["MSE"]["scatter"][0],
-		scatter_mse_l2 = lines_strip_dict["MSE"]["scatter"][1],
-		scatter_mse_l3 = lines_strip_dict["MSE"]["scatter"][2],
-		scatter_mse_l4 = lines_strip_dict["MSE"]["scatter"][3],
-		bar_mse_l1 = lines_strip_dict["MSE"]["bar"][0],
-		bar_mse_l2 = lines_strip_dict["MSE"]["bar"][1],
-		bar_mse_l3 = lines_strip_dict["MSE"]["bar"][2],
-		bar_mse_l4 = lines_strip_dict["MSE"]["bar"][3],
-		volcano_afe_l1 = lines_strip_dict["AFE"]["volcano"][0],
-		volcano_afe_l2 = lines_strip_dict["AFE"]["volcano"][1],
-		volcano_afe_l3 = lines_strip_dict["AFE"]["volcano"][2],
-		volcano_afe_l4 = lines_strip_dict["AFE"]["volcano"][3],
-		scatter_afe_l1 = lines_strip_dict["AFE"]["scatter"][0],
-		scatter_afe_l2 = lines_strip_dict["AFE"]["scatter"][1],
-		scatter_afe_l3 = lines_strip_dict["AFE"]["scatter"][2],
-		scatter_afe_l4 = lines_strip_dict["AFE"]["scatter"][3],
-		bar_afe_l1 = lines_strip_dict["AFE"]["bar"][0],
-		bar_afe_l2 = lines_strip_dict["AFE"]["bar"][1],
-		bar_afe_l3 = lines_strip_dict["AFE"]["bar"][2],
-		bar_afe_l4 = lines_strip_dict["AFE"]["bar"][3],
-		volcano_ale_l1 = lines_strip_dict["ALE"]["volcano"][0],
-		volcano_ale_l2 = lines_strip_dict["ALE"]["volcano"][1],
-		volcano_ale_l3 = lines_strip_dict["ALE"]["volcano"][2],
-		volcano_ale_l4 = lines_strip_dict["ALE"]["volcano"][3],
-		scatter_ale_l1 = lines_strip_dict["ALE"]["scatter"][0],
-		scatter_ale_l2 = lines_strip_dict["ALE"]["scatter"][1],
-		scatter_ale_l3 = lines_strip_dict["ALE"]["scatter"][2],
-		scatter_ale_l4 = lines_strip_dict["ALE"]["scatter"][3],
-		bar_ale_l1 = lines_strip_dict["ALE"]["bar"][0],
-		bar_ale_l2 = lines_strip_dict["ALE"]["bar"][1],
-		bar_ale_l3 = lines_strip_dict["ALE"]["bar"][2],
-		bar_ale_l4 = lines_strip_dict["ALE"]["bar"][3]
-	)
-	with open(os.path.join(output_dir, "summary.html"), 'w') as f:
-		f.write(summary_html)
+def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
+	"""Write summary HTML using modern template system with individual event files."""
+	
+	# Initialize template renderer
+	template_dir = os.path.join(os.path.dirname(__file__), "templates")
+	renderer = HTMLTemplateRenderer(template_dir)
+	
+	# Copy static files (CSS, JS) to output directory
+	renderer.copy_static_files(output_dir)
+	
+	# Load PCA content
+	pca_tpm_content = load_plot_content(output_dir, "pca_TPM.html")
+	pca_psi_content = load_plot_content(output_dir, "pca_PSI.html")
+	
+	# Prepare splicing events data
+	splicing_events = []
+	event_configs = get_splicing_event_config()
+	
+	for config in event_configs:
+		event_count = calculate_event_count(input_dir, config['code'])
+		event_data = {
+			'id': config['id'],
+			'icon': config['icon'],
+			'title': config['title'],
+			'description': config['description'],
+			'event_count': event_count,
+			'volcano_content': load_plot_content(output_dir, f"volcano_{config['code']}.html"),
+			'scatter_content': load_plot_content(output_dir, f"scatter_{config['code']}.html")
+		}
+		splicing_events.append(event_data)
+		
+		# Generate standalone individual HTML file for this event (main file)
+		standalone_individual_html = renderer.render_individual_event_standalone_html(event_data)
+		individual_filename = f"{config['id']}.html"
+		individual_filepath = os.path.join(output_dir, "data", individual_filename)
+		with open(individual_filepath, 'w', encoding='utf-8') as f:
+			f.write(standalone_individual_html)
+		logger.info(f"Generated standalone individual HTML: data/{individual_filename}")
+	
+	# Load splicing summary image
+	splicing_summary_content = load_splicing_summary_image(output_dir)
+	
+	# Get Shiba version
+	shiba_version = get_shiba_version()
+	
+	# Prepare template data for index page
+	template_data = {
+		'shiba_command': shiba_command,
+		'shiba_version': shiba_version,
+		'pca_tpm_content': pca_tpm_content,
+		'pca_psi_content': pca_psi_content,
+		'splicing_summary_content': splicing_summary_content,
+		'splicing_events': splicing_events
+	}
+	
+	# Generate standalone index/overview HTML (main entry point)
+	standalone_index_content = renderer.render_index_standalone_html(template_data)
+	with open(os.path.join(output_dir, "summary.html"), 'w', encoding='utf-8') as f:
+		f.write(standalone_index_content)
+	
+	logger.info("HTML files generated successfully!")
+	logger.info("  - summary.html (main overview page with links to individual event files)")
+	logger.info("  - Individual event files in data/ (data/se.html, data/five.html, etc.) - completely self-contained")
+	logger.info("Note: summary.html requires the data/ directory with individual event files to function properly.")
 	return 0
+
+def load_plot_content(output_dir: str, filename: str) -> str:
+	"""Load plot content from an HTML file for direct embedding."""
+	file_path = os.path.join(output_dir, "data", filename)
+	
+	try:
+		with open(file_path, 'r', encoding='utf-8') as f:
+			content = f.read()
+		
+		# For direct embedding, we need to extract the plot div and script
+		# but keep them as interactive Plotly content
+		import re
+		
+		# Look for the main plot div with plotly-graph-div class
+		div_pattern = r'<div[^>]*class="plotly-graph-div"[^>]*>.*?</div>'
+		div_match = re.search(div_pattern, content, re.DOTALL)
+		
+		# Look for the script that initializes the plot
+		script_pattern = r'<script type="text/javascript">.*?Plotly\.newPlot.*?</script>'
+		script_match = re.search(script_pattern, content, re.DOTALL)
+		
+		if div_match and script_match:
+			# Return the div and script together for direct embedding
+			return f"{div_match.group()}\n{script_match.group()}"
+		
+		# Fallback: try to find any div and script tags
+		div_fallback = re.search(r'<div[^>]*id="[^"]*"[^>]*>.*?</div>', content, re.DOTALL)
+		script_fallback = re.search(r'<script[^>]*>.*?Plotly.*?</script>', content, re.DOTALL)
+		
+		if div_fallback and script_fallback:
+			return f"{div_fallback.group()}\n{script_fallback.group()}"
+		
+		# If regex fails, try a simpler line-by-line approach
+		lines = content.split('\n')
+		plot_lines = []
+		in_body = False
+		
+		for line in lines:
+			# Skip head content, only get body content
+			if '<body>' in line:
+				in_body = True
+				continue
+			if '</body>' in line:
+				break
+			if in_body and line.strip():
+				# Skip doctype, html, head tags
+				if not any(tag in line.lower() for tag in ['<!doctype', '<html', '<head', '</head', '<meta', '<title', '<link']):
+					plot_lines.append(line)
+		
+		if plot_lines:
+			return '\n'.join(plot_lines)
+		
+		# Final fallback: return full content
+		return content
+		
+	except FileNotFoundError:
+		logger.warning(f"Plot file not found: {filename}")
+		return create_empty_plot_content("Plot not available")
+	except Exception as e:
+		logger.warning(f"Error loading plot file {filename}: {e}")
+		return create_empty_plot_content("Plot not available")
+
+def create_empty_plot_content(message: str) -> str:
+	"""Create content for empty/missing plots."""
+	return f'''
+		<div style="display: flex; align-items: center; justify-content: center; height: 100%; 
+		           font-family: Arial, sans-serif; color: #64748b; text-align: center;">
+			<div>
+				<i class="fas fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+				<p style="font-size: 1.1rem; margin: 0;">{html.escape(message)}</p>
+			</div>
+		</div>
+	'''
 
 def load_splicing_summary_table(input_dir: str) -> pd.DataFrame:
 	summary_df = pd.read_csv(os.path.join(input_dir, "splicing", "summary.txt"), sep = "\t")
 	return summary_df
 
-def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
+def barplot_splicing(summary_df: pd.DataFrame, png_path: str, pdf_path: str):
 	
 	g = sns.catplot(
 		data = summary_df,
@@ -826,7 +507,7 @@ def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
 		edgecolor = "black",
 		height = 4, aspect = 0.8,
 	)
-	g.set_axis_labels("# DSEs", "")
+	g.set_axis_labels("# Differentially spliced events", "")
 	g.set_titles(col_template="{col_name}")
 	sns.move_legend(g, "upper right", bbox_to_anchor=(1.05, 0.95), title = "Direction")
 	
@@ -844,7 +525,10 @@ def barplot_splicing(summary_df: pd.DataFrame, fig_path: str):
 			ax.bar_label(c, labels=labels, label_type='edge', padding=2)
 	# Adjust spacing between subplots
 	plt.subplots_adjust(wspace=0.3)  # Increase horizontal spacing between plots
-	plt.savefig(fig_path, dpi = 400, bbox_inches = "tight")
+	
+	# Save both PNG and PDF
+	plt.savefig(png_path, dpi = 400, bbox_inches = "tight")
+	plt.savefig(pdf_path, dpi = 400, bbox_inches = "tight", format = "pdf")
 
 def main():
 
@@ -862,6 +546,17 @@ def main():
 	output_dir = args.output
 	# Make directory
 	os.makedirs(os.path.join(output_dir, "data"), exist_ok=True)
+	
+	# Splicing summary
+	logger.info("Making barplot for splicing summary....")
+	png_dir = os.path.join(output_dir, "png")
+	pdf_dir = os.path.join(output_dir, "pdf")
+	os.makedirs(png_dir, exist_ok=True)
+	os.makedirs(pdf_dir, exist_ok=True)
+	png_path = os.path.join(png_dir, "barplot_splicing_summary.png")
+	pdf_path = os.path.join(pdf_dir, "barplot_splicing_summary.pdf")
+	barplot_splicing(load_splicing_summary_table(input_dir), png_path, pdf_path)
+
 	# Load experiment table
 	logger.info("Loading experiment table....")
 	experiment_table_df = load_experiment_table(args.experiment_table)
@@ -881,13 +576,7 @@ def main():
 		plots(AS, input_dir, output_dir)
 	# Write summary html
 	logger.info("Writing summary html....")
-	write_summary_html(args.shiba_command, output_dir)
-	# Splicing summary
-	logger.info("Making barplot for splicing summary....")
-	png_dir = os.path.join(output_dir, "png")
-	os.makedirs(png_dir, exist_ok=True)
-	fig_path = os.path.join(png_dir, "barplot_splicing_summary.png")
-	barplot_splicing(load_splicing_summary_table(input_dir), fig_path)
+	write_summary_html(args.shiba_command, input_dir, output_dir)
 
 	logger.info("Making plots completed!")
 

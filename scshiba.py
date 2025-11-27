@@ -6,12 +6,13 @@ import sys
 import logging
 import subprocess
 import yaml
+import datetime
 from src.lib import general
 import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.7.1"
+VERSION = "v0.8.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -32,6 +33,9 @@ Step 3: scpsi.py
     return parser.parse_args()
 
 def main():
+
+	# Record start time
+	start_time = datetime.datetime.now()
 
 	# Get arguments
 	args = parse_args()
@@ -142,7 +146,7 @@ def main():
 	logger.info(f"scShiba finished! Results saved in {output_dir}")
 	# Generate report
 	report_name = "scShiba"
-	general.generate_report(report_name, output_dir, VERSION, command_line, experiment_table)
+	general.generate_report(report_name, output_dir, VERSION, command_line, experiment_table, start_time)
 
 if __name__ == "__main__":
     main()

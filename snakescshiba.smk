@@ -1,5 +1,5 @@
 
-VERSION = "v0.7.1"
+VERSION = "v0.8.0"
 
 '''
 SnakeScShiba: A snakemake-based workflow of scShiba
@@ -29,14 +29,14 @@ rule all:
     input:
         event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
         PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
-        report = "report.txt"
+        report = "report.json"
 
 rule generate_report:
     input:
         event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
         PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
     output:
-        report = "report.txt"
+        report = "report.json"
     params:
         workdir = config["workdir"],
         version = VERSION,
@@ -45,7 +45,7 @@ rule generate_report:
     shell:
         """
         export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
-        python -c 'from general import generate_report; import sys; generate_report("SnakeScShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
+        python -c 'from general import generate_report; generate_report("SnakeScShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
         """
 
 rule gtf2event:

@@ -2,6 +2,12 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.8.1] - 2025-12-01
+
+### Fixed
+
+- Fixed an issue in gene expression analysis where `styleframe` was required even when Excel output was disabled in the configuration file. This bug has been resolved to ensure smooth execution without unnecessary dependencies.
+
 ## [v0.8.0] - 2025-11-26
 
 ### Added

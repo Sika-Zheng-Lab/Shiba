@@ -24,13 +24,13 @@ We provide a Docker image for **Shiba**. You can use the following command to pu
 
 ``` bash
 # Pull the latest image
-docker pull naotokubota/shiba:v0.8.0
+docker pull naotokubota/shiba:v0.8.1
 
 # Login to the container
-docker run -it --rm naotokubota/shiba:v0.8.0 bash
+docker run -it --rm naotokubota/shiba:v0.8.1 bash
 
 # Run Shiba, for example, to see the help message
-docker run -it --rm naotokubota/shiba:v0.8.0 shiba.py -h
+docker run -it --rm naotokubota/shiba:v0.8.1 shiba.py -h
 ```
 
 !!! Warning "Memory allocation"

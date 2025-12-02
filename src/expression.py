@@ -107,9 +107,6 @@ def main():
 	logger.info("Starting RNA expression analysis...")
 	logger.debug(args)
 
-	# Import StyleFrame
-	from styleframe import StyleFrame, Styler, utils
-
 	# Prepare output directory
 	prepare_output_dir(args.output)
 
@@ -171,6 +168,8 @@ def main():
 	# Export to Excel
 	if args.excel:
 		logger.info("Exporting results to Excel...")
+		# Import StyleFrame
+		from styleframe import StyleFrame, Styler, utils
 		# StyleFrame
 		style = Styler(
 			horizontal_alignment = utils.horizontal_alignments.left,

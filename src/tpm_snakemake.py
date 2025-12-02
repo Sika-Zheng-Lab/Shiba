@@ -3,7 +3,6 @@ import sys
 import os
 from lib import expression
 import pandas as pd
-from styleframe import StyleFrame, Styler, utils
 import logging
 
 # Configure logging
@@ -138,6 +137,8 @@ def main():
 	# Excel file
 	if args.excel:
 		logger.info("Exporting results to Excel...")
+		# Import StyleFrame
+		from styleframe import StyleFrame, Styler, utils
 		# StyleFrame
 		style = Styler(
 			horizontal_alignment = utils.horizontal_alignments.left,

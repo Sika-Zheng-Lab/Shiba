@@ -1,0 +1,43 @@
+/* Subtle header color change - iPad Air-style soft cool-tone gradient */
+
+/* Apply beautiful cool-tone gradient to header in iPad Air style */
+.md-header {
+  background: linear-gradient(135deg, #cfe2f3 0%, #e1f5fe 30%, #f8fbff 70%, #ffffff 100%) !important;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.08);
+}
+
+/* Apply same iPad Air-style gradient to tab navigation */
+.md-tabs {
+  background: linear-gradient(135deg, rgba(207, 226, 243, 0.9) 0%, rgba(225, 245, 254, 0.9) 30%, rgba(248, 251, 255, 0.9) 70%, rgba(255, 255, 255, 0.9) 100%) !important;
+}
+
+/* Hover effect for slightly interactive feel */
+.md-tabs__link:hover {
+  background: linear-gradient(135deg, rgba(207, 226, 243, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+/* Active link styling */
+.md-nav__link--active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3f9ff 50%, #ffffff 100%);
+  color: #1976d2 !important;
+  border-radius: 6px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1);
+  margin-left: 8px;
+  padding-left: 16px;
+}
+
+/* Left indicator for active links */
+.md-nav__link--active::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: #42a5f5;
+  border-radius: 2px;
+}

@@ -118,12 +118,55 @@ def mtx2pca(df, genes) -> pd.DataFrame:
     - contribution_df (pd.DataFrame): dataframe containing the contribution of each principal component
     '''
 
+    # Drop rows with zero or near-zero variance across samples
+    logger.debug("Number of rows before dropping zero variance rows: {}".format(df.shape[0]))
+    variance_threshold = 1e-10
+    row_variance = df.var(axis=1)
+    logger.debug("Number of rows with zero or near-zero variance: {}".format((row_variance <= variance_threshold).sum()))
+    df = df.loc[row_variance > variance_threshold]
+    logger.debug("Number of rows after dropping zero variance rows: {}".format(df.shape[0]))
+
+    # Check if there are enough rows for PCA
+    n_samples = df.shape[1]
+    min_rows_for_pca = 2  # Minimum number of features required for meaningful PCA
+    if df.shape[0] < min_rows_for_pca:
+        logger.warning("Not enough features for PCA (only {} features remaining). Returning zero-filled DataFrames.".format(df.shape[0]))
+        # Return zero-filled DataFrames with PC1 and PC2
+        feature_df = pd.DataFrame({
+            "PC1": [0.0] * n_samples,
+            "PC2": [0.0] * n_samples
+        }, index=df.columns)
+        contribution_df = pd.DataFrame([0.0, 0.0], index=["PC1", "PC2"])
+        return(feature_df, contribution_df)
+
     # Keep rows of top n highly-variable genes
     if df.shape[0] > genes:
+        logger.debug("Selecting top {} highly-variable genes...".format(genes))
         df = df.loc[df.var(axis=1).sort_values(ascending=False).index[:genes]]
     # Z-score normalization across samples
+    logger.debug("Number of NaN values before normalization: {}".format(df.isnull().sum().sum()))
     normalized_df = df.T.apply(stats.zscore, ddof = 1)
-	# PCA
+    # Handle NaN values after normalization
+    logger.debug("Number of NaN values after normalization: {}".format(normalized_df.isnull().sum().sum()))
+    
+    # Drop columns (features) with NaN after normalization
+    nan_columns = normalized_df.columns[normalized_df.isnull().any()]
+    if len(nan_columns) > 0:
+        logger.warning("Dropping {} features with NaN values after normalization.".format(len(nan_columns)))
+        normalized_df = normalized_df.drop(columns=nan_columns)
+    
+    # Check again if there are enough features after dropping NaN columns
+    if normalized_df.shape[1] < min_rows_for_pca:
+        logger.warning("Not enough features for PCA after dropping NaN columns (only {} features remaining). Returning zero-filled DataFrames.".format(normalized_df.shape[1]))
+        # Return zero-filled DataFrames with PC1 and PC2
+        feature_df = pd.DataFrame({
+            "PC1": [0.0] * n_samples,
+            "PC2": [0.0] * n_samples
+        }, index=df.columns)
+        contribution_df = pd.DataFrame([0.0, 0.0], index=["PC1", "PC2"])
+        return(feature_df, contribution_df)
+
+    # PCA
     pca = PCA()
     pca.fit(normalized_df)
     # Feature

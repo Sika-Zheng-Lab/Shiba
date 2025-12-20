@@ -2,6 +2,12 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.8.2] - 2026-XX-XX
+
+### Fixed
+
+- Fixed an issue in PCA analysis where NaN values could appear after z-score normalization when features have zero variance. This was particularly common when KNN imputation was used for PSI matrices with limited valid values.
+
 ## [v0.8.1] - 2025-12-01
 
 ### Fixed

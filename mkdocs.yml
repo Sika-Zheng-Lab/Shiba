@@ -9,13 +9,6 @@ repo_name: Sika-Zheng-Lab/Shiba
 theme:
   name: material
   palette:
-    # Palette toggle for automatic mode
-    - media: "(prefers-color-scheme)"
-      primary: white
-      accent: white
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to light mode
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default

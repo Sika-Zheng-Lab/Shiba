@@ -30,6 +30,7 @@ def get_args():
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
     parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", action = 'store_true')
     parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", action = 'store_true')
+    parser.add_argument("-b", "--beta-regression", help = "Perform beta regression with Wald test between reference and alternative group", action = 'store_true')
     parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", action = 'store_true')
     parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", action = 'store_true')
     parser.add_argument("--excel", help = "Make result files in excel format", action = 'store_true')
@@ -66,6 +67,7 @@ def main():
         "minimum_reads": args.minimum_reads,
         "individual_psi": args.individual_psi,
         "ttest": args.ttest,
+        "beta_regression": args.beta_regression,
         "onlypsi": args.onlypsi,
         "onlypsi_group": args.onlypsi_group,
         "excel": args.excel,
@@ -116,7 +118,7 @@ def main():
             diff_df = shibalib.diff_event(
                 event_for_analysis_df, psi_table_group_df, junc_dict_all, group_data["group_df"],
                 [params["reference"], params["alternative"]], group_data["sample_list_diff"],
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"]
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"], params["beta_regression"]
             )
 
         # Generate PSI matrices

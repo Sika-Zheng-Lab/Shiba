@@ -278,6 +278,7 @@ rule psi:
         -a {config[alternative_group]} \
         -i {config[individual_psi]} \
         -t {config[ttest]} \
+        -b {config[beta_regression]} \
         --onlypsi False \
         --onlypsi-group False \
         --excel {config[excel]} \

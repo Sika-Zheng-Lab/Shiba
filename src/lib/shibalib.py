@@ -5,6 +5,8 @@ import warnings
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
+from scipy.optimize import minimize
+from scipy.special import gammaln
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
 import logging
@@ -482,10 +484,10 @@ def col_ind(sample_list) -> list:
     - sample_list: a list of sample IDs
 
     Returns:
-    - col: a list of column names for output files, including "event_id" and each sample ID followed by "_PSI"
+    - col: a list of column names for output files, including "event_id", each sample ID followed by "_PSI", and each sample ID followed by "_total_reads"
     """
 
-    col = ["event_id"] + [i + "_PSI" for i in sample_list]
+    col = ["event_id"] + [i + "_PSI" for i in sample_list] + [i + "_total_reads" for i in sample_list]
     return(col)
 
 def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
@@ -516,6 +518,7 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     intron_c_values = event_split_df.intron_c.values
     for index in range(event_split_df.shape[0]):
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             try:
@@ -536,7 +539,9 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(intron_a_count + intron_b_count + intron_c_count)
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def col_mse(sample_id, group_or_not) -> list:
@@ -648,6 +653,7 @@ def mse_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     intron_values = event_split_df.intron.values
     for index in range(event_split_df.shape[0]):
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             intron_list = intron_values[index].split(";")
@@ -667,7 +673,9 @@ def mse_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(sum(intron_count_list))
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def col_five_three_afe_ale(sample_id, group_or_not) -> list:
@@ -775,6 +783,7 @@ def five_three_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     intron_b_values = event_split_df.intron_b.values
     for index in range(event_split_df.shape[0]):
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             try:
@@ -791,7 +800,9 @@ def five_three_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(intron_a_count + intron_b_count)
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> list:
@@ -893,6 +904,7 @@ def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     intron_b_values = event_split_df.intron_b.values
     for index in range(event_split_df.shape[0]):
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             intron_a_list = intron_a_values[index].split(";")
@@ -919,7 +931,9 @@ def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(sum(intron_a_count_list) + sum(intron_b_count_list))
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def col_mxe(sample_id, group_or_not) -> list:
@@ -1039,6 +1053,7 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     intron_b2_values = event_split_df.intron_b2.values
     for index in range(event_split_df.shape[0]):
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             try:
@@ -1063,7 +1078,9 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(intron_a1_count + intron_a2_count + intron_b1_count + intron_b2_count)
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def col_ri(sample_id, group_or_not) -> list:
@@ -1183,6 +1200,7 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         intron_a_start_junc = chr + ":" + str(intron_a_start) + "-" + str(intron_a_start + 1)
         intron_a_end_junc = chr + ":" + str(intron_a_end - 1) + "-" + str(intron_a_end)
         psi_list = [event_values[index]]
+        total_reads_list = []
         for i in sample_id:
             junc_list = junc_dict_all[i]
             try:
@@ -1203,7 +1221,9 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
             else:
                 psi = np.nan
             psi_list += [psi]
-        event_l += [psi_list]
+            # Total reads (sum of all junction reads)
+            total_reads_list.append(intron_a_start_junc_count + intron_a_end_junc_count + intron_a_count)
+        event_l += [psi_list + total_reads_list]
     return(event_l)
 
 def diff_se(df, group_list, FDR, dPSI) -> pd.DataFrame:
@@ -1891,6 +1911,233 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
     output_ind_df["p_ttest"] = p_col
     return(output_ind_df)
 
+def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
+    """
+    Performs beta regression with Likelihood Ratio Test (LRT) on the PSI values
+    of two groups, incorporating total read counts as a precision covariate.
+
+    Full model (4 parameters):
+        Y_i ~ Beta(mu_i * phi_i, (1 - mu_i) * phi_i)
+        logit(mu_i) = beta_0 + beta_1 * group_i
+        log(phi_i) = gamma_0 + gamma_1 * log(n_i)
+
+    Null model (3 parameters, beta_1 = 0):
+        logit(mu_i) = beta_0
+        log(phi_i) = gamma_0 + gamma_1 * log(n_i)
+
+    where n_i is the total junction read count for sample i.
+    The LRT statistic is: Lambda = -2 * (ll_null - ll_full) ~ chi2(df=1)
+
+    Args:
+    - output_ind_df (pd.DataFrame): The dataframe containing PSI values and total read counts for each sample.
+    - group_df (pd.DataFrame): The dataframe containing the group assignments for each sample.
+    - group_list (list): A list of two strings representing the names of the two groups being compared.
+
+    Returns:
+    - pd.DataFrame: The input dataframe with an additional column 'p_beta' containing the p-values.
+    """
+
+    output_ind_df = output_ind_df.reset_index()
+    output_ind_df = output_ind_df.drop(columns = "index")
+    group1 = group_list[0]
+    group2 = group_list[1]
+
+    # Get sample names for each group
+    sample_names_group1 = list(group_df[group_df['group'] == group1]["sample"])
+    sample_names_group2 = list(group_df[group_df['group'] == group2]["sample"])
+
+    # Prepare column name lists
+    psi_cols_group1 = [s + "_PSI" for s in sample_names_group1]
+    psi_cols_group2 = [s + "_PSI" for s in sample_names_group2]
+    total_cols_group1 = [s + "_total_reads" for s in sample_names_group1]
+    total_cols_group2 = [s + "_total_reads" for s in sample_names_group2]
+
+    # Validate columns exist
+    try:
+        for col in psi_cols_group1 + total_cols_group1:
+            _ = output_ind_df[col].values
+    except KeyError:
+        logger.debug(f"Sample names do not match for beta regression.")
+        logger.debug(f"Columns: {output_ind_df.columns}")
+        logger.debug(f"Expected PSI columns: {psi_cols_group1}")
+        logger.debug(f"Expected total_reads columns: {total_cols_group1}")
+        raise ValueError("Error: Sample names do not match for beta regression.")
+
+    # Pre-extract all arrays for efficiency
+    psi_arrays_g1 = [output_ind_df[c].values for c in psi_cols_group1]
+    psi_arrays_g2 = [output_ind_df[c].values for c in psi_cols_group2]
+    total_arrays_g1 = [output_ind_df[c].values for c in total_cols_group1]
+    total_arrays_g2 = [output_ind_df[c].values for c in total_cols_group2]
+
+    p_col = []
+
+    for index in range(output_ind_df.shape[0]):
+        # Collect valid observations (non-NaN PSI and total_reads > 0)
+        y_vals = []
+        x_vals = []
+        n_vals = []
+
+        for j, arr in enumerate(psi_arrays_g1):
+            psi_val = arr[index]
+            total_val = total_arrays_g1[j][index]
+            if psi_val is not None and not np.isnan(psi_val) and total_val is not None and total_val > 0:
+                y_vals.append(psi_val)
+                x_vals.append(0)  # group1 = reference
+                n_vals.append(total_val)
+
+        for j, arr in enumerate(psi_arrays_g2):
+            psi_val = arr[index]
+            total_val = total_arrays_g2[j][index]
+            if psi_val is not None and not np.isnan(psi_val) and total_val is not None and total_val > 0:
+                y_vals.append(psi_val)
+                x_vals.append(1)  # group2 = alternative
+                n_vals.append(total_val)
+
+        y = np.array(y_vals, dtype=np.float64)
+        x = np.array(x_vals, dtype=np.float64)
+        n = np.array(n_vals, dtype=np.float64)
+
+        # Need at least 2 samples per group for meaningful regression
+        n_g1 = int(np.sum(x == 0))
+        n_g2 = int(np.sum(x == 1))
+        if n_g1 < 2 or n_g2 < 2:
+            event_id = output_ind_df['event_id'][index]
+            logger.debug(f"Beta regression skipped for event {event_id}: insufficient valid samples (group1={n_g1}, group2={n_g2}, need >=2 each). PSI values: {y_vals}, total_reads: {n_vals}")
+            p_col.append(np.nan)
+            continue
+
+        # Smithson-Verkuilen transformation: y' = (y * (n_total - 1) + 0.5) / n_total
+        n_total = len(y)
+        y = (y * (n_total - 1) + 0.5) / n_total
+
+        # Log of total reads for precision model
+        log_n = np.log(n)
+
+        # Precompute log(y) and log(1-y) for use in likelihood functions
+        log_y = np.log(y)
+        log_1_y = np.log(1 - y)
+
+        # Full model negative log-likelihood (4 parameters: beta0, beta1, gamma0, gamma1)
+        def neg_ll_full(params):
+            beta0, beta1, gamma0, gamma1 = params
+            eta = beta0 + beta1 * x
+            mu = 1.0 / (1.0 + np.exp(-eta))
+            phi = np.exp(gamma0 + gamma1 * log_n)
+            mu = np.clip(mu, 1e-10, 1 - 1e-10)
+            phi = np.clip(phi, 1e-10, 1e6)
+            a = mu * phi
+            b = (1.0 - mu) * phi
+            ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
+            return -np.sum(ll)
+
+        # Null model negative log-likelihood (3 parameters: beta0, gamma0, gamma1; beta1=0)
+        def neg_ll_null(params):
+            beta0, gamma0, gamma1 = params
+            mu = 1.0 / (1.0 + np.exp(-beta0))
+            phi = np.exp(gamma0 + gamma1 * log_n)
+            mu = np.clip(mu, 1e-10, 1 - 1e-10)
+            phi = np.clip(phi, 1e-10, 1e6)
+            a = mu * phi
+            b = (1.0 - mu) * phi
+            ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
+            return -np.sum(ll)
+
+        # Initial parameter estimates
+        y_mean = np.mean(y)
+        y_mean_clipped = np.clip(y_mean, 0.01, 0.99)
+        beta0_init = np.log(y_mean_clipped / (1 - y_mean_clipped))
+        gamma0_init = np.log(10.0)
+        gamma1_init = 0.0
+
+        # Group-specific means for better beta1 initial value
+        y_g1 = y[x == 0]
+        y_g2 = y[x == 1]
+        m1 = np.clip(np.mean(y_g1), 0.01, 0.99)
+        m2 = np.clip(np.mean(y_g2), 0.01, 0.99)
+        beta1_init = np.log(m2 / (1 - m2)) - np.log(m1 / (1 - m1))
+
+        try:
+            # Fit null model (beta1 = 0)
+            result_null = minimize(
+                neg_ll_null,
+                np.array([beta0_init, gamma0_init, gamma1_init]),
+                method='L-BFGS-B',
+                options={'maxiter': 1000, 'ftol': 1e-12}
+            )
+
+            if not result_null.success:
+                # Retry null model with Nelder-Mead
+                result_null = minimize(
+                    neg_ll_null,
+                    np.array([beta0_init, gamma0_init, gamma1_init]),
+                    method='Nelder-Mead',
+                    options={'maxiter': 5000, 'xatol': 1e-10, 'fatol': 1e-10}
+                )
+
+            if not np.isfinite(result_null.fun):
+                event_id = output_ind_df['event_id'][index]
+                logger.debug(
+                    f"Beta regression failed for event {event_id}: null model nll is not finite ({result_null.fun}). "
+                    f"PSI values: {y_vals}, total_reads: {list(n)}")
+                p_col.append(np.nan)
+                continue
+
+            # Fit full model (with beta1)
+            # Use null model estimates as starting point for shared parameters
+            full_init = np.array([result_null.x[0], beta1_init, result_null.x[1], result_null.x[2]])
+            result_full = minimize(
+                neg_ll_full,
+                full_init,
+                method='L-BFGS-B',
+                options={'maxiter': 1000, 'ftol': 1e-12}
+            )
+
+            # If L-BFGS-B failed, retry with Nelder-Mead (gradient-free, more robust)
+            if not result_full.success or not np.isfinite(result_full.fun):
+                result_full_nm = minimize(
+                    neg_ll_full,
+                    full_init,
+                    method='Nelder-Mead',
+                    options={'maxiter': 5000, 'xatol': 1e-10, 'fatol': 1e-10}
+                )
+                # Keep whichever result has lower nll
+                if np.isfinite(result_full_nm.fun) and (
+                    not np.isfinite(result_full.fun) or result_full_nm.fun < result_full.fun
+                ):
+                    result_full = result_full_nm
+
+            # Validate: full model nll must be finite
+            if not np.isfinite(result_full.fun):
+                event_id = output_ind_df['event_id'][index]
+                logger.debug(
+                    f"Beta regression failed for event {event_id}: full model nll is not finite ({result_full.fun}). "
+                    f"PSI values: {y_vals}, total_reads: {list(n)}")
+                p_col.append(np.nan)
+                continue
+
+            # Likelihood Ratio Test: Lambda = -2 * (ll_null - ll_full) = 2 * (nll_null - nll_full)
+            lr_stat = 2 * (result_null.fun - result_full.fun)
+
+            # Guard against numerical noise producing negative LR statistic
+            if lr_stat < 0:
+                lr_stat = 0.0
+
+            # p-value from chi-squared distribution with df=1
+            p_value = stats.chi2.sf(lr_stat, df=1)
+
+            # Clamp to smallest representable float if p-value underflows to 0
+            if p_value == 0:
+                p_value = np.finfo(float).tiny  # ~2.2e-308
+            p_col.append(p_value)
+
+        except Exception as e:
+            event_id = output_ind_df['event_id'][index]
+            logger.debug(f"Beta regression exception for event {event_id}: {type(e).__name__}: {e}. PSI values: {y_vals}, total_reads: {list(n)}")
+            p_col.append(np.nan)
+
+    output_ind_df["p_beta"] = p_col
+    return(output_ind_df)
+
 def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads) -> pd.DataFrame:
     """
     Make PSI table for each sample.
@@ -1951,7 +2198,7 @@ def make_psi_table_group(group_list, event_for_analysis_df, junc_dict_group, fun
 	)
     return(psi_table_df)
 
-def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool) -> pd.DataFrame:
+def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, beta_regression_bool=False) -> pd.DataFrame:
     """
     Differential splicing analysis for each splicing event.
 
@@ -1968,7 +2215,8 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
     - FDR (float): False discovery rate.
     - dPSI (float): Minimum delta PSI.
     - individual_psi (bool): Whether to perform individual PSI analysis.
-    - ttest (bool): Whether to perform t-test.
+    - ttest_bool (bool): Whether to perform t-test.
+    - beta_regression_bool (bool): Whether to perform beta regression with Wald test.
 
     Returns:
     - pd.DataFrame: DataFrame containing the differential splicing analysis results for each splicing event.
@@ -1991,6 +2239,11 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
             )
             if ttest_bool:
                 output_ind_df = ttest(output_ind_df, group_df, group_list)
+            if beta_regression_bool:
+                output_ind_df = beta_regression(output_ind_df, group_df, group_list)
+            # Drop total_reads columns before merging (internal use only)
+            total_reads_cols = [c for c in output_ind_df.columns if c.endswith("_total_reads")]
+            output_ind_df = output_ind_df.drop(columns = total_reads_cols)
             output_df = pd.merge(
                 output_df,
                 output_ind_df,

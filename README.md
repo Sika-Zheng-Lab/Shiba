@@ -37,7 +37,7 @@ Shiba comprises four main steps:
 ```bash
 conda create -n shiba -c conda-forge -c bioconda shiba
 conda activate shiba
-pip install styleframe==4.1 # optional, for generating outputs in Excel format.
+pip install styleframe==4.2 # optional, for generating outputs in Excel format.
 ```
 
 If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.

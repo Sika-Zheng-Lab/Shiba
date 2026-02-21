@@ -2067,7 +2067,6 @@ def save_excel(output_path, SE_df, FIVE_df, THREE_df, MXE_df, RI_df, MSE_df, AFE
     # Style
     style = Styler(
         horizontal_alignment = utils.horizontal_alignments.left,
-        border_type = utils.borders.default_grid,
         wrap_text = False
     )
     with StyleFrame.ExcelWriter(output_path + "/results.xlsx") as writer:
@@ -2154,7 +2153,6 @@ def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df,
     # Style
     style = Styler(
         horizontal_alignment = utils.horizontal_alignments.left,
-        border_type = utils.borders.default_grid,
         wrap_text = False
     )
     with StyleFrame.ExcelWriter(output_path + "/results.xlsx") as writer:

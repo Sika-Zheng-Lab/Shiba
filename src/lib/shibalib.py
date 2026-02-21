@@ -2249,6 +2249,13 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
                 output_ind_df,
                 on = "event_id"
             )
+        if beta_regression_bool and "p_beta" in output_df.columns:
+            valid_mask = output_df["p_beta"].notna()
+            output_df["q_beta"] = np.nan
+            if valid_mask.any():
+                output_df.loc[valid_mask, "q_beta"] = multitest.multipletests(
+                    output_df.loc[valid_mask, "p_beta"], method="fdr_bh"
+                )[1]
         if "q" in output_df.columns:
             output_df = output_df.sort_values(["Diff events", "q"], ascending = [False, True])
     return(output_df)

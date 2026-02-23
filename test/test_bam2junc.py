@@ -14,11 +14,16 @@ import pandas as pd
 
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
-import bam2junc
+try:
+    import bam2junc
+    HAS_BAM2JUNC = True
+except ImportError:
+    HAS_BAM2JUNC = False
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
+@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
 class TestPrepareOutputDir(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -35,6 +40,7 @@ class TestPrepareOutputDir(unittest.TestCase):
         self.assertEqual(os.path.basename(tmp_dir), "tmp")
 
 
+@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
 class TestCreateSafFile(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -69,6 +75,7 @@ class TestCreateSafFile(unittest.TestCase):
         self.assertIn("chr1:15199-15200", gene_ids)
 
 
+@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
 class TestMergeJunctionFiles(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()

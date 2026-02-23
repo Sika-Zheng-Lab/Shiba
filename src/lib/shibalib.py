@@ -27,7 +27,7 @@ def read_events(event_path) -> dict:
         event_df_dict[event] = pd.read_csv(
             f"{event_path}/EVENT_{event}.txt",
             sep="\t",
-            dtype="str"
+            dtype=object
         )
     return event_df_dict
 
@@ -48,7 +48,7 @@ def read_events_sc(event_path) -> dict:
         event_df_dict[event] = pd.read_csv(
             f"{event_path}/EVENT_{event}.txt",
             sep="\t",
-            dtype="str"
+            dtype=object
         )
     return event_df_dict
 
@@ -66,7 +66,7 @@ def read_junctions(junction_path) -> pd.DataFrame:
     junc_df = pd.read_csv(
         junction_path,
         sep = "\t",
-        dtype = "str"
+        dtype = object
     )
     # Change dtype of junction read counts
     junc_df.iloc[:, 4:] = junc_df.iloc[:, 4:].astype(int)
@@ -86,7 +86,7 @@ def read_group(group_path) -> pd.DataFrame:
     group_df = pd.read_csv(
         group_path,
         sep = "\t",
-        dtype = "str",
+        dtype = object,
         usecols = ["sample", "group"]
     )
     return(group_df)

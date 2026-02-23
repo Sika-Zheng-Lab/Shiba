@@ -15,11 +15,16 @@ import pandas as pd
 
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
-import sc2junc
+try:
+    import sc2junc
+    HAS_SC2JUNC = True
+except ImportError:
+    HAS_SC2JUNC = False
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestLoadExperimentTable(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -40,6 +45,7 @@ class TestLoadExperimentTable(unittest.TestCase):
         self.assertIn("barcode", result.columns)
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestMakeSjpathList(unittest.TestCase):
     def test_make_sjpath_list(self):
         df = pd.DataFrame({"SJ": ["/path/sj1", "/path/sj2"]})
@@ -47,6 +53,7 @@ class TestMakeSjpathList(unittest.TestCase):
         self.assertEqual(result, ["/path/sj1", "/path/sj2"])
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestMakeGrouppathList(unittest.TestCase):
     def test_make_grouppath_list(self):
         df = pd.DataFrame({"barcode": ["/path/b1.tsv", "/path/b2.tsv"]})
@@ -54,6 +61,7 @@ class TestMakeGrouppathList(unittest.TestCase):
         self.assertEqual(result, ["/path/b1.tsv", "/path/b2.tsv"])
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestLoadGroup(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -78,6 +86,7 @@ class TestLoadGroup(unittest.TestCase):
         self.assertEqual(len(result), 3)  # 4 rows but 1 duplicate
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestMakeSampleGroupDict(unittest.TestCase):
     def test_make_sample_group_dict(self):
         df = pd.DataFrame({
@@ -91,6 +100,7 @@ class TestMakeSampleGroupDict(unittest.TestCase):
         self.assertEqual(len(result["groupB"]), 1)
 
 
+@unittest.skipUnless(HAS_SC2JUNC, "scanpy not installed")
 class TestFormattingOutput(unittest.TestCase):
     def test_formatting_output(self):
         df = pd.DataFrame({

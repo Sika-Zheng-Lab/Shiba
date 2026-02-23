@@ -2,8 +2,8 @@ import unittest
 import pandas as pd
 import os
 import sys
-# Add parent directory to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+# Add src directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
 from lib.expression import ExpressionProcessor
 
 class TestExpressionProcessor(unittest.TestCase):

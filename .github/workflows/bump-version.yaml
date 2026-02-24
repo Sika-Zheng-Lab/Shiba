@@ -1,0 +1,69 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version (e.g., v0.9.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: '$VERSION'. Must match vX.Y.Z (e.g., v0.9.0)"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Update VERSION file
+        run: echo "$VERSION" > VERSION
+
+      - name: Update version strings in files
+        run: |
+          SED_PATTERN="s/v[0-9]*\.[0-9]*\.[0-9]*/${VERSION}/g"
+
+          # README.md
+          sed -i "$SED_PATTERN" README.md
+
+          # Dockerfile
+          sed -i "$SED_PATTERN" docker/Dockerfile
+
+          # Documentation
+          sed -i "$SED_PATTERN" docs/usage/shiba.md
+          sed -i "$SED_PATTERN" docs/usage/scshiba.md
+          sed -i "$SED_PATTERN" docs/quickstart/diff_splicing_bulk.md
+          sed -i "$SED_PATTERN" docs/quickstart/diff_splicing_sc.md
+          sed -i "$SED_PATTERN" docs/installation.md
+
+          # Example config files
+          sed -i "$SED_PATTERN" example/Shiba_SnakeShiba_config_example.yaml
+          sed -i "$SED_PATTERN" example/scShiba_SnakeScShiba_config_example.yaml
+
+          # Issue templates
+          sed -i "$SED_PATTERN" .github/ISSUE_TEMPLATE/feature_request.yaml
+          sed -i "$SED_PATTERN" .github/ISSUE_TEMPLATE/question.yaml
+          sed -i "$SED_PATTERN" .github/ISSUE_TEMPLATE/bug_report.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "bump: ${VERSION}"
+          git push origin develop

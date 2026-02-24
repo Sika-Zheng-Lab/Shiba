@@ -11,6 +11,8 @@ test/*.snakemake
 __pycache__
 .DS_Store
 .cache
+.coverage
+coverage.xml
 src/demo_output
 src/*md
 src/*demo*

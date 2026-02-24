@@ -27,7 +27,7 @@ def read_events(event_path) -> dict:
         event_df_dict[event] = pd.read_csv(
             f"{event_path}/EVENT_{event}.txt",
             sep="\t",
-            dtype="str"
+            dtype=object
         )
     return event_df_dict
 
@@ -48,7 +48,7 @@ def read_events_sc(event_path) -> dict:
         event_df_dict[event] = pd.read_csv(
             f"{event_path}/EVENT_{event}.txt",
             sep="\t",
-            dtype="str"
+            dtype=object
         )
     return event_df_dict
 
@@ -66,7 +66,7 @@ def read_junctions(junction_path) -> pd.DataFrame:
     junc_df = pd.read_csv(
         junction_path,
         sep = "\t",
-        dtype = "str"
+        dtype = object
     )
     # Change dtype of junction read counts
     junc_df.iloc[:, 4:] = junc_df.iloc[:, 4:].astype(int)
@@ -86,7 +86,7 @@ def read_group(group_path) -> pd.DataFrame:
     group_df = pd.read_csv(
         group_path,
         sep = "\t",
-        dtype = "str",
+        dtype = object,
         usecols = ["sample", "group"]
     )
     return(group_df)
@@ -2067,7 +2067,6 @@ def save_excel(output_path, SE_df, FIVE_df, THREE_df, MXE_df, RI_df, MSE_df, AFE
     # Style
     style = Styler(
         horizontal_alignment = utils.horizontal_alignments.left,
-        border_type = utils.borders.default_grid,
         wrap_text = False
     )
     with StyleFrame.ExcelWriter(output_path + "/results.xlsx") as writer:
@@ -2154,7 +2153,6 @@ def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df,
     # Style
     style = Styler(
         horizontal_alignment = utils.horizontal_alignments.left,
-        border_type = utils.borders.default_grid,
         wrap_text = False
     )
     with StyleFrame.ExcelWriter(output_path + "/results.xlsx") as writer:

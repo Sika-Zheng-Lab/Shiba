@@ -1,5 +1,8 @@
 
-VERSION = "v0.8.1"
+import os
+_version_path = os.path.join(os.path.dirname(workflow.snakefile), "VERSION")
+with open(_version_path, "r") as _vf:
+    VERSION = _vf.read().strip()
 
 '''
 SnakeScShiba: A snakemake-based workflow of scShiba
@@ -16,6 +19,17 @@ args = sys.argv
 workdir: config["workdir"]
 container: config["container"]
 base_dir = os.path.dirname(workflow.snakefile)
+
+# Validate configuration before pipeline execution
+sys.path.insert(0, os.path.join(base_dir, "src", "lib"))
+from general import validate_config
+_validation_errors = validate_config(config, mode="sc")
+if _validation_errors:
+    for _err in _validation_errors:
+        print(f"ERROR: Configuration error: {_err}", file=sys.stderr)
+    print(f"ERROR: {len(_validation_errors)} configuration error(s) found. Aborting.", file=sys.stderr)
+    sys.exit(1)
+
 command = " ".join(args)
 # Replace snakefile path with the absolute path
 command = command.replace(workflow.snakefile, os.path.join(base_dir, workflow.snakefile))

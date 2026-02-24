@@ -137,3 +137,310 @@ def check_groupsize(experiment_table):
         for group, size in groups.items():
             logger.debug(f'Group "{group}" has {size} samples')
     return len(groups.keys())
+
+# ==============================================================================
+# Configuration validation functions
+# ==============================================================================
+
+def validate_file_exists(path, label):
+    """
+    Validates that a file exists at the given path.
+
+    Parameters:
+    path (str): The file path to check.
+    label (str): A human-readable label for error messages (e.g. "GTF file").
+
+    Returns:
+    list: A list of error message strings (empty if the file exists).
+    """
+    errors = []
+    if not os.path.isfile(path):
+        errors.append(f'{label} not found: {path}')
+    return errors
+
+def validate_experiment_table_columns(experiment_table, required_columns):
+    """
+    Validates that the experiment table contains the required columns.
+
+    Parameters:
+    experiment_table (str): Path to the experiment table TSV file.
+    required_columns (list): List of required column names.
+
+    Returns:
+    list: A list of error message strings (empty if all columns are present).
+    """
+    errors = []
+    try:
+        with open(experiment_table, "r") as f:
+            header_line = f.readline().strip()
+            if not header_line:
+                errors.append(f'Experiment table is empty: {experiment_table}')
+                return errors
+            columns = header_line.split("\t")
+            missing = [col for col in required_columns if col not in columns]
+            if missing:
+                errors.append(
+                    f'Experiment table {experiment_table} is missing required column(s): {", ".join(missing)}. '
+                    f'Found columns: {", ".join(columns)}'
+                )
+    except FileNotFoundError:
+        errors.append(f'Experiment table not found: {experiment_table}')
+    return errors
+
+def validate_groups_bulk(experiment_table, reference_group, alternative_group):
+    """
+    Validates that reference_group and alternative_group exist in the 'group'
+    column of a bulk experiment table, and that they are not identical.
+
+    Parameters:
+    experiment_table (str): Path to the bulk experiment table TSV file.
+    reference_group (str): The reference group name from config.
+    alternative_group (str): The alternative group name from config.
+
+    Returns:
+    list: A list of error message strings (empty if valid).
+    """
+    errors = []
+    # Check reference != alternative
+    if reference_group == alternative_group:
+        errors.append(
+            f'reference_group and alternative_group must be different, '
+            f'but both are "{reference_group}"'
+        )
+    # Read groups from experiment table
+    try:
+        available_groups = set()
+        with open(experiment_table, "r") as f:
+            for i, line in enumerate(f):
+                if i == 0:
+                    continue
+                columns = line.strip().split("\t")
+                if len(columns) >= 3:
+                    available_groups.add(columns[2])
+        if reference_group not in available_groups:
+            errors.append(
+                f'reference_group "{reference_group}" not found in experiment table group column. '
+                f'Available groups: {", ".join(sorted(available_groups))}'
+            )
+        if alternative_group not in available_groups:
+            errors.append(
+                f'alternative_group "{alternative_group}" not found in experiment table group column. '
+                f'Available groups: {", ".join(sorted(available_groups))}'
+            )
+    except FileNotFoundError:
+        errors.append(f'Experiment table not found: {experiment_table}')
+    return errors
+
+def validate_groups_sc(experiment_table, reference_group, alternative_group):
+    """
+    Validates that reference_group and alternative_group exist in the 'group'
+    column of the barcode TSV files referenced by the scShiba experiment table,
+    and that they are not identical.
+
+    Parameters:
+    experiment_table (str): Path to the scShiba experiment table TSV file.
+    reference_group (str): The reference group name from config.
+    alternative_group (str): The alternative group name from config.
+
+    Returns:
+    list: A list of error message strings (empty if valid).
+    """
+    errors = []
+    # Check reference != alternative
+    if reference_group == alternative_group:
+        errors.append(
+            f'reference_group and alternative_group must be different, '
+            f'but both are "{reference_group}"'
+        )
+    # Read barcode file paths from experiment table
+    try:
+        barcode_files = []
+        with open(experiment_table, "r") as f:
+            for i, line in enumerate(f):
+                if i == 0:
+                    continue
+                columns = line.strip().split("\t")
+                if len(columns) >= 1 and columns[0]:
+                    barcode_files.append(columns[0])
+        # Read groups from each barcode file
+        available_groups = set()
+        for barcode_file in barcode_files:
+            if not os.path.isfile(barcode_file):
+                errors.append(f'Barcode file not found: {barcode_file}')
+                continue
+            with open(barcode_file, "r") as f:
+                for j, line in enumerate(f):
+                    if j == 0:
+                        continue
+                    columns = line.strip().split("\t")
+                    if len(columns) >= 2:
+                        available_groups.add(columns[1])
+        if available_groups:
+            if reference_group not in available_groups:
+                errors.append(
+                    f'reference_group "{reference_group}" not found in barcode file group column. '
+                    f'Available groups: {", ".join(sorted(available_groups))}'
+                )
+            if alternative_group not in available_groups:
+                errors.append(
+                    f'alternative_group "{alternative_group}" not found in barcode file group column. '
+                    f'Available groups: {", ".join(sorted(available_groups))}'
+                )
+    except FileNotFoundError:
+        errors.append(f'Experiment table not found: {experiment_table}')
+    return errors
+
+def validate_config_types(config, mode="bulk"):
+    """
+    Validates config parameter types and value ranges.
+
+    Parameters:
+    config (dict): The loaded configuration dictionary.
+    mode (str): "bulk" for Shiba/SnakeShiba, "sc" for scShiba/SnakeScShiba.
+
+    Returns:
+    list: A list of error message strings (empty if all valid).
+    """
+    errors = []
+
+    # fdr: float, 0 < fdr <= 1
+    if 'fdr' in config:
+        try:
+            fdr = float(config['fdr'])
+            if not (0 < fdr <= 1):
+                errors.append(f'fdr must be between 0 (exclusive) and 1 (inclusive), got {config["fdr"]}')
+        except (TypeError, ValueError):
+            errors.append(f'fdr must be a number, got "{config["fdr"]}"')
+
+    # delta_psi: float, 0 <= delta_psi <= 1
+    if 'delta_psi' in config:
+        try:
+            delta_psi = float(config['delta_psi'])
+            if not (0 <= delta_psi <= 1):
+                errors.append(f'delta_psi must be between 0 and 1, got {config["delta_psi"]}')
+        except (TypeError, ValueError):
+            errors.append(f'delta_psi must be a number, got "{config["delta_psi"]}"')
+
+    # minimum_reads: int, > 0
+    if 'minimum_reads' in config:
+        try:
+            minimum_reads = int(config['minimum_reads'])
+            if minimum_reads <= 0:
+                errors.append(f'minimum_reads must be a positive integer, got {config["minimum_reads"]}')
+        except (TypeError, ValueError):
+            errors.append(f'minimum_reads must be an integer, got "{config["minimum_reads"]}"')
+
+    # Bulk-specific validations
+    if mode == "bulk":
+        # minimum_anchor_length: int, > 0
+        if 'minimum_anchor_length' in config:
+            try:
+                val = int(config['minimum_anchor_length'])
+                if val <= 0:
+                    errors.append(f'minimum_anchor_length must be a positive integer, got {config["minimum_anchor_length"]}')
+            except (TypeError, ValueError):
+                errors.append(f'minimum_anchor_length must be an integer, got "{config["minimum_anchor_length"]}"')
+
+        # minimum_intron_length: int, > 0
+        if 'minimum_intron_length' in config:
+            try:
+                val = int(config['minimum_intron_length'])
+                if val <= 0:
+                    errors.append(f'minimum_intron_length must be a positive integer, got {config["minimum_intron_length"]}')
+            except (TypeError, ValueError):
+                errors.append(f'minimum_intron_length must be an integer, got "{config["minimum_intron_length"]}"')
+
+        # maximum_intron_length: int, > 0 and > minimum_intron_length
+        if 'maximum_intron_length' in config:
+            try:
+                max_val = int(config['maximum_intron_length'])
+                if max_val <= 0:
+                    errors.append(f'maximum_intron_length must be a positive integer, got {config["maximum_intron_length"]}')
+                elif 'minimum_intron_length' in config:
+                    try:
+                        min_val = int(config['minimum_intron_length'])
+                        if max_val <= min_val:
+                            errors.append(
+                                f'maximum_intron_length ({max_val}) must be greater than '
+                                f'minimum_intron_length ({min_val})'
+                            )
+                    except (TypeError, ValueError):
+                        pass  # Already reported above
+            except (TypeError, ValueError):
+                errors.append(f'maximum_intron_length must be an integer, got "{config["maximum_intron_length"]}"')
+
+        # strand: one of XS, 0, 1, 2
+        if 'strand' in config:
+            valid_strands = {"XS", "0", "1", "2"}
+            if str(config['strand']) not in valid_strands:
+                errors.append(
+                    f'strand must be one of {", ".join(sorted(valid_strands))}, '
+                    f'got "{config["strand"]}"'
+                )
+
+    return errors
+
+def validate_config(config, mode="bulk"):
+    """
+    Runs all configuration validations and returns collected errors.
+    This is intended to be called after check_config() and basic setup,
+    but before pipeline steps begin.
+
+    Parameters:
+    config (dict): The loaded configuration dictionary.
+    mode (str): "bulk" for Shiba/SnakeShiba, "sc" for scShiba/SnakeScShiba.
+
+    Returns:
+    list: A list of all error message strings (empty if everything is valid).
+    """
+    errors = []
+
+    # 1. Validate that essential files exist
+    if config.get('gtf'):
+        errors.extend(validate_file_exists(config['gtf'], 'GTF file'))
+    if config.get('experiment_table'):
+        errors.extend(validate_file_exists(config['experiment_table'], 'Experiment table'))
+
+    # 2. Validate experiment table columns
+    if config.get('experiment_table') and os.path.isfile(config['experiment_table']):
+        if mode == "bulk":
+            errors.extend(
+                validate_experiment_table_columns(
+                    config['experiment_table'], ["sample", "bam", "group"]
+                )
+            )
+        elif mode == "sc":
+            errors.extend(
+                validate_experiment_table_columns(
+                    config['experiment_table'], ["barcode", "SJ"]
+                )
+            )
+
+    # 3. Validate reference_group and alternative_group
+    only_psi = config.get('only_psi', False)
+    only_psi_group = config.get('only_psi_group', False)
+    ref_group = config.get('reference_group')
+    alt_group = config.get('alternative_group')
+
+    if not (only_psi and only_psi_group):
+        # Check that reference_group and alternative_group are specified in config
+        if not ref_group:
+            errors.append('reference_group is not specified in configuration file')
+        if not alt_group:
+            errors.append('alternative_group is not specified in configuration file')
+
+        # Validate group names against experiment table
+        if ref_group and alt_group and config.get('experiment_table') and os.path.isfile(config['experiment_table']):
+            if mode == "bulk":
+                errors.extend(
+                    validate_groups_bulk(config['experiment_table'], ref_group, alt_group)
+                )
+            elif mode == "sc":
+                errors.extend(
+                    validate_groups_sc(config['experiment_table'], ref_group, alt_group)
+                )
+
+    # 4. Validate config parameter types and ranges
+    errors.extend(validate_config_types(config, mode=mode))
+
+    return errors

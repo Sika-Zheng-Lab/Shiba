@@ -1,5 +1,5 @@
 ###############################################################
-# Dockerfile to build container images for Shiba (v0.8.1)
+# Dockerfile to build container images for Shiba (v0.8.2)
 # Based on continuumio/miniconda3:23.10.0-1
 ################################################################
 
@@ -29,14 +29,14 @@ RUN mamba install -c conda-forge -c bioconda r-base==4.1.3 bioconductor-deseq2=1
 
 # Install python packages
 RUN pip install --upgrade pip && \
-    pip install styleframe==4.1
+    pip install styleframe==4.2
 
 # Install shiba2sashimi
 RUN pip install shiba2sashimi
 
 # Install Shiba repository
 RUN cd /opt && \
-	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.8.1 && \
+	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.8.2 && \
 	ln -sf /opt/Shiba/shiba.py /opt/conda/bin/shiba.py && \
 	ln -sf /opt/Shiba/scshiba.py /opt/conda/bin/scshiba.py
 

@@ -1,0 +1,5 @@
+sample	bam	group
+Ref_1	/path/to/Ref_1.bam	Ref
+Ref_2	/path/to/Ref_2.bam	Ref
+Alt_1	/path/to/Alt_1.bam	Alt
+Alt_2	/path/to/Alt_2.bam	Alt

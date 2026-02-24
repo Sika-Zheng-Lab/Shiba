@@ -20,7 +20,7 @@ conda create -n shiba -c conda-forge -c bioconda shiba
 # Activate the conda environment
 conda activate shiba
 # Install styleframe for generating outputs in Excel format (optional)
-pip install styleframe==4.1
+pip install styleframe==4.2
 ```
 
 - **MameShiba**, a lightweight version of **Shiba**:
@@ -186,7 +186,7 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.8.1 # (2)!
+  docker://naotokubota/shiba:v0.8.2 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:

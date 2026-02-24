@@ -1,0 +1,4 @@
+event_id	pos_id	exon	intron_a	intron_b	intron_c	strand	gene_id	gene_name	label
+SE_1	SE@chr10@1000-1200@800-1500	chr10:1000-1200	chr10:800-1000	chr10:1200-1500	chr10:800-1500	+	ENSMUSG00000000001	Gnai3	annotated
+SE_2	SE@chr10@3000-3200@2800-3500	chr10:3000-3200	chr10:2800-3000	chr10:3200-3500	chr10:2800-3500	+	ENSMUSG00000000028	Cdc45	unannotated
+SE_3	SE@chr10@5000-5200@4800-5500	chr10:5000-5200	chr10:4800-5000	chr10:5200-5500	chr10:4800-5500	-	ENSMUSG00000000056	Narf	annotated

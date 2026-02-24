@@ -2,6 +2,24 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.8.2] - 2026-02-23
+
+### Fixed
+
+- Fixed an issue in PCA analysis where NaN values could appear after z-score normalization when features have zero variance. This was particularly common when KNN imputation was used for PSI matrices with limited valid values.
+- Fixed compatibility with `styleframe==4.2` for Excel output generation ([#84](https://github.com/Sika-Zheng-Lab/Shiba/issues/84)).
+
+### Added
+
+- Added comprehensive unit tests (176 tests) covering core library functions, PSI calculations, event detection, PCA, plotting, and configuration validation.
+- Added GitHub Actions workflow for automated testing with code coverage reporting via Codecov.
+- Added `workflow_dispatch`-based version bump workflow to replace manual `VERSION` file editing.
+
+### Changed
+
+- Python entry points (`shiba.py`, `scshiba.py`) and Snakemake workflows now read version dynamically from the `VERSION` file instead of hardcoding it.
+- Modernized GitHub Actions workflows: updated to latest action versions and replaced deprecated `::set-output` syntax.
+
 ## [v0.8.1] - 2025-12-01
 
 ### Fixed

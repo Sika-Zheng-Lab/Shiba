@@ -1,0 +1,3 @@
+event_id	pos_id	exon_a	exon_b	intron_a	intron_b	strand	gene_id	gene_name	label
+ALE_1	ALE@chr10@16000-16500@16000-16900	chr10:16500-16700	chr10:16900-17100	chr10:16000-16500	chr10:16000-16900	+	ENSMUSG00000036676	Tmtc3	annotated
+ALE_2	ALE@chr10@17000-17500@17000-17900	chr10:17500-17700	chr10:17900-18100	chr10:17000-17500	chr10:17000-17900	-	ENSMUSG00000050994	Adgb	unannotated

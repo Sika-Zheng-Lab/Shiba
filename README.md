@@ -3,6 +3,8 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Sika-Zheng-Lab/Shiba?style=flat)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![GitHub Release Date](https://img.shields.io/github/release-date/Sika-Zheng-Lab/Shiba)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![Create Release and Build Docker Image](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml)
+[![Tests](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/test.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/Sika-Zheng-Lab/Shiba/branch/develop/graph/badge.svg?token=GCBM8OWSLY)](https://codecov.io/gh/Sika-Zheng-Lab/Shiba)
 [![Conda](https://img.shields.io/conda/v/bioconda/shiba?color=3EB049)](https://anaconda.org/bioconda/shiba)
 [![Conda - Shiba - Downloads](https://img.shields.io/conda/dn/bioconda/shiba?label=Conda%20-%20Shiba%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/shiba)
 [![Conda - MameShiba - Downloads](https://img.shields.io/conda/dn/bioconda/mameshiba?label=Conda%20-%20MameShiba%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/mameshiba)
@@ -11,7 +13,7 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
 
-# Shiba (v0.8.1) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
+# Shiba (v0.8.2) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
@@ -37,7 +39,7 @@ Shiba comprises four main steps:
 ```bash
 conda create -n shiba -c conda-forge -c bioconda shiba
 conda activate shiba
-pip install styleframe==4.1 # optional, for generating outputs in Excel format.
+pip install styleframe==4.2 # optional, for generating outputs in Excel format.
 ```
 
 If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
@@ -49,7 +51,7 @@ conda create -n mameshiba -c conda-forge -c bioconda mameshiba
 ### Docker
 
 ```bash
-docker pull naotokubota/shiba:v0.8.1
+docker pull naotokubota/shiba:v0.8.2
 ```
 
 ## Usage

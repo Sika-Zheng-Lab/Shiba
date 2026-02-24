@@ -1,0 +1,6 @@
+[run]
+source = src
+relative_files = true
+
+[xml]
+output = coverage.xml

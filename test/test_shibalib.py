@@ -240,7 +240,7 @@ class TestColSE(unittest.TestCase):
 class TestColInd(unittest.TestCase):
     def test_col_ind(self):
         cols = shibalib.col_ind(["s1", "s2"])
-        self.assertEqual(cols, ["event_id", "s1_PSI", "s2_PSI"])
+        self.assertEqual(cols, ["event_id", "s1_PSI", "s2_PSI", "s1_total_reads", "s2_total_reads"])
 
 
 class TestColMSE(unittest.TestCase):
@@ -761,6 +761,189 @@ class TestTtest(unittest.TestCase):
         })
         result = shibalib.ttest(output_ind_df, group_df, ["ctrl", "treat"])
         self.assertIn("p_ttest", result.columns)
+
+
+# ============================================================================
+# Beta Regression
+# ============================================================================
+class TestBetaRegression(unittest.TestCase):
+    """Tests for beta_regression() — Beta regression with LRT."""
+
+    def setUp(self):
+        self.group_df = pd.DataFrame({
+            "sample": ["s1", "s2", "s3", "s4"],
+            "group": ["ctrl", "ctrl", "treat", "treat"]
+        })
+        self.group_list = ["ctrl", "treat"]
+
+    def _make_ind_df(self, psi_g1, psi_g2, total_g1, total_g2, event_ids=None):
+        """Build output_ind_df with _PSI and _total_reads columns.
+
+        Args:
+            psi_g1: list of lists, one per sample in group1 (e.g. [[0.9, 0.5], [0.85, 0.55]])
+            psi_g2: same for group2
+            total_g1: list of lists, total reads per sample in group1
+            total_g2: same for group2
+            event_ids: optional list of event IDs
+        """
+        n_events = len(psi_g1[0])
+        if event_ids is None:
+            event_ids = [f"SE_{i+1}" for i in range(n_events)]
+        data = {"event_id": event_ids}
+        for i, (psi, total) in enumerate(zip(psi_g1, total_g1)):
+            s = f"s{i+1}"
+            data[f"{s}_PSI"] = psi
+            data[f"{s}_total_reads"] = total
+        for i, (psi, total) in enumerate(zip(psi_g2, total_g2)):
+            s = f"s{len(psi_g1)+i+1}"
+            data[f"{s}_PSI"] = psi
+            data[f"{s}_total_reads"] = total
+        return pd.DataFrame(data)
+
+    def test_beta_regression_basic(self):
+        """Clear group difference should yield a small p-value."""
+        df = self._make_ind_df(
+            psi_g1=[[0.9], [0.85]],
+            psi_g2=[[0.1], [0.15]],
+            total_g1=[[100], [120]],
+            total_g2=[[110], [105]],
+        )
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertEqual(len(result), 1)
+        self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
+        self.assertLess(result["p_beta"].iloc[0], 0.05)
+
+    def test_beta_regression_no_difference(self):
+        """Identical PSI across groups should yield a large p-value."""
+        df = self._make_ind_df(
+            psi_g1=[[0.50], [0.52]],
+            psi_g2=[[0.51], [0.49]],
+            total_g1=[[100], [100]],
+            total_g2=[[100], [100]],
+        )
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertGreater(result["p_beta"].iloc[0], 0.05)
+
+    def test_beta_regression_with_nan_psi(self):
+        """NaN PSI for one sample, but enough remaining samples (>=2 per group)."""
+        group_df = pd.DataFrame({
+            "sample": ["s1", "s2", "s3", "s4", "s5", "s6"],
+            "group": ["ctrl", "ctrl", "ctrl", "treat", "treat", "treat"]
+        })
+        df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "s1_PSI": [0.9], "s1_total_reads": [100],
+            "s2_PSI": [np.nan], "s2_total_reads": [80],
+            "s3_PSI": [0.88], "s3_total_reads": [90],
+            "s4_PSI": [0.1], "s4_total_reads": [110],
+            "s5_PSI": [0.15], "s5_total_reads": [95],
+            "s6_PSI": [np.nan], "s6_total_reads": [100],
+        })
+        result = shibalib.beta_regression(df, group_df, ["ctrl", "treat"])
+        self.assertIn("p_beta", result.columns)
+        # Should still compute (2 valid per group remain)
+        self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
+
+    def test_beta_regression_insufficient_samples(self):
+        """Only 1 valid sample per group → p_beta should be NaN."""
+        df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "s1_PSI": [0.9], "s1_total_reads": [100],
+            "s2_PSI": [np.nan], "s2_total_reads": [80],
+            "s3_PSI": [0.1], "s3_total_reads": [110],
+            "s4_PSI": [np.nan], "s4_total_reads": [95],
+        })
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertTrue(np.isnan(result["p_beta"].iloc[0]))
+
+    def test_beta_regression_total_reads_zero(self):
+        """total_reads=0 should be filtered out; if insufficient remain → NaN."""
+        df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "s1_PSI": [0.9], "s1_total_reads": [100],
+            "s2_PSI": [0.85], "s2_total_reads": [0],  # filtered out
+            "s3_PSI": [0.1], "s3_total_reads": [0],    # filtered out
+            "s4_PSI": [0.15], "s4_total_reads": [105],
+        })
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        # Only 1 valid per group → NaN
+        self.assertTrue(np.isnan(result["p_beta"].iloc[0]))
+
+    def test_beta_regression_psi_boundary(self):
+        """PSI at exact boundaries (0.0 and 1.0) should not cause errors."""
+        df = self._make_ind_df(
+            psi_g1=[[1.0], [0.95]],
+            psi_g2=[[0.0], [0.05]],
+            total_g1=[[100], [120]],
+            total_g2=[[110], [105]],
+        )
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
+
+    def test_beta_regression_multiple_events(self):
+        """Multiple rows (events) should each get a p_beta value."""
+        df = self._make_ind_df(
+            psi_g1=[[0.9, 0.5, 0.3], [0.85, 0.52, 0.28]],
+            psi_g2=[[0.1, 0.48, 0.7], [0.15, 0.51, 0.75]],
+            total_g1=[[100, 80, 90], [120, 85, 95]],
+            total_g2=[[110, 90, 100], [105, 88, 92]],
+            event_ids=["SE_1", "SE_2", "SE_3"],
+        )
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertEqual(len(result), 3)
+        # SE_1: large difference → small p
+        self.assertLess(result["p_beta"].iloc[0], 0.05)
+        # SE_2: almost no difference → large p
+        self.assertGreater(result["p_beta"].iloc[1], 0.05)
+
+    def test_beta_regression_column_mismatch(self):
+        """Missing columns should raise ValueError."""
+        df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "s1_PSI": [0.9],  # missing s2, s3, s4 and all _total_reads
+        })
+        with self.assertRaises(ValueError):
+            shibalib.beta_regression(df, self.group_df, self.group_list)
+
+    def test_beta_regression_empty_dataframe(self):
+        """Empty DataFrame should return with p_beta column, 0 rows."""
+        df = pd.DataFrame({
+            "event_id": pd.Series([], dtype=str),
+            "s1_PSI": pd.Series([], dtype=float), "s1_total_reads": pd.Series([], dtype=float),
+            "s2_PSI": pd.Series([], dtype=float), "s2_total_reads": pd.Series([], dtype=float),
+            "s3_PSI": pd.Series([], dtype=float), "s3_total_reads": pd.Series([], dtype=float),
+            "s4_PSI": pd.Series([], dtype=float), "s4_total_reads": pd.Series([], dtype=float),
+        })
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        self.assertEqual(len(result), 0)
+
+    def test_beta_regression_many_samples(self):
+        """More samples (5 per group) should still work and give a small p-value for clear difference."""
+        samples_g1 = ["a1", "a2", "a3", "a4", "a5"]
+        samples_g2 = ["b1", "b2", "b3", "b4", "b5"]
+        group_df = pd.DataFrame({
+            "sample": samples_g1 + samples_g2,
+            "group": ["ctrl"] * 5 + ["treat"] * 5
+        })
+        data = {"event_id": ["SE_1"]}
+        for s in samples_g1:
+            data[f"{s}_PSI"] = [np.random.uniform(0.80, 0.95)]
+            data[f"{s}_total_reads"] = [np.random.randint(80, 150)]
+        for s in samples_g2:
+            data[f"{s}_PSI"] = [np.random.uniform(0.05, 0.20)]
+            data[f"{s}_total_reads"] = [np.random.randint(80, 150)]
+        np.random.seed(42)
+        df = pd.DataFrame(data)
+        result = shibalib.beta_regression(df, group_df, ["ctrl", "treat"])
+        self.assertIn("p_beta", result.columns)
+        self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
 
 
 # ============================================================================

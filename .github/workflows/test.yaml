@@ -25,17 +25,10 @@ jobs:
           pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml coverage
 
       - name: Run tests with coverage
-        working-directory: src
         run: |
-          coverage run --source=. -m unittest discover -s ../test -v
-          coverage xml -o ../coverage.xml
+          coverage run --source=src -m unittest discover -s test -v
+          coverage xml
           coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
-
-      - name: Verify coverage file exists
-        run: |
-          echo "Looking for coverage.xml..."
-          ls -la coverage.xml || echo "NOT FOUND in root"
-          head -5 coverage.xml || true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -43,4 +36,3 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true

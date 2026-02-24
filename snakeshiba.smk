@@ -37,7 +37,8 @@ base_dir = os.path.dirname(workflow.snakefile)
 
 # Validate configuration before pipeline execution
 sys.path.insert(0, os.path.join(base_dir, "src", "lib"))
-from general import validate_config
+from general import apply_config_defaults, validate_config
+apply_config_defaults(config)
 _validation_errors = validate_config(config, mode="bulk")
 if _validation_errors:
     for _err in _validation_errors:

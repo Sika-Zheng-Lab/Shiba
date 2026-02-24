@@ -380,6 +380,19 @@ def validate_config_types(config, mode="bulk"):
 
     return errors
 
+def apply_config_defaults(config):
+    """
+    Applies default values for optional configuration keys that may be missing.
+    Mutates the config dict in-place and logs warnings for any keys that were set
+    to their default values.
+
+    Parameters:
+    config (dict): The loaded configuration dictionary.
+    """
+    if 'beta_regression' not in config:
+        config['beta_regression'] = True
+        logger.warning("'beta_regression' is not specified in the configuration file. Defaulting to True.")
+
 def validate_config(config, mode="bulk"):
     """
     Runs all configuration validations and returns collected errors.

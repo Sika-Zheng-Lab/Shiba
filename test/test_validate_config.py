@@ -6,6 +6,7 @@ import sys
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
 from lib.general import (
+    apply_config_defaults,
     validate_file_exists,
     validate_experiment_table_columns,
     validate_groups_bulk,
@@ -446,6 +447,52 @@ class TestValidateConfig(unittest.TestCase):
             os.unlink(gtf.name)
             os.unlink(bc)
             os.unlink(exp)
+
+
+# ============================================================================
+# apply_config_defaults
+# ============================================================================
+class TestApplyConfigDefaults(unittest.TestCase):
+    def test_beta_regression_missing_defaults_to_true(self):
+        """When beta_regression is absent, it should be set to True."""
+        config = {"fdr": 0.05}
+        apply_config_defaults(config)
+        self.assertIn("beta_regression", config)
+        self.assertTrue(config["beta_regression"])
+
+    def test_beta_regression_present_not_overwritten(self):
+        """When beta_regression is already set (even False), it should not be changed."""
+        config = {"beta_regression": False}
+        apply_config_defaults(config)
+        self.assertFalse(config["beta_regression"])
+
+    def test_beta_regression_true_not_overwritten(self):
+        """When beta_regression is explicitly True, it should remain True."""
+        config = {"beta_regression": True}
+        apply_config_defaults(config)
+        self.assertTrue(config["beta_regression"])
+
+    def test_beta_regression_missing_logs_warning(self):
+        """A warning should be logged when beta_regression is missing."""
+        config = {"fdr": 0.05}
+        with self.assertLogs("lib.general", level="WARNING") as cm:
+            apply_config_defaults(config)
+        self.assertTrue(any("beta_regression" in msg for msg in cm.output))
+
+    def test_beta_regression_present_no_warning(self):
+        """No warning should be logged when beta_regression is present."""
+        config = {"beta_regression": False}
+        # assertNoLogs is Python 3.10+; use assertRaises instead
+        try:
+            with self.assertLogs("lib.general", level="WARNING"):
+                apply_config_defaults(config)
+            # If we get here, a warning WAS logged — fail
+            self.fail("Unexpected warning logged when beta_regression is present")
+        except AssertionError as e:
+            if "no logs" in str(e).lower() or "Unexpected warning" not in str(e):
+                pass  # Expected: no warning logged
+            else:
+                raise
 
 
 if __name__ == "__main__":

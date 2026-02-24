@@ -117,6 +117,9 @@ def main():
             logger.info("Differential analysis mode disabled.")
             only_psi = True
 
+    # Apply default values for optional config keys
+    general.apply_config_defaults(config)
+
     # Validate configuration before pipeline execution
     logger.info("Validating configuration...")
     validation_errors = general.validate_config(config, mode="bulk")
@@ -193,7 +196,7 @@ def main():
                 "-m", str(config['minimum_reads']),
                 "-i" if config['individual_psi'] else "",
                 "-t" if config['ttest'] else "",
-                "-b" if config.get('beta_regression', False) else "",
+                "-b" if config.get('beta_regression', True) else "",
                 "--excel" if config['excel'] else "",
                 "--onlypsi" if only_psi else "",
                 "--onlypsi-group" if only_psi_group else "",

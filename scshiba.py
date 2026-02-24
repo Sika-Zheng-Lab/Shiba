@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Set version
 def _read_version():
     try:
-        version_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
+        version_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "VERSION")
         with open(version_path, "r") as f:
             return f.read().strip()
     except Exception:

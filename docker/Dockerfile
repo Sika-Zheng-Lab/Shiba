@@ -29,7 +29,7 @@ RUN mamba install -c conda-forge -c bioconda r-base==4.1.3 bioconductor-deseq2=1
 
 # Install python packages
 RUN pip install --upgrade pip && \
-    pip install styleframe==4.1
+    pip install styleframe==4.2
 
 # Install shiba2sashimi
 RUN pip install shiba2sashimi

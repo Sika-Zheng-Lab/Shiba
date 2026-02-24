@@ -1,0 +1,3 @@
+event_id	pos_id	exon_a	exon_b	intron_a	intron_b	strand	gene_id	gene_name	label
+FIVE_1	FIVE@chr10@6200-6500@6150-6500	chr10:6000-6200	chr10:6000-6150	chr10:6200-6500	chr10:6150-6500	+	ENSMUSG00000000031	H19	annotated
+FIVE_2	FIVE@chr10@7200-7500@7100-7500	chr10:7000-7200	chr10:7000-7100	chr10:7200-7500	chr10:7100-7500	-	ENSMUSG00000000037	Scml2	unannotated

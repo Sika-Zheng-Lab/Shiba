@@ -1,0 +1,3 @@
+event_id	pos_id	exon_a	exon_b	intron_a	intron_b	strand	gene_id	gene_name	label
+THREE_1	THREE@chr10@8000-8300@8000-8250	chr10:8300-8500	chr10:8250-8500	chr10:8000-8300	chr10:8000-8250	-	ENSMUSG00000019966	Kitl	annotated
+THREE_2	THREE@chr10@9000-9300@9000-9200	chr10:9300-9500	chr10:9200-9500	chr10:9000-9300	chr10:9000-9200	+	ENSMUSG00000019971	Cep290	unannotated

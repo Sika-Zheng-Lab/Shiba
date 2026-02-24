@@ -102,7 +102,7 @@ def load_psi_table(psi_file: str) -> pd.DataFrame:
         psi_df = psi_df.dropna()
     # Logit conversion
     logger.info("Performing logit conversion...")
-    psi_df = psi_df.applymap(logit_conversion)
+    psi_df = psi_df.map(logit_conversion)
     return psi_df
 
 def mtx2pca(df, genes) -> pd.DataFrame:

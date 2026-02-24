@@ -1,0 +1,3 @@
+event_id	pos_id	exon_a	exon_b	exon_c	intron_a	strand	gene_id	gene_name	label
+RI_1	RI@chr10@12200-12400	chr10:12000-12200	chr10:12400-12600	chr10:12000-12600	chr10:12200-12400	+	ENSMUSG00000036019	Tmtc2	annotated
+RI_2	RI@chr10@13200-13400	chr10:13000-13200	chr10:13400-13600	chr10:13000-13600	chr10:13200-13400	-	ENSMUSG00000036009	Mettl25	unannotated

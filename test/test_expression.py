@@ -2,10 +2,15 @@ import unittest
 import pandas as pd
 import os
 import sys
-# Add parent directory to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
-from lib.expression import ExpressionProcessor
+# Add src directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
+try:
+    from lib.expression import ExpressionProcessor
+    HAS_EXPRESSION = True
+except ImportError:
+    HAS_EXPRESSION = False
 
+@unittest.skipUnless(HAS_EXPRESSION, "pysam not installed")
 class TestExpressionProcessor(unittest.TestCase):
     def setUp(self):
         # Sample dataframe to test ExpressionProcessor

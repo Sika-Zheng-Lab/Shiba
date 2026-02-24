@@ -173,7 +173,6 @@ def main():
 		# StyleFrame
 		style = Styler(
 			horizontal_alignment = utils.horizontal_alignments.left,
-			border_type = utils.borders.default_grid,
 			wrap_text = False
 		)
 		with StyleFrame.ExcelWriter(f"{args.output}/TPM_CPM.xlsx") as writer:

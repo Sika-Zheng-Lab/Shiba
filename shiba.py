@@ -12,7 +12,14 @@ import time
 # Configure logger
 logger = logging.getLogger(__name__)
 # Set version
-VERSION = "v0.8.1"
+def _read_version():
+    try:
+        version_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "VERSION")
+        with open(version_path, "r") as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown"
+VERSION = _read_version()
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -109,6 +116,16 @@ def main():
         if not (only_psi or only_psi_group):
             logger.info("Differential analysis mode disabled.")
             only_psi = True
+
+    # Validate configuration before pipeline execution
+    logger.info("Validating configuration...")
+    validation_errors = general.validate_config(config, mode="bulk")
+    if validation_errors:
+        for err in validation_errors:
+            logger.error(f"Configuration error: {err}")
+        logger.error(f"{len(validation_errors)} configuration error(s) found. Exiting...")
+        sys.exit(1)
+    logger.info("Configuration validation passed.")
 
     # Prepare output directory
     output_dir = config["workdir"]

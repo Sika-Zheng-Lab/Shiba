@@ -15,51 +15,41 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Get the latest tag
-        id: get_tag
-        run: echo ::set-output name=tag::$(git describe --tags `git rev-list --tags --max-count=1`)
-
-      - name: Bump version and push tag
+      - name: Read version from VERSION file
         id: tag_version
         run: |
           NEW_TAG=$(cat VERSION)
           echo "New tag is $NEW_TAG"
-          echo "::set-output name=NEW_TAG::$NEW_TAG"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag -a $NEW_TAG -m "Release $NEW_TAG"
-          git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push origin $NEW_TAG
-        env:
-          VERSION: ${{ steps.get_tag.outputs.tag }}
-
-      - name: Debug NEW_TAG
-        run: echo "The new tag is $NEW_TAG"
+          git tag -a ${{ steps.tag_version.outputs.NEW_TAG }} -m "Release ${{ steps.tag_version.outputs.NEW_TAG }}"
+          git push origin ${{ steps.tag_version.outputs.NEW_TAG }}
 
       - name: Create GitHub release
-        id: create_release
-        uses: actions/create-release@v1.1.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_version.outputs.NEW_TAG }}
-          release_name: ${{ steps.tag_version.outputs.NEW_TAG }}
+          name: ${{ steps.tag_version.outputs.NEW_TAG }}
           body: ${{ github.event.pull_request.body }}
           draft: false
           prerelease: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and push Docker image with tag
+      - name: Build and push Docker image
         run: |
           TAG=${{ steps.tag_version.outputs.NEW_TAG }}
           docker build -t naotokubota/shiba:$TAG -t naotokubota/shiba:latest -f docker/Dockerfile .

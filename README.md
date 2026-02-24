@@ -4,7 +4,7 @@
 [![GitHub Release Date](https://img.shields.io/github/release-date/Sika-Zheng-Lab/Shiba)](https://github.com/Sika-Zheng-Lab/Shiba/releases)
 [![Create Release and Build Docker Image](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/release-docker-build-push.yaml)
 [![Tests](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/test.yaml/badge.svg)](https://github.com/Sika-Zheng-Lab/Shiba/actions/workflows/test.yaml)
-[![codecov](https://codecov.io/gh/Sika-Zheng-Lab/Shiba/graph/badge.svg?token=GCBM8OWSLY)](https://codecov.io/gh/Sika-Zheng-Lab/Shiba)
+[![codecov](https://codecov.io/gh/Sika-Zheng-Lab/Shiba/branch/develop/graph/badge.svg?token=GCBM8OWSLY)](https://codecov.io/gh/Sika-Zheng-Lab/Shiba)
 [![Conda](https://img.shields.io/conda/v/bioconda/shiba?color=3EB049)](https://anaconda.org/bioconda/shiba)
 [![Conda - Shiba - Downloads](https://img.shields.io/conda/dn/bioconda/shiba?label=Conda%20-%20Shiba%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/shiba)
 [![Conda - MameShiba - Downloads](https://img.shields.io/conda/dn/bioconda/mameshiba?label=Conda%20-%20MameShiba%20-%20Downloads&color=3EB049)](https://anaconda.org/bioconda/mameshiba)

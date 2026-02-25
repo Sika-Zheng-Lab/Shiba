@@ -274,7 +274,7 @@ rule psi:
         PSI = expand("results/splicing/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         PSI_matrix_sample = "results/splicing/PSI_matrix_sample.txt"
     threads:
-        1
+        workflow.cores
     benchmark:
         "benchmark/psi.txt"
     log:

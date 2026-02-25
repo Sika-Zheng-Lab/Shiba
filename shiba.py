@@ -188,7 +188,7 @@ def main():
             "command": [
                 "python", os.path.join(script_dir, "src", "psi.py"),
                 "-g", experiment_table,
-                "-p", "1",
+                "-p", processors,
                 "-r", config['reference_group'],
                 "-a", config['alternative_group'],
                 "-f", str(config['fdr']),

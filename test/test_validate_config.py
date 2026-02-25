@@ -453,12 +453,12 @@ class TestValidateConfig(unittest.TestCase):
 # apply_config_defaults
 # ============================================================================
 class TestApplyConfigDefaults(unittest.TestCase):
-    def test_beta_regression_missing_defaults_to_true(self):
-        """When beta_regression is absent, it should be set to True."""
+    def test_beta_regression_missing_defaults_to_false(self):
+        """When beta_regression is absent, it should be set to False."""
         config = {"fdr": 0.05}
         apply_config_defaults(config)
         self.assertIn("beta_regression", config)
-        self.assertTrue(config["beta_regression"])
+        self.assertFalse(config["beta_regression"])
 
     def test_beta_regression_present_not_overwritten(self):
         """When beta_regression is already set (even False), it should not be changed."""

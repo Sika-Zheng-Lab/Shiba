@@ -196,7 +196,7 @@ def main():
                 "-m", str(config['minimum_reads']),
                 "-i" if config['individual_psi'] else "",
                 "-t" if config['ttest'] else "",
-                "-b" if config.get('beta_regression', True) else "",
+                "-b" if config.get('beta_regression', False) else "",
                 "--excel" if config['excel'] else "",
                 "--onlypsi" if only_psi else "",
                 "--onlypsi-group" if only_psi_group else "",

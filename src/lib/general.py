@@ -390,8 +390,8 @@ def apply_config_defaults(config):
     config (dict): The loaded configuration dictionary.
     """
     if 'beta_regression' not in config:
-        config['beta_regression'] = True
-        logger.warning("'beta_regression' is not specified in the configuration file. Defaulting to True.")
+        config['beta_regression'] = False
+        logger.warning("'beta_regression' is not specified in the configuration file. Defaulting to False.")
 
 def validate_config(config, mode="bulk"):
     """

@@ -9,6 +9,7 @@ FROM mambaorg/micromamba:2.5
 LABEL maintainer="Naoto Kubota <naotok@ucr.edu>"
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH=/opt/conda/bin:$PATH
 
 USER root
 

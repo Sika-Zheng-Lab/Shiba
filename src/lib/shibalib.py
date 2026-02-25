@@ -2207,10 +2207,12 @@ def _beta_regression_single_event(y, x, n):
     log_1_y = np.log(1 - y)
     args = (x, log_n, log_y, log_1_y)
 
-    # Initial parameter estimates
+    # Initial parameter estimates — moment-based for precision (phi)
     y_mean_clipped = np.clip(np.mean(y), 0.01, 0.99)
     beta0_init = np.log(y_mean_clipped / (1 - y_mean_clipped))
-    gamma0_init = np.log(10.0)
+    y_var = np.var(y)
+    phi_hat = max(y_mean_clipped * (1 - y_mean_clipped) / max(y_var, 1e-6) - 1, 2.0)
+    gamma0_init = np.log(phi_hat)
     gamma1_init = 0.0
 
     # Group-specific means for better beta1 initial value
@@ -2220,6 +2222,10 @@ def _beta_regression_single_event(y, x, n):
     m2 = np.clip(np.mean(y_g2_t), 0.01, 0.99)
     beta1_init = np.log(m2 / (1 - m2)) - np.log(m1 / (1 - m1))
 
+    # Bounds to prevent numerical overflow in exp() and stabilize optimization
+    bounds_null = [(-10, 10), (-5, 15), (-5, 5)]           # beta0, gamma0, gamma1
+    bounds_full = [(-10, 10), (-20, 20), (-5, 15), (-5, 5)] # beta0, beta1, gamma0, gamma1
+
     try:
         # Fit null model (beta1 = 0) — with analytical gradient
         result_null = minimize(
@@ -2228,18 +2234,9 @@ def _beta_regression_single_event(y, x, n):
             args=args,
             jac=_beta_reg_jac_null,
             method='L-BFGS-B',
-            options={'maxiter': 1000, 'ftol': 1e-12}
+            bounds=bounds_null,
+            options={'maxiter': 200, 'ftol': 1e-8}
         )
-
-        if not result_null.success:
-            # Retry with Nelder-Mead (gradient-free, more robust)
-            result_null = minimize(
-                _beta_reg_neg_ll_null,
-                np.array([beta0_init, gamma0_init, gamma1_init]),
-                args=args,
-                method='Nelder-Mead',
-                options={'maxiter': 1000, 'xatol': 1e-10, 'fatol': 1e-10}
-            )
 
         if not np.isfinite(result_null.fun):
             return np.nan
@@ -2252,22 +2249,9 @@ def _beta_regression_single_event(y, x, n):
             args=args,
             jac=_beta_reg_jac_full,
             method='L-BFGS-B',
-            options={'maxiter': 1000, 'ftol': 1e-12}
+            bounds=bounds_full,
+            options={'maxiter': 200, 'ftol': 1e-8}
         )
-
-        # If L-BFGS-B failed, retry with Nelder-Mead
-        if not result_full.success or not np.isfinite(result_full.fun):
-            result_full_nm = minimize(
-                _beta_reg_neg_ll_full,
-                full_init,
-                args=args,
-                method='Nelder-Mead',
-                options={'maxiter': 1000, 'xatol': 1e-10, 'fatol': 1e-10}
-            )
-            if np.isfinite(result_full_nm.fun) and (
-                not np.isfinite(result_full.fun) or result_full_nm.fun < result_full.fun
-            ):
-                result_full = result_full_nm
 
         if not np.isfinite(result_full.fun):
             return np.nan

@@ -2,6 +2,7 @@
 
 import warnings
 # warnings.simplefilter('ignore')
+import gc
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
@@ -9,8 +10,131 @@ from scipy.optimize import minimize
 from scipy.special import gammaln
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
+from multiprocessing.shared_memory import SharedMemory
 import logging
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Shared Memory Junction Data (for memory-efficient multiprocessing)
+# ============================================================================
+
+class _SampleView:
+    """Dict-like read-only view of junction counts for one sample column."""
+    __slots__ = ('_col', '_j2i')
+
+    def __init__(self, col_array, junction_to_idx):
+        self._col = col_array
+        self._j2i = junction_to_idx
+
+    def __getitem__(self, junction_id):
+        idx = self._j2i.get(junction_id)
+        if idx is None:
+            raise KeyError(junction_id)
+        return int(self._col[idx])
+
+
+class JunctionData:
+    """Memory-efficient junction data backed by a 2D numpy array.
+
+    Provides dict-of-dicts-like access: junc_data[sample_id][junction_id] -> int
+    Uses ~10x less memory than nested Python dicts for 100+ samples.
+    """
+
+    def __init__(self, array, junction_to_idx, sample_ids):
+        self.array = array  # shape (n_junctions, n_samples), dtype int64
+        self.junction_to_idx = junction_to_idx  # {junction_id_str: row_index}
+        self.sample_to_col = {s: i for i, s in enumerate(sample_ids)}
+        self.sample_ids = list(sample_ids)
+        self._sample_views = {}
+
+    def __getitem__(self, sample_id):
+        """Return a dict-like view for one sample."""
+        if sample_id not in self._sample_views:
+            col = self.sample_to_col[sample_id]
+            self._sample_views[sample_id] = _SampleView(
+                self.array[:, col], self.junction_to_idx
+            )
+        return self._sample_views[sample_id]
+
+    @staticmethod
+    def from_dataframe(junc_df):
+        """Create JunctionData from a junction DataFrame.
+
+        Args:
+            junc_df (pd.DataFrame): DataFrame with columns [chr, start, end, ID, sample1, sample2, ...].
+
+        Returns:
+            JunctionData: Memory-efficient junction data object.
+        """
+        sample_cols = [c for c in junc_df.columns if c not in ("chr", "start", "end", "ID")]
+        junction_ids = junc_df["ID"].values
+        junction_to_idx = {jid: i for i, jid in enumerate(junction_ids)}
+        array = junc_df[sample_cols].values.astype(np.int64)
+        return JunctionData(array, junction_to_idx, sample_cols)
+
+    def to_shared_memory(self):
+        """Copy array data to a shared memory block for cross-process access.
+
+        Returns:
+            tuple: (SharedMemory object, shm_info dict).
+                   Caller must call shm.close() and shm.unlink() when done.
+        """
+        shm = SharedMemory(create=True, size=self.array.nbytes)
+        shm_array = np.ndarray(self.array.shape, dtype=self.array.dtype, buffer=shm.buf)
+        np.copyto(shm_array, self.array)
+        shm_info = {
+            'shm_name': shm.name,
+            'shape': self.array.shape,
+            'junction_ids': list(self.junction_to_idx.keys()),
+            'sample_ids': self.sample_ids,
+        }
+        return shm, shm_info
+
+    @staticmethod
+    def from_shared_memory(shm_name, shape, junction_ids, sample_ids):
+        """Attach to an existing shared memory block.
+
+        Args:
+            shm_name (str): Name of the SharedMemory block.
+            shape (tuple): Shape of the numpy array (n_junctions, n_samples).
+            junction_ids (list): Junction ID strings in row order.
+            sample_ids (list): Sample ID strings in column order.
+
+        Returns:
+            JunctionData: Object backed by shared memory.
+        """
+        shm = SharedMemory(name=shm_name, create=False)
+        array = np.ndarray(shape, dtype=np.int64, buffer=shm.buf)
+        junction_to_idx = {jid: i for i, jid in enumerate(junction_ids)}
+        jd = JunctionData(array, junction_to_idx, sample_ids)
+        jd._shm = shm  # keep reference for lifecycle management
+        return jd
+
+    def close(self):
+        """Close shared memory attachment (call in worker processes)."""
+        if hasattr(self, '_shm'):
+            self._shm.close()
+
+
+# Module-level junction data for worker processes (set by ProcessPoolExecutor initializer)
+_worker_junc_data = None
+
+
+def _init_junc_worker(shm_name, shape, junction_ids, sample_ids):
+    """Initialize junction data in a worker process from shared memory."""
+    global _worker_junc_data
+    _worker_junc_data = JunctionData.from_shared_memory(
+        shm_name, shape, junction_ids, sample_ids
+    )
+
+
+def _get_junc_data():
+    """Get junction data in a worker process."""
+    global _worker_junc_data
+    if _worker_junc_data is None:
+        raise RuntimeError("Worker junction data not initialized")
+    return _worker_junc_data
 
 def read_events(event_path) -> dict:
     """
@@ -428,6 +552,8 @@ def se(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> lis
     - list: A list of lists containing PSI values for each sample and information about alternative splicing events.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # Sample ID
     sample_size = len(sample_id)
@@ -505,6 +631,8 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - event_l: a list of lists containing the event ID and PSI values for each sample
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -578,6 +706,8 @@ def mse(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> li
     - event_l (list): A list of lists containing PSI values for each sample in the MSE event.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # Sample ID
     sample_size = len(sample_id)
@@ -640,6 +770,8 @@ def mse_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - list: A list of lists containing the event ID and PSI values for each sample.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -712,6 +844,8 @@ def five_three(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k
     - event_l: a list of lists containing PSI values for each sample
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # Sample ID
     sample_size = len(sample_id)
@@ -771,6 +905,8 @@ def five_three_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - list: A list of lists containing the event ID and PSI values for each sample.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -821,6 +957,8 @@ def afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -
     - event_l: a list of lists containing PSI values for each sample
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # Sample ID
     sample_size = len(sample_id)
@@ -892,6 +1030,8 @@ def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - list: A list of lists containing the event ID and PSI values for each sample.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -970,6 +1110,8 @@ def mxe(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> li
     - event_l (list): A list of lists containing PSI values for each sample in the mxe event.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # Sample ID
     sample_size = len(sample_id)
@@ -1039,6 +1181,8 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - list: A list of lists, where each inner list contains the event ID and PSI values for each sample.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -1117,6 +1261,8 @@ def ri(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> lis
     - event_l (list): A list of lists containing PSI values for each event.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     sample_size = len(sample_id)
     # event list
@@ -1184,6 +1330,8 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
     - list: A list of lists containing the PSI values for each sample for each event.
     """
 
+    if junc_dict_all is None:
+        junc_dict_all = _get_junc_data()
     event_l = []
     # event list
     AS_event_l = list(set(event_df["event_id"]))
@@ -2138,18 +2286,19 @@ def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
     output_ind_df["p_beta"] = p_col
     return(output_ind_df)
 
-def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads) -> pd.DataFrame:
+def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads, shm_info=None) -> pd.DataFrame:
     """
     Make PSI table for each sample.
 
     Args:
     - sample_list (list): List of sample names.
     - event_for_analysis_df (pd.DataFrame): DataFrame containing the splicing events to be analyzed.
-    - junc_dict_all (dict): Dictionary containing the junction information for each sample.
+    - junc_dict_all: Junction data (JunctionData, dict, or similar) for each sample.
     - func_psi (function): Function to calculate PSI values.
     - func_col (function): Function to make column names.
     - num_process (int): Number of processes to use.
     - minimum_reads (int): Minimum number of reads to be considered.
+    - shm_info (dict, optional): Shared memory info for multi-process mode.
 
     Returns:
     - pd.DataFrame: DataFrame containing the PSI values for each sample and each event.
@@ -2157,15 +2306,33 @@ def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, fun
     """
 
     columns = func_col(sample_list, False)
-    with concurrent.futures.ProcessPoolExecutor(max_workers = num_process) as executor:
-        futures = [executor.submit(func_psi, junc_dict_all, sample_list, event_for_analysis_df, num_process, minimum_reads, i) for i in range(num_process)]
-    output_l = []
-    for future in concurrent.futures.as_completed(futures):
-        output_l += future.result()
-    psi_table_df = pd.DataFrame(
-		output_l,
-		columns = columns
-	)
+    if num_process <= 1:
+        # Direct call — no multiprocessing overhead
+        output_l = func_psi(junc_dict_all, sample_list, event_for_analysis_df, 1, minimum_reads, 0)
+    elif shm_info is not None:
+        # Multi-process with shared memory (avoids pickling large junction data)
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=num_process,
+            initializer=_init_junc_worker,
+            initargs=(shm_info['shm_name'], shm_info['shape'],
+                      shm_info['junction_ids'], shm_info['sample_ids'])
+        ) as executor:
+            futures = [executor.submit(func_psi, None, sample_list,
+                       event_for_analysis_df, num_process, minimum_reads, i)
+                       for i in range(num_process)]
+        output_l = []
+        for future in concurrent.futures.as_completed(futures):
+            output_l += future.result()
+    else:
+        # Fallback: pickle junction data to workers
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
+            futures = [executor.submit(func_psi, junc_dict_all, sample_list,
+                       event_for_analysis_df, num_process, minimum_reads, i)
+                       for i in range(num_process)]
+        output_l = []
+        for future in concurrent.futures.as_completed(futures):
+            output_l += future.result()
+    psi_table_df = pd.DataFrame(output_l, columns=columns)
     return(psi_table_df)
 
 def make_psi_table_group(group_list, event_for_analysis_df, junc_dict_group, func_psi, func_col, num_process, minimum_reads) -> pd.DataFrame:
@@ -2187,25 +2354,28 @@ def make_psi_table_group(group_list, event_for_analysis_df, junc_dict_group, fun
     """
 
     columns = func_col(group_list, True)
-    with concurrent.futures.ProcessPoolExecutor(max_workers = num_process) as executor:
-        futures = [executor.submit(func_psi, junc_dict_group, group_list, event_for_analysis_df, num_process, minimum_reads, i) for i in range(num_process)]
-    output_l = []
-    for future in concurrent.futures.as_completed(futures):
-        output_l += future.result()
-    psi_table_df = pd.DataFrame(
-		output_l,
-		columns = columns
-	)
+    if num_process <= 1:
+        # Direct call — no multiprocessing overhead
+        output_l = func_psi(junc_dict_group, group_list, event_for_analysis_df, 1, minimum_reads, 0)
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
+            futures = [executor.submit(func_psi, junc_dict_group, group_list,
+                       event_for_analysis_df, num_process, minimum_reads, i)
+                       for i in range(num_process)]
+        output_l = []
+        for future in concurrent.futures.as_completed(futures):
+            output_l += future.result()
+    psi_table_df = pd.DataFrame(output_l, columns=columns)
     return(psi_table_df)
 
-def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, beta_regression_bool=False) -> pd.DataFrame:
+def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, beta_regression_bool=False, shm_info=None) -> pd.DataFrame:
     """
     Differential splicing analysis for each splicing event.
 
     Args:
     - event_for_analysis_df (pd.DataFrame): DataFrame containing the splicing events to be analyzed.
     - psi_table_df (pd.DataFrame): DataFrame containing the PSI values for each sample and each event.
-    - junc_dict_all (dict): Dictionary containing the junction information for each sample.
+    - junc_dict_all: Junction data (JunctionData, dict, or similar) for each sample.
     - group_df (pd.DataFrame): DataFrame containing the group assignments for each sample.
     - group_list (list): List of group names.
     - sample_list (list): List of sample names.
@@ -2217,6 +2387,7 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
     - individual_psi (bool): Whether to perform individual PSI analysis.
     - ttest_bool (bool): Whether to perform t-test.
     - beta_regression_bool (bool): Whether to perform beta regression with Wald test.
+    - shm_info (dict, optional): Shared memory info for multi-process mode.
 
     Returns:
     - pd.DataFrame: DataFrame containing the differential splicing analysis results for each splicing event.
@@ -2227,11 +2398,32 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
     if (output_df.shape[0]) != 0:
         if individual_psi:
             event_for_analysis_df = event_for_analysis_df[event_for_analysis_df["event_id"].isin(output_df["event_id"])]
-            with concurrent.futures.ProcessPoolExecutor(max_workers = num_process) as executor:
-                futures = [executor.submit(func_ind, junc_dict_all, event_for_analysis_df, sample_list, num_process, i) for i in range(num_process)]
-            output_l = []
-            for future in concurrent.futures.as_completed(futures):
-                output_l += future.result()
+            if num_process <= 1:
+                # Direct call — no multiprocessing overhead
+                output_l = func_ind(junc_dict_all, event_for_analysis_df, sample_list, 1, 0)
+            elif shm_info is not None:
+                # Multi-process with shared memory
+                with concurrent.futures.ProcessPoolExecutor(
+                    max_workers=num_process,
+                    initializer=_init_junc_worker,
+                    initargs=(shm_info['shm_name'], shm_info['shape'],
+                              shm_info['junction_ids'], shm_info['sample_ids'])
+                ) as executor:
+                    futures = [executor.submit(func_ind, None, event_for_analysis_df,
+                               sample_list, num_process, i)
+                               for i in range(num_process)]
+                output_l = []
+                for future in concurrent.futures.as_completed(futures):
+                    output_l += future.result()
+            else:
+                # Fallback: pickle junction data to workers
+                with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
+                    futures = [executor.submit(func_ind, junc_dict_all, event_for_analysis_df,
+                               sample_list, num_process, i)
+                               for i in range(num_process)]
+                output_l = []
+                for future in concurrent.futures.as_completed(futures):
+                    output_l += future.result()
             columns_ind = col_ind(sample_list)
             output_ind_df = pd.DataFrame(
                 output_l,

@@ -147,6 +147,121 @@ class TestJuncDict(unittest.TestCase):
         self.assertEqual(result["Alt_2"]["chr10:1200-1500"], 55)
 
 
+# ============================================================================
+# JunctionData (memory-efficient shared-memory-capable junction storage)
+# ============================================================================
+class TestJunctionData(unittest.TestCase):
+    """Tests for the JunctionData class used for memory-efficient multiprocessing."""
+
+    def setUp(self):
+        self.junc_df = _make_junc_df()
+        # Ensure numeric columns are int
+        self.junc_df.iloc[:, 4:] = self.junc_df.iloc[:, 4:].astype(int)
+
+    def test_from_dataframe_basic(self):
+        """JunctionData.from_dataframe should produce correct shape and sample list."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        sample_cols = [c for c in self.junc_df.columns if c not in ("chr", "start", "end", "ID")]
+        self.assertEqual(jd.array.shape[0], len(self.junc_df))
+        self.assertEqual(jd.array.shape[1], len(sample_cols))
+        self.assertEqual(jd.sample_ids, sample_cols)
+
+    def test_dict_like_access(self):
+        """JunctionData[sample][junction_id] should match the original DataFrame."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        # Compare against junc_dict for a known value
+        junc_dict_all = shibalib.junc_dict(self.junc_df)
+        for sample in jd.sample_ids:
+            for jid in list(jd.junction_to_idx.keys())[:5]:
+                self.assertEqual(jd[sample][jid], junc_dict_all[sample][jid])
+
+    def test_missing_junction_raises(self):
+        """Accessing a non-existent junction should raise KeyError."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        with self.assertRaises(KeyError):
+            _ = jd[jd.sample_ids[0]]["nonexistent_junction"]
+
+    def test_se_psi_with_junction_data(self):
+        """PSI worker function se() should work with JunctionData as drop-in for dict."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        event_df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "pos_id": ["SE@chr10@1000-1200@800-1500"],
+            "exon": ["chr10:1000-1200"],
+            "intron_a": ["chr10:800-1000"],
+            "intron_b": ["chr10:1200-1500"],
+            "intron_c": ["chr10:800-1500"],
+            "strand": ["+"],
+            "gene_id": ["G1"],
+            "gene_name": ["GeneA"],
+            "label": ["annotated"]
+        })
+        # Use only samples that exist in junc_df
+        sample_list = jd.sample_ids
+        result_jd = shibalib.se(jd, sample_list, event_df, 1, 1, 0)
+        # Compare with dict-based result
+        junc_dict_all = shibalib.junc_dict(self.junc_df)
+        result_dict = shibalib.se(junc_dict_all, sample_list, event_df, 1, 1, 0)
+        # Both should produce the same PSI values
+        self.assertEqual(len(result_jd), len(result_dict))
+        for row_jd, row_dict in zip(result_jd, result_dict):
+            for v_jd, v_dict in zip(row_jd, row_dict):
+                if isinstance(v_jd, float) and np.isnan(v_jd):
+                    self.assertTrue(np.isnan(v_dict))
+                else:
+                    self.assertEqual(v_jd, v_dict)
+
+    def test_to_shared_memory_and_back(self):
+        """Data should survive round-trip through shared memory."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        shm, shm_info = jd.to_shared_memory()
+        try:
+            jd2 = shibalib.JunctionData.from_shared_memory(
+                shm_info['shm_name'], shm_info['shape'],
+                shm_info['junction_ids'], shm_info['sample_ids']
+            )
+            # Verify data matches
+            np.testing.assert_array_equal(jd.array, jd2.array)
+            self.assertEqual(jd.sample_ids, jd2.sample_ids)
+            # Verify dict-like access
+            sample = jd.sample_ids[0]
+            jid = list(jd.junction_to_idx.keys())[0]
+            self.assertEqual(jd[sample][jid], jd2[sample][jid])
+            jd2.close()
+        finally:
+            shm.close()
+            shm.unlink()
+
+    def test_worker_init_and_get(self):
+        """_init_junc_worker / _get_junc_data cycle should work in the current process."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        shm, shm_info = jd.to_shared_memory()
+        try:
+            shibalib._init_junc_worker(
+                shm_info['shm_name'], shm_info['shape'],
+                shm_info['junction_ids'], shm_info['sample_ids']
+            )
+            worker_data = shibalib._get_junc_data()
+            sample = jd.sample_ids[0]
+            jid = list(jd.junction_to_idx.keys())[0]
+            self.assertEqual(jd[sample][jid], worker_data[sample][jid])
+        finally:
+            # Reset worker state
+            shibalib._worker_junc_data = None
+            shm.close()
+            shm.unlink()
+
+    def test_get_junc_data_without_init_raises(self):
+        """_get_junc_data should raise RuntimeError when not initialized."""
+        old = shibalib._worker_junc_data
+        shibalib._worker_junc_data = None
+        try:
+            with self.assertRaises(RuntimeError):
+                shibalib._get_junc_data()
+        finally:
+            shibalib._worker_junc_data = old
+
+
 class TestMakeJuncSet(unittest.TestCase):
     def test_make_junc_set(self):
         junc_df = _make_junc_df()

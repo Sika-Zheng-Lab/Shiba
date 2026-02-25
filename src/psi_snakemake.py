@@ -1,6 +1,7 @@
 import warnings
 warnings.simplefilter('ignore')
 import argparse
+import gc
 import logging
 import sys
 import os
@@ -86,7 +87,7 @@ def main():
     logger.info("Loading event and junction files...")
     event_df_dict = shibalib.read_events(paths["event"])
     junc_df = shibalib.read_junctions(paths["junction"])
-    junc_dict_all = shibalib.junc_dict(junc_df)
+    junc_data = shibalib.JunctionData.from_dataframe(junc_df)
     sample_list = shibalib.make_sample_list(junc_df)
     junc_set = shibalib.make_junc_set(junc_df)
 
@@ -101,6 +102,19 @@ def main():
         group_data = {"group_list": group_list, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
         logger.debug(f"group_list: {group_list}")
         logger.debug(f"sample_list_diff: {sample_list_diff}")
+
+    # Free junction DataFrame (no longer needed — data is in junc_data)
+    del junc_df
+    gc.collect()
+    logger.debug("Released junction DataFrame memory")
+
+    # Create shared memory for multi-process PSI calculation
+    shm = None
+    shm_info = None
+    if params["num_process"] > 1:
+        shm, shm_info = junc_data.to_shared_memory()
+        logger.info(f"Created shared memory for {len(junc_data.sample_ids)} samples "
+                     f"({shm.size / 1024 / 1024:.1f} MB)")
 
     # Define event processing
     def process_event(event_type, event_func, func, col_func, diff_func=None, index_func=None):
@@ -118,18 +132,19 @@ def main():
         if params["onlypsi_group"]:
             psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
         elif params["onlypsi"]:
-            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
         else:
             psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
-            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
 
         # Perform differential analysis
         diff_df = None
         if not params["onlypsi"] and not params["onlypsi_group"]:
             diff_df = shibalib.diff_event(
-                event_for_analysis_df, psi_table_group_df, junc_dict_all, group_data["group_df"],
+                event_for_analysis_df, psi_table_group_df, junc_data, group_data["group_df"],
                 [params["reference"], params["alternative"]], group_data["sample_list_diff"],
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"], params["beta_regression"]
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"], params["beta_regression"],
+                shm_info=shm_info
             )
 
         # Generate PSI matrices
@@ -214,6 +229,15 @@ def main():
             shibalib.save_excel(paths["output"], *excel_data)
         else:
             logger.warning("No data to export to Excel")
+
+    # Clean up shared memory
+    if shm is not None:
+        try:
+            shm.close()
+            shm.unlink()
+            logger.debug("Cleaned up shared memory")
+        except Exception as e:
+            logger.warning(f"Error cleaning up shared memory: {e}")
 
     logger.info("All processes completed.")
 

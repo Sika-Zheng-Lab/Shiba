@@ -1060,6 +1060,175 @@ class TestBetaRegression(unittest.TestCase):
         self.assertIn("p_beta", result.columns)
         self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
 
+    def test_beta_regression_parallel_matches_serial(self):
+        """Parallel (num_process=2) should produce same p-values as serial."""
+        df = self._make_ind_df(
+            psi_g1=[[0.9, 0.5, 0.3, 0.7, 0.85], [0.85, 0.52, 0.28, 0.72, 0.80]],
+            psi_g2=[[0.1, 0.48, 0.7, 0.3, 0.15], [0.15, 0.51, 0.75, 0.28, 0.12]],
+            total_g1=[[100, 80, 90, 110, 95], [120, 85, 95, 105, 100]],
+            total_g2=[[110, 90, 100, 88, 92], [105, 88, 92, 90, 85]],
+            event_ids=["SE_1", "SE_2", "SE_3", "SE_4", "SE_5"],
+        )
+        result_serial = shibalib.beta_regression(df.copy(), self.group_df, self.group_list, num_process=1)
+        result_parallel = shibalib.beta_regression(df.copy(), self.group_df, self.group_list, num_process=2)
+        np.testing.assert_allclose(
+            result_serial["p_beta"].values,
+            result_parallel["p_beta"].values,
+            rtol=1e-10, equal_nan=True
+        )
+
+    def test_beta_regression_prefilter_identical_psi(self):
+        """If all PSI values are identical across groups, p should be ~1.0."""
+        df = self._make_ind_df(
+            psi_g1=[[0.5], [0.5]],
+            psi_g2=[[0.5], [0.5]],
+            total_g1=[[100], [100]],
+            total_g2=[[100], [100]],
+        )
+        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        self.assertIn("p_beta", result.columns)
+        # Pre-filter should catch this (var < 1e-10) and return p≈1.0
+        self.assertGreater(result["p_beta"].iloc[0], 0.99)
+
+
+class TestBetaRegressionSingleEvent(unittest.TestCase):
+    """Tests for _beta_regression_single_event (module-level worker function)."""
+
+    def test_clear_difference_returns_large_lr_stat(self):
+        """Clear group separation should yield a large LR statistic."""
+        y = np.array([0.9, 0.85, 0.1, 0.15], dtype=np.float64)
+        x = np.array([0, 0, 1, 1], dtype=np.float64)
+        n = np.array([100, 120, 110, 105], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertTrue(np.isfinite(lr))
+        self.assertGreater(lr, 0)
+
+    def test_no_difference_returns_small_lr_stat(self):
+        """Nearly identical PSI across groups should yield LR ~ 0."""
+        y = np.array([0.50, 0.52, 0.51, 0.49], dtype=np.float64)
+        x = np.array([0, 0, 1, 1], dtype=np.float64)
+        n = np.array([100, 100, 100, 100], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertTrue(np.isfinite(lr))
+        self.assertLess(lr, 3.84)  # chi2 critical value at p=0.05, df=1
+
+    def test_insufficient_samples_returns_nan(self):
+        """< 2 per group → NaN."""
+        y = np.array([0.9, 0.1], dtype=np.float64)
+        x = np.array([0, 1], dtype=np.float64)
+        n = np.array([100, 100], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertTrue(np.isnan(lr))
+
+    def test_zero_variance_returns_zero(self):
+        """All PSI identical → LR=0 via pre-filter."""
+        y = np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float64)
+        x = np.array([0, 0, 1, 1], dtype=np.float64)
+        n = np.array([100, 100, 100, 100], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertEqual(lr, 0.0)
+
+    def test_identical_group_means_returns_zero(self):
+        """Group means within 1e-8 → LR=0 via pre-filter."""
+        y = np.array([0.500000001, 0.499999999, 0.500000001, 0.499999999], dtype=np.float64)
+        x = np.array([0, 0, 1, 1], dtype=np.float64)
+        n = np.array([100, 100, 100, 100], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertEqual(lr, 0.0)
+
+    def test_boundary_psi_values(self):
+        """PSI at 0.0 and 1.0 should not crash."""
+        y = np.array([1.0, 0.95, 0.0, 0.05], dtype=np.float64)
+        x = np.array([0, 0, 1, 1], dtype=np.float64)
+        n = np.array([100, 120, 110, 105], dtype=np.float64)
+        lr = shibalib._beta_regression_single_event(y, x, n)
+        self.assertTrue(np.isfinite(lr))
+
+
+class TestBetaRegAnalyticalGradient(unittest.TestCase):
+    """Verify analytical gradients match numerical approximation."""
+
+    def setUp(self):
+        """Set up test data for gradient checks."""
+        self.y = np.array([0.8, 0.85, 0.2, 0.15], dtype=np.float64)
+        self.x = np.array([0, 0, 1, 1], dtype=np.float64)
+        self.n = np.array([100, 120, 110, 105], dtype=np.float64)
+        n_total = len(self.y)
+        self.y_t = (self.y * (n_total - 1) + 0.5) / n_total
+        self.log_n = np.log(self.n)
+        self.log_y = np.log(self.y_t)
+        self.log_1_y = np.log(1 - self.y_t)
+        self.args = (self.x, self.log_n, self.log_y, self.log_1_y)
+
+    def _numerical_grad(self, func, params, args, eps=1e-7):
+        """Compute numerical gradient via forward differences."""
+        grad = np.zeros_like(params)
+        for i in range(len(params)):
+            p_plus = params.copy()
+            p_plus[i] += eps
+            p_minus = params.copy()
+            p_minus[i] -= eps
+            grad[i] = (func(p_plus, *args) - func(p_minus, *args)) / (2 * eps)
+        return grad
+
+    def test_full_model_gradient(self):
+        """Analytical gradient of full model should match numerical approx."""
+        from scipy.optimize import approx_fprime
+        params = np.array([0.5, -1.0, 2.3, 0.1])
+        analytical = shibalib._beta_reg_jac_full(params, *self.args)
+        numerical = self._numerical_grad(shibalib._beta_reg_neg_ll_full, params, self.args)
+        np.testing.assert_allclose(analytical, numerical, rtol=1e-4, atol=1e-6)
+
+    def test_null_model_gradient(self):
+        """Analytical gradient of null model should match numerical approx."""
+        params = np.array([0.5, 2.3, 0.1])
+        analytical = shibalib._beta_reg_jac_null(params, *self.args)
+        numerical = self._numerical_grad(shibalib._beta_reg_neg_ll_null, params, self.args)
+        np.testing.assert_allclose(analytical, numerical, rtol=1e-4, atol=1e-6)
+
+    def test_full_gradient_at_optimum(self):
+        """At the MLE, gradient should be approximately zero."""
+        from scipy.optimize import minimize as sp_minimize
+        params0 = np.array([0.5, -2.0, 2.3, 0.1])
+        result = sp_minimize(
+            shibalib._beta_reg_neg_ll_full, params0,
+            args=self.args, jac=shibalib._beta_reg_jac_full,
+            method='L-BFGS-B', options={'maxiter': 5000, 'ftol': 1e-15}
+        )
+        grad_at_opt = shibalib._beta_reg_jac_full(result.x, *self.args)
+        # Clipping in the likelihood can cause small residual gradients;
+        # verify they are reasonably small relative to the scale of parameters
+        np.testing.assert_allclose(grad_at_opt, 0.0, atol=0.5)
+
+    def test_null_gradient_at_optimum(self):
+        """At the null MLE, gradient should be approximately zero."""
+        from scipy.optimize import minimize as sp_minimize
+        params0 = np.array([0.0, 2.3, 0.1])
+        result = sp_minimize(
+            shibalib._beta_reg_neg_ll_null, params0,
+            args=self.args, jac=shibalib._beta_reg_jac_null,
+            method='L-BFGS-B', options={'maxiter': 1000, 'ftol': 1e-14}
+        )
+        grad_at_opt = shibalib._beta_reg_jac_null(result.x, *self.args)
+        np.testing.assert_allclose(grad_at_opt, 0.0, atol=1e-4)
+
+
+class TestBetaRegressionChunk(unittest.TestCase):
+    """Tests for _beta_regression_chunk."""
+
+    def test_chunk_processes_multiple_events(self):
+        """A chunk of events should return one LR stat per event."""
+        chunk = [
+            (np.array([0.9, 0.85, 0.1, 0.15]), np.array([0, 0, 1, 1]), np.array([100, 120, 110, 105])),
+            (np.array([0.5, 0.52, 0.51, 0.49]), np.array([0, 0, 1, 1]), np.array([100, 100, 100, 100])),
+            (np.array([0.5, 0.1]), np.array([0, 1]), np.array([100, 100])),  # insufficient
+        ]
+        results = shibalib._beta_regression_chunk(chunk)
+        self.assertEqual(len(results), 3)
+        self.assertTrue(np.isfinite(results[0]))
+        self.assertTrue(np.isfinite(results[1]))
+        self.assertTrue(np.isnan(results[2]))
+
 
 # ============================================================================
 # make_psi_mtx

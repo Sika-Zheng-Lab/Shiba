@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 from scipy.optimize import minimize
-from scipy.special import gammaln
+from scipy.special import gammaln, digamma
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
 from multiprocessing.shared_memory import SharedMemory
@@ -2059,7 +2059,243 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
     output_ind_df["p_ttest"] = p_col
     return(output_ind_df)
 
-def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
+def _beta_reg_neg_ll_full(params, x, log_n, log_y, log_1_y):
+    """Full model negative log-likelihood (4 params: beta0, beta1, gamma0, gamma1).
+
+    Defined at module level (not as closure) so it can be pickled for multiprocessing.
+    """
+    beta0, beta1, gamma0, gamma1 = params
+    with np.errstate(over='ignore'):
+        eta = beta0 + beta1 * x
+        mu = 1.0 / (1.0 + np.exp(-eta))
+        phi = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi, 1e-10, 1e6)
+    a = mu * phi
+    b = (1.0 - mu) * phi
+    ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
+    return -np.sum(ll)
+
+
+def _beta_reg_jac_full(params, x, log_n, log_y, log_1_y):
+    """Analytical gradient of full model negative log-likelihood.
+
+    Uses digamma (psi) function: d/da gammaln(a) = digamma(a).
+    Returns gradient as array [d/d_beta0, d/d_beta1, d/d_gamma0, d/d_gamma1].
+    """
+    beta0, beta1, gamma0, gamma1 = params
+    with np.errstate(over='ignore'):
+        eta = beta0 + beta1 * x
+        mu = 1.0 / (1.0 + np.exp(-eta))
+        phi = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi, 1e-10, 1e6)
+    a = mu * phi
+    b = (1.0 - mu) * phi
+
+    # Digamma terms: d/da [gammaln(a+b) - gammaln(a)] = digamma(a+b) - digamma(a)
+    psi_ab = digamma(a + b)
+    psi_a = digamma(a)
+    psi_b = digamma(b)
+
+    # d(nll)/da and d(nll)/db (per observation)
+    dll_da = psi_ab - psi_a + log_y     # d(ll)/d(a)
+    dll_db = psi_ab - psi_b + log_1_y   # d(ll)/d(b)
+
+    # Chain rule: a = mu * phi, b = (1-mu) * phi
+    # da/d_mu = phi, db/d_mu = -phi
+    # da/d_phi = mu, db/d_phi = (1-mu)
+    # d_mu/d_beta0 = mu*(1-mu),  d_mu/d_beta1 = mu*(1-mu)*x
+    # d_phi/d_gamma0 = phi,  d_phi/d_gamma1 = phi*log_n
+    mu_deriv = mu * (1.0 - mu)  # sigmoid derivative
+
+    d_mu = (dll_da * phi - dll_db * phi)          # d(ll)/d(mu)
+    d_phi = (dll_da * mu + dll_db * (1.0 - mu))   # d(ll)/d(phi)
+
+    grad_beta0 = -np.sum(d_mu * mu_deriv)
+    grad_beta1 = -np.sum(d_mu * mu_deriv * x)
+    grad_gamma0 = -np.sum(d_phi * phi)
+    grad_gamma1 = -np.sum(d_phi * phi * log_n)
+
+    return np.array([grad_beta0, grad_beta1, grad_gamma0, grad_gamma1])
+
+
+def _beta_reg_neg_ll_null(params, x, log_n, log_y, log_1_y):
+    """Null model negative log-likelihood (3 params: beta0, gamma0, gamma1; beta1=0).
+
+    Defined at module level for pickling.
+    """
+    beta0, gamma0, gamma1 = params
+    with np.errstate(over='ignore'):
+        mu = 1.0 / (1.0 + np.exp(-beta0))
+        phi = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi, 1e-10, 1e6)
+    a = mu * phi
+    b = (1.0 - mu) * phi
+    ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
+    return -np.sum(ll)
+
+
+def _beta_reg_jac_null(params, x, log_n, log_y, log_1_y):
+    """Analytical gradient of null model negative log-likelihood.
+
+    Returns gradient as array [d/d_beta0, d/d_gamma0, d/d_gamma1].
+    """
+    beta0, gamma0, gamma1 = params
+    with np.errstate(over='ignore'):
+        mu = 1.0 / (1.0 + np.exp(-beta0))
+        phi = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi, 1e-10, 1e6)
+    a = mu * phi
+    b = (1.0 - mu) * phi
+
+    psi_ab = digamma(a + b)
+    psi_a = digamma(a)
+    psi_b = digamma(b)
+
+    dll_da = psi_ab - psi_a + log_y
+    dll_db = psi_ab - psi_b + log_1_y
+
+    mu_deriv = mu * (1.0 - mu)
+    d_mu = (dll_da * phi - dll_db * phi)
+    d_phi = (dll_da * mu + dll_db * (1.0 - mu))
+
+    grad_beta0 = -np.sum(d_mu * mu_deriv)
+    grad_gamma0 = -np.sum(d_phi * phi)
+    grad_gamma1 = -np.sum(d_phi * phi * log_n)
+
+    return np.array([grad_beta0, grad_gamma0, grad_gamma1])
+
+
+def _beta_regression_single_event(y, x, n):
+    """Run beta regression LRT for a single event.
+
+    Args:
+        y: numpy array of PSI values (already filtered for valid observations).
+        x: numpy array of group indicators (0=group1, 1=group2).
+        n: numpy array of total read counts.
+
+    Returns:
+        float: LR statistic (non-negative), or np.nan on failure/skip.
+            The LR statistic is converted to a p-value later in batch via chi2.sf.
+    """
+    # Need at least 2 samples per group
+    n_g1 = int(np.sum(x == 0))
+    n_g2 = int(np.sum(x == 1))
+    if n_g1 < 2 or n_g2 < 2:
+        return np.nan
+
+    # Pre-filter: if PSI variance is negligible, no group effect
+    if np.var(y) < 1e-10:
+        return 0.0  # LR stat = 0 → p-value = 1.0
+
+    # Pre-filter: if group means are nearly identical, skip optimization
+    y_g1 = y[x == 0]
+    y_g2 = y[x == 1]
+    if abs(np.mean(y_g1) - np.mean(y_g2)) < 1e-8:
+        return 0.0
+
+    # Smithson-Verkuilen transformation: y' = (y * (n_total - 1) + 0.5) / n_total
+    n_total = len(y)
+    y = (y * (n_total - 1) + 0.5) / n_total
+
+    # Precomputed vectors for likelihood
+    log_n = np.log(n)
+    log_y = np.log(y)
+    log_1_y = np.log(1 - y)
+    args = (x, log_n, log_y, log_1_y)
+
+    # Initial parameter estimates
+    y_mean_clipped = np.clip(np.mean(y), 0.01, 0.99)
+    beta0_init = np.log(y_mean_clipped / (1 - y_mean_clipped))
+    gamma0_init = np.log(10.0)
+    gamma1_init = 0.0
+
+    # Group-specific means for better beta1 initial value
+    y_g1_t = y[x == 0]
+    y_g2_t = y[x == 1]
+    m1 = np.clip(np.mean(y_g1_t), 0.01, 0.99)
+    m2 = np.clip(np.mean(y_g2_t), 0.01, 0.99)
+    beta1_init = np.log(m2 / (1 - m2)) - np.log(m1 / (1 - m1))
+
+    try:
+        # Fit null model (beta1 = 0) — with analytical gradient
+        result_null = minimize(
+            _beta_reg_neg_ll_null,
+            np.array([beta0_init, gamma0_init, gamma1_init]),
+            args=args,
+            jac=_beta_reg_jac_null,
+            method='L-BFGS-B',
+            options={'maxiter': 1000, 'ftol': 1e-12}
+        )
+
+        if not result_null.success:
+            # Retry with Nelder-Mead (gradient-free, more robust)
+            result_null = minimize(
+                _beta_reg_neg_ll_null,
+                np.array([beta0_init, gamma0_init, gamma1_init]),
+                args=args,
+                method='Nelder-Mead',
+                options={'maxiter': 1000, 'xatol': 1e-10, 'fatol': 1e-10}
+            )
+
+        if not np.isfinite(result_null.fun):
+            return np.nan
+
+        # Fit full model (with beta1) — with analytical gradient
+        full_init = np.array([result_null.x[0], beta1_init, result_null.x[1], result_null.x[2]])
+        result_full = minimize(
+            _beta_reg_neg_ll_full,
+            full_init,
+            args=args,
+            jac=_beta_reg_jac_full,
+            method='L-BFGS-B',
+            options={'maxiter': 1000, 'ftol': 1e-12}
+        )
+
+        # If L-BFGS-B failed, retry with Nelder-Mead
+        if not result_full.success or not np.isfinite(result_full.fun):
+            result_full_nm = minimize(
+                _beta_reg_neg_ll_full,
+                full_init,
+                args=args,
+                method='Nelder-Mead',
+                options={'maxiter': 1000, 'xatol': 1e-10, 'fatol': 1e-10}
+            )
+            if np.isfinite(result_full_nm.fun) and (
+                not np.isfinite(result_full.fun) or result_full_nm.fun < result_full.fun
+            ):
+                result_full = result_full_nm
+
+        if not np.isfinite(result_full.fun):
+            return np.nan
+
+        # LR statistic: Lambda = 2 * (nll_null - nll_full)
+        lr_stat = 2 * (result_null.fun - result_full.fun)
+        if lr_stat < 0:
+            lr_stat = 0.0
+
+        return lr_stat
+
+    except Exception:
+        return np.nan
+
+
+def _beta_regression_chunk(chunk):
+    """Process a chunk of events for beta regression.
+
+    Args:
+        chunk: list of (y, x, n) tuples, one per event.
+
+    Returns:
+        list of LR statistics (float or np.nan).
+    """
+    return [_beta_regression_single_event(y, x, n) for y, x, n in chunk]
+
+
+def beta_regression(output_ind_df, group_df, group_list, num_process=1) -> pd.DataFrame:
     """
     Performs beta regression with Likelihood Ratio Test (LRT) on the PSI values
     of two groups, incorporating total read counts as a precision covariate.
@@ -2076,10 +2312,14 @@ def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
     where n_i is the total junction read count for sample i.
     The LRT statistic is: Lambda = -2 * (ll_null - ll_full) ~ chi2(df=1)
 
+    Uses analytical gradients (digamma) to accelerate L-BFGS-B convergence,
+    and optionally parallelizes across events with ProcessPoolExecutor.
+
     Args:
     - output_ind_df (pd.DataFrame): The dataframe containing PSI values and total read counts for each sample.
     - group_df (pd.DataFrame): The dataframe containing the group assignments for each sample.
     - group_list (list): A list of two strings representing the names of the two groups being compared.
+    - num_process (int): Number of processes to use (default: 1, serial).
 
     Returns:
     - pd.DataFrame: The input dataframe with an additional column 'p_beta' containing the p-values.
@@ -2111,16 +2351,20 @@ def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
         logger.debug(f"Expected total_reads columns: {total_cols_group1}")
         raise ValueError("Error: Sample names do not match for beta regression.")
 
+    n_events = output_ind_df.shape[0]
+    if n_events == 0:
+        output_ind_df["p_beta"] = []
+        return output_ind_df
+
     # Pre-extract all arrays for efficiency
     psi_arrays_g1 = [output_ind_df[c].values for c in psi_cols_group1]
     psi_arrays_g2 = [output_ind_df[c].values for c in psi_cols_group2]
     total_arrays_g1 = [output_ind_df[c].values for c in total_cols_group1]
     total_arrays_g2 = [output_ind_df[c].values for c in total_cols_group2]
 
-    p_col = []
-
-    for index in range(output_ind_df.shape[0]):
-        # Collect valid observations (non-NaN PSI and total_reads > 0)
+    # Build per-event (y, x, n) tuples in bulk
+    event_data = []
+    for index in range(n_events):
         y_vals = []
         x_vals = []
         n_vals = []
@@ -2130,7 +2374,7 @@ def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
             total_val = total_arrays_g1[j][index]
             if psi_val is not None and not np.isnan(psi_val) and total_val is not None and total_val > 0:
                 y_vals.append(psi_val)
-                x_vals.append(0)  # group1 = reference
+                x_vals.append(0)
                 n_vals.append(total_val)
 
         for j, arr in enumerate(psi_arrays_g2):
@@ -2138,150 +2382,38 @@ def beta_regression(output_ind_df, group_df, group_list) -> pd.DataFrame:
             total_val = total_arrays_g2[j][index]
             if psi_val is not None and not np.isnan(psi_val) and total_val is not None and total_val > 0:
                 y_vals.append(psi_val)
-                x_vals.append(1)  # group2 = alternative
+                x_vals.append(1)
                 n_vals.append(total_val)
 
-        y = np.array(y_vals, dtype=np.float64)
-        x = np.array(x_vals, dtype=np.float64)
-        n = np.array(n_vals, dtype=np.float64)
+        event_data.append((
+            np.array(y_vals, dtype=np.float64),
+            np.array(x_vals, dtype=np.float64),
+            np.array(n_vals, dtype=np.float64)
+        ))
 
-        # Need at least 2 samples per group for meaningful regression
-        n_g1 = int(np.sum(x == 0))
-        n_g2 = int(np.sum(x == 1))
-        if n_g1 < 2 or n_g2 < 2:
-            event_id = output_ind_df['event_id'][index]
-            logger.debug(f"Beta regression skipped for event {event_id}: insufficient valid samples (group1={n_g1}, group2={n_g2}, need >=2 each). PSI values: {y_vals}, total_reads: {n_vals}")
-            p_col.append(np.nan)
-            continue
+    # Run beta regression: parallel or serial
+    if num_process <= 1 or n_events <= 4:
+        # Serial execution
+        lr_stats = [_beta_regression_single_event(y, x, n) for y, x, n in event_data]
+    else:
+        # Parallel execution: split events into chunks
+        chunk_size = max(1, (n_events + num_process - 1) // num_process)
+        chunks = [event_data[i:i + chunk_size] for i in range(0, n_events, chunk_size)]
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
+            futures = [executor.submit(_beta_regression_chunk, chunk) for chunk in chunks]
+            lr_stats = []
+            for future in futures:
+                lr_stats.extend(future.result())
 
-        # Smithson-Verkuilen transformation: y' = (y * (n_total - 1) + 0.5) / n_total
-        n_total = len(y)
-        y = (y * (n_total - 1) + 0.5) / n_total
-
-        # Log of total reads for precision model
-        log_n = np.log(n)
-
-        # Precompute log(y) and log(1-y) for use in likelihood functions
-        log_y = np.log(y)
-        log_1_y = np.log(1 - y)
-
-        # Full model negative log-likelihood (4 parameters: beta0, beta1, gamma0, gamma1)
-        def neg_ll_full(params):
-            beta0, beta1, gamma0, gamma1 = params
-            eta = beta0 + beta1 * x
-            mu = 1.0 / (1.0 + np.exp(-eta))
-            phi = np.exp(gamma0 + gamma1 * log_n)
-            mu = np.clip(mu, 1e-10, 1 - 1e-10)
-            phi = np.clip(phi, 1e-10, 1e6)
-            a = mu * phi
-            b = (1.0 - mu) * phi
-            ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
-            return -np.sum(ll)
-
-        # Null model negative log-likelihood (3 parameters: beta0, gamma0, gamma1; beta1=0)
-        def neg_ll_null(params):
-            beta0, gamma0, gamma1 = params
-            mu = 1.0 / (1.0 + np.exp(-beta0))
-            phi = np.exp(gamma0 + gamma1 * log_n)
-            mu = np.clip(mu, 1e-10, 1 - 1e-10)
-            phi = np.clip(phi, 1e-10, 1e6)
-            a = mu * phi
-            b = (1.0 - mu) * phi
-            ll = gammaln(a + b) - gammaln(a) - gammaln(b) + (a - 1) * log_y + (b - 1) * log_1_y
-            return -np.sum(ll)
-
-        # Initial parameter estimates
-        y_mean = np.mean(y)
-        y_mean_clipped = np.clip(y_mean, 0.01, 0.99)
-        beta0_init = np.log(y_mean_clipped / (1 - y_mean_clipped))
-        gamma0_init = np.log(10.0)
-        gamma1_init = 0.0
-
-        # Group-specific means for better beta1 initial value
-        y_g1 = y[x == 0]
-        y_g2 = y[x == 1]
-        m1 = np.clip(np.mean(y_g1), 0.01, 0.99)
-        m2 = np.clip(np.mean(y_g2), 0.01, 0.99)
-        beta1_init = np.log(m2 / (1 - m2)) - np.log(m1 / (1 - m1))
-
-        try:
-            # Fit null model (beta1 = 0)
-            result_null = minimize(
-                neg_ll_null,
-                np.array([beta0_init, gamma0_init, gamma1_init]),
-                method='L-BFGS-B',
-                options={'maxiter': 1000, 'ftol': 1e-12}
-            )
-
-            if not result_null.success:
-                # Retry null model with Nelder-Mead
-                result_null = minimize(
-                    neg_ll_null,
-                    np.array([beta0_init, gamma0_init, gamma1_init]),
-                    method='Nelder-Mead',
-                    options={'maxiter': 5000, 'xatol': 1e-10, 'fatol': 1e-10}
-                )
-
-            if not np.isfinite(result_null.fun):
-                event_id = output_ind_df['event_id'][index]
-                logger.debug(
-                    f"Beta regression failed for event {event_id}: null model nll is not finite ({result_null.fun}). "
-                    f"PSI values: {y_vals}, total_reads: {list(n)}")
-                p_col.append(np.nan)
-                continue
-
-            # Fit full model (with beta1)
-            # Use null model estimates as starting point for shared parameters
-            full_init = np.array([result_null.x[0], beta1_init, result_null.x[1], result_null.x[2]])
-            result_full = minimize(
-                neg_ll_full,
-                full_init,
-                method='L-BFGS-B',
-                options={'maxiter': 1000, 'ftol': 1e-12}
-            )
-
-            # If L-BFGS-B failed, retry with Nelder-Mead (gradient-free, more robust)
-            if not result_full.success or not np.isfinite(result_full.fun):
-                result_full_nm = minimize(
-                    neg_ll_full,
-                    full_init,
-                    method='Nelder-Mead',
-                    options={'maxiter': 5000, 'xatol': 1e-10, 'fatol': 1e-10}
-                )
-                # Keep whichever result has lower nll
-                if np.isfinite(result_full_nm.fun) and (
-                    not np.isfinite(result_full.fun) or result_full_nm.fun < result_full.fun
-                ):
-                    result_full = result_full_nm
-
-            # Validate: full model nll must be finite
-            if not np.isfinite(result_full.fun):
-                event_id = output_ind_df['event_id'][index]
-                logger.debug(
-                    f"Beta regression failed for event {event_id}: full model nll is not finite ({result_full.fun}). "
-                    f"PSI values: {y_vals}, total_reads: {list(n)}")
-                p_col.append(np.nan)
-                continue
-
-            # Likelihood Ratio Test: Lambda = -2 * (ll_null - ll_full) = 2 * (nll_null - nll_full)
-            lr_stat = 2 * (result_null.fun - result_full.fun)
-
-            # Guard against numerical noise producing negative LR statistic
-            if lr_stat < 0:
-                lr_stat = 0.0
-
-            # p-value from chi-squared distribution with df=1
-            p_value = stats.chi2.sf(lr_stat, df=1)
-
-            # Clamp to smallest representable float if p-value underflows to 0
-            if p_value == 0:
-                p_value = np.finfo(float).tiny  # ~2.2e-308
-            p_col.append(p_value)
-
-        except Exception as e:
-            event_id = output_ind_df['event_id'][index]
-            logger.debug(f"Beta regression exception for event {event_id}: {type(e).__name__}: {e}. PSI values: {y_vals}, total_reads: {list(n)}")
-            p_col.append(np.nan)
+    # Vectorized p-value computation from LR statistics
+    lr_stats = np.array(lr_stats, dtype=np.float64)
+    p_col = np.full(n_events, np.nan, dtype=np.float64)
+    valid_mask = np.isfinite(lr_stats)
+    if np.any(valid_mask):
+        p_col[valid_mask] = stats.chi2.sf(lr_stats[valid_mask], df=1)
+        # Clamp underflow to smallest representable float
+        underflow_mask = valid_mask & (p_col == 0)
+        p_col[underflow_mask] = np.finfo(float).tiny  # ~2.2e-308
 
     output_ind_df["p_beta"] = p_col
     return(output_ind_df)
@@ -2432,7 +2564,7 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
             if ttest_bool:
                 output_ind_df = ttest(output_ind_df, group_df, group_list)
             if beta_regression_bool:
-                output_ind_df = beta_regression(output_ind_df, group_df, group_list)
+                output_ind_df = beta_regression(output_ind_df, group_df, group_list, num_process)
             # Drop total_reads columns before merging (internal use only)
             total_reads_cols = [c for c in output_ind_df.columns if c.endswith("_total_reads")]
             output_ind_df = output_ind_df.drop(columns = total_reads_cols)

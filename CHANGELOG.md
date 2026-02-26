@@ -2,6 +2,23 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v0.9.0] - 2026-XX-XX
+
+### Added
+
+- Added beta regression as an optional statistical method for differential splicing analysis (`beta_regression: True` in configuration). This method fits a beta regression model to PSI values and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.
+  - Optimized with analytical gradients using digamma functions for faster convergence.
+  - Supports parallel computation via `ProcessPoolExecutor` using the `-p` option.
+  - Includes pre-filters (zero-variance PSI, identical group means) to skip unnecessary optimization.
+  - Uses moment-based initial parameter estimation for robust and fast convergence.
+- Added unit tests for beta regression covering core functionality, analytical gradients, edge cases, and parallel execution.
+
+### Changed
+
+- Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.
+- Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
+- Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.
+
 ## [v0.8.2] - 2026-02-23
 
 ### Fixed

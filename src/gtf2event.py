@@ -38,15 +38,17 @@ def get_args():
 	args = parser.parse_args()
 	return(args)
 
-def gtf(gtf, num_process) -> pd.DataFrame:
+def gtf(gtf, num_process, return_exon_set=False) -> pd.DataFrame:
 	"""
 	Reads a GTF file and extracts exon information to create a pandas DataFrame.
 
 	Args:
 		gtf (str): The path to the GTF file.
+		return_exon_set (bool): If True, also return the full exon set (before filtering).
 
 	Returns:
-		Dict: A dictionary containing information about the GTF file.
+		Dict or tuple: A dictionary containing information about the GTF file.
+			If return_exon_set is True, returns (dict, set).
 	"""
 
 	gtf_df = pd.read_csv(
@@ -71,64 +73,40 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 	gtf_df = gtf_df.reset_index()
 	gtf_df = gtf_df[[0, 3, 4, 6, 8]]
 	gtf_df.columns = ["chr", "start", "end", "strand", "information"]
-	gtf_info = gtf_df.information.values
-	gene_id_dic = {}
-	gene_name_dic = {}
-	gene_id_list_dic = defaultdict(list)
-	gene_name_list_dic = defaultdict(list)
-	gene_id_col = []
-	gene_name_col = []
-	transcript_id_col = []
 
-	for index in range(gtf_df.shape[0]):
-		dic = {}
-		l = gtf_info[index].split(";")[0:-1]
-		for i in l:
-			if '"' in i:
-				key = i.split('"')[0].strip(" ")
-				value = i.split('"')[1]
-			else:
-				key = i.strip(" ").split(" ")[0]
-				value = i.strip(" ").split(" ")[1]
-			dic[key] = value
-		if "ref_gene_id" in dic:
-			gene_id = dic["ref_gene_id"]
-			gene_id_dic[dic["gene_id"]] = dic["ref_gene_id"]
-			gene_id_list_dic[dic["gene_id"]] += [dic["ref_gene_id"]]
-		else:
-			gene_id = dic["gene_id"]
-		if "gene_name" in dic:
-			gene_name = dic["gene_name"]
-			gene_name_dic[dic["gene_id"]] = dic["gene_name"]
-			gene_name_list_dic[dic["gene_id"]] += [dic["gene_name"]]
-		else:
-			if "ref_gene_id" in dic:
-				gene_name = dic["ref_gene_id"]
-			else:
-				gene_name = dic["gene_id"]
+	# Vectorized attribute extraction using regex (replaces O(N) Python parsing loop)
+	info_s = gtf_df["information"]
+	_gene_id_raw = info_s.str.extract(r'gene_id\s+"?([^";\s]+)"?', expand=False)
+	_transcript_id = info_s.str.extract(r'transcript_id\s+"?([^";\s]+)"?', expand=False)
+	_gene_name_raw = info_s.str.extract(r'gene_name\s+"?([^";\s]+)"?', expand=False)
+	_ref_gene_id = info_s.str.extract(r'ref_gene_id\s+"?([^";\s]+)"?', expand=False)
 
-		transcript_id = dic["transcript_id"]
-		gene_id_col += [gene_id]
-		gene_name_col += [gene_name]
-		transcript_id_col += [transcript_id]
+	has_ref = _ref_gene_id.notna()
+	has_name = _gene_name_raw.notna()
 
-	gtf_df["gene_id"] = gene_id_col
-	gtf_df["gene_name"] = gene_name_col
-	gtf_df["transcript_id"] = transcript_id_col
+	# Build gene_id column: use ref_gene_id if available, else gene_id
+	gtf_df["gene_id"] = np.where(has_ref, _ref_gene_id, _gene_id_raw)
+	# Build gene_name column: gene_name > ref_gene_id > gene_id
+	gtf_df["gene_name"] = np.where(has_name, _gene_name_raw,
+									np.where(has_ref, _ref_gene_id, _gene_id_raw))
+	gtf_df["transcript_id"] = _transcript_id
 
-	# Vectorized Counter normalization (replaces O(N*K) row-by-row loop)
-	gene_id_most_common = {k: collections.Counter(v).most_common(1)[0][0] for k, v in gene_id_list_dic.items()}
-	gene_name_most_common = {k: collections.Counter(v).most_common(1)[0][0] for k, v in gene_name_list_dic.items()}
-
-	if gene_id_most_common:
+	# Vectorized Counter normalization using groupby
+	if has_ref.any():
+		_ref_df = pd.DataFrame({"gid": _gene_id_raw[has_ref].values, "ref": _ref_gene_id[has_ref].values})
+		gene_id_most_common = _ref_df.groupby("gid")["ref"].agg(lambda x: x.value_counts().index[0]).to_dict()
 		mapped = gtf_df["gene_id"].map(gene_id_most_common)
 		mask = mapped.notna()
-		gtf_df.loc[mask, "gene_id"] = mapped[mask]
+		if mask.any():
+			gtf_df.loc[mask, "gene_id"] = mapped[mask]
 
-	if gene_name_most_common:
+	if has_name.any():
+		_name_df = pd.DataFrame({"gid": _gene_id_raw[has_name].values, "name": _gene_name_raw[has_name].values})
+		gene_name_most_common = _name_df.groupby("gid")["name"].agg(lambda x: x.value_counts().index[0]).to_dict()
 		mapped = gtf_df["gene_name"].map(gene_name_most_common)
 		mask = mapped.notna()
-		gtf_df.loc[mask, "gene_name"] = mapped[mask]
+		if mask.any():
+			gtf_df.loc[mask, "gene_name"] = mapped[mask]
 
 	chr_col = gtf_df["chr"]
 	chr_mask = ~chr_col.str.startswith("chr") & (chr_col.str.len() <= 2)
@@ -137,6 +115,24 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 
 	gtf_df = gtf_df.sort_values(["gene_id", "transcript_id", "start"])
 	gtf_df = gtf_df.reset_index()
+
+	# Pre-compute string columns vectorially (avoids per-row str() and concatenation)
+	gtf_df["start_str"] = gtf_df["start"].astype(str)
+	gtf_df["end_str"] = gtf_df["end"].astype(str)
+	gtf_df["exon_str"] = gtf_df["chr"] + ":" + gtf_df["start_str"] + "-" + gtf_df["end_str"]
+
+	# Capture full exon set before any filtering (for reference GTF label checks)
+	if return_exon_set:
+		_all_exon_set = set(gtf_df["exon_str"])
+
+	# Pre-compute intron strings using shift (consecutive exons in same transcript)
+	_prev_end_str = gtf_df["end_str"].shift(1)
+	_prev_tid = gtf_df["transcript_id"].shift(1)
+	_same_tx = gtf_df["transcript_id"] == _prev_tid
+	gtf_df["intron_str"] = np.where(_same_tx,
+		gtf_df["chr"] + ":" + _prev_end_str + "-" + gtf_df["start_str"], None)
+	_prev_end_i32 = gtf_df["end"].shift(1)
+
 	gtf_gene_id = gtf_df.gene_id.values
 	gtf_gene_name = gtf_df.gene_name.values
 	gtf_transcript_id = gtf_df.transcript_id.values
@@ -144,10 +140,16 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 	gtf_start = gtf_df.start.values
 	gtf_end = gtf_df.end.values
 	gtf_strand = gtf_df.strand.values
+	gtf_start_str = gtf_df["start_str"].values
+	gtf_end_str = gtf_df["end_str"].values
+	gtf_exon_str = gtf_df["exon_str"].values
+	gtf_intron_str = gtf_df["intron_str"].values
+	gtf_same_tx = _same_tx.values
+	gtf_prev_end_str = _prev_end_str.values
+
 	gtf_dic = {}
 	_start_lists = defaultdict(list)
 	_end_lists = defaultdict(list)
-	transcript_prev = ""
 
 	for index in range(gtf_df.shape[0]):
 		gid = gtf_gene_id[index]
@@ -155,9 +157,9 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 		s = gtf_start[index]
 		e = gtf_end[index]
 		tid = gtf_transcript_id[index]
-		s_str = str(s)
-		e_str = str(e)
-		exon_str = chr_val + ":" + s_str + "-" + e_str
+		s_str = gtf_start_str[index]
+		e_str = gtf_end_str[index]
+		exon_str = gtf_exon_str[index]
 
 		if gid not in gtf_dic:
 			gtf_dic[gid] = {
@@ -178,21 +180,20 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 		g["end_dic"][e_str].add(s_str)
 		g["transcript_exon_dic"][tid].add(exon_str)
 
-		if tid == transcript_prev:
-			end_prev_str = str(end_prev)
-			intron_str = chr_val + ":" + end_prev_str + "-" + s_str
+		if gtf_same_tx[index]:
+			prev_end_str = gtf_prev_end_str[index]
+			intron_str = gtf_intron_str[index]
 			if "intron_list" not in g:
 				g["intron_start_dic"] = defaultdict(set)
 				g["intron_end_dic"] = defaultdict(set)
 				g["intron_list"] = set()
 				g["transcript_intron_dic"] = defaultdict(set)
-			g["intron_start_dic"][end_prev_str].add(s_str)
-			g["intron_end_dic"][s_str].add(end_prev_str)
+			g["intron_start_dic"][prev_end_str].add(s_str)
+			g["intron_end_dic"][s_str].add(prev_end_str)
 			g["intron_list"].add(intron_str)
 			g["transcript_intron_dic"][tid].add(intron_str)
 
 		end_prev = e
-		transcript_prev = tid
 
 	# Convert accumulated lists to numpy arrays
 	for gid in gtf_dic:
@@ -211,6 +212,8 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 		for gene in gene_l_split[i]:
 			gtf_dic_split[i][gene] = gtf_dic[gene]
 
+	if return_exon_set:
+		return (gtf_dic_split, _all_exon_set)
 	return(gtf_dic_split)
 
 def gtf_exon_set(gtf_path) -> set:
@@ -1225,9 +1228,8 @@ def main():
 
 	if reference_gtf_path:
 		logger.info(f"Loading {reference_gtf_path}....")
-		gtf_ref_exon_set = gtf_exon_set(reference_gtf_path)
+		gtf_ref_dic, gtf_ref_exon_set = gtf(reference_gtf_path, 1, return_exon_set=True)
 		logger.debug("Size of exon set in reference GTF: " + str(len(gtf_ref_exon_set)))
-		gtf_ref_dic = gtf(reference_gtf_path, 1)
 		# Only intron_list is needed
 		gtf_ref_intron_set_dict = {k: v["intron_list"] for k, v in gtf_ref_dic[0].items() if "intron_list" in v}
 		gtf_ref_intron_set = set()

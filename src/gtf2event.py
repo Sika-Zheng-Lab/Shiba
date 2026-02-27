@@ -9,6 +9,7 @@ import multiprocessing as mp
 import itertools
 import time
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 import logging
 
 # Configure logging
@@ -17,6 +18,18 @@ logger = logging.getLogger(__name__)
 """
 This script converts a GTF file into a pandas DataFrame containing information about alternative splicing events.
 """
+
+# Module-level shared data for fork CoW (avoids pickling gtf_dic_split to workers)
+_shared_gtf_dic_split = None
+
+def _init_worker(gtf_dic_split):
+	"""Initializer for ProcessPoolExecutor workers — stores shared data in global."""
+	global _shared_gtf_dic_split
+	_shared_gtf_dic_split = gtf_dic_split
+
+def _event_task(event_fn, partition_idx):
+	"""Wrapper that reads from forked global, so only (fn, int) are pickled."""
+	return event_fn(_shared_gtf_dic_split[partition_idx])
 
 def get_args():
 	"""
@@ -1205,6 +1218,107 @@ def ri(gtf_dic) -> list:
 
 	return(event_l)
 
+def _postprocess_event(event_name, output_df, reference_gtf_path, gtf_ref_intron_set, gtf_ref_exon_set):
+	"""Post-process a single event type: create pos_id, dedup, assign event_id, label."""
+
+	if event_name == "SE":
+		_exon_split = output_df["exon"].str.split(":", expand=True)
+		_exon_pos = _exon_split[1].str.split("-", expand=True)
+		_intron_c_pos = output_df["intron_c"].str.split(":", expand=True)[1].str.split("-", expand=True)
+		output_df["pos_id"] = "SE@" + _exon_split[0] + "@" + _exon_pos[0] + "-" + _exon_pos[1] + "@" + _intron_c_pos[0] + "-" + _intron_c_pos[1]
+		output_df = output_df.sort_values("exon")
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = "SE_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			output_df["label"] = np.where(
+				output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set) & output_df["intron_c"].isin(gtf_ref_intron_set),
+				"annotated", "unannotated")
+		else:
+			output_df["label"] = "annotated"
+
+	elif event_name in ("FIVE", "THREE"):
+		_intron_a_split = output_df["intron_a"].str.split(":", expand=True)
+		_intron_a_pos = _intron_a_split[1].str.split("-", expand=True)
+		_intron_b_pos = output_df["intron_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
+		output_df["pos_id"] = event_name + "@" + _intron_a_split[0] + "@" + _intron_a_pos[0] + "-" + _intron_a_pos[1] + "@" + _intron_b_pos[0] + "-" + _intron_b_pos[1]
+		output_df = output_df.sort_values("exon_a")
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = event_name + "_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			output_df["label"] = np.where(
+				output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set),
+				"annotated", "unannotated")
+		else:
+			output_df["label"] = "annotated"
+
+	elif event_name == "MXE":
+		_a1_split = output_df["intron_a1"].str.split(":", expand=True)
+		_a1_pos = _a1_split[1].str.split("-", expand=True)
+		_ea_pos = output_df["exon_a"].str.split(":", expand=True)[1].str.split("-", expand=True)
+		_eb_pos = output_df["exon_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
+		_b2_end = output_df["intron_b2"].str.split(":", expand=True)[1].str.split("-", expand=True)[1]
+		output_df["pos_id"] = "MXE@" + _a1_split[0] + "@" + _a1_pos[0] + "@" + _ea_pos[0] + "-" + _ea_pos[1] + "@" + _eb_pos[0] + "-" + _eb_pos[1] + "@" + _b2_end
+		output_df = output_df.sort_values("exon_a")
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = "MXE_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			output_df["label"] = np.where(
+				output_df["intron_a1"].isin(gtf_ref_intron_set) & output_df["intron_a2"].isin(gtf_ref_intron_set) & output_df["intron_b1"].isin(gtf_ref_intron_set) & output_df["intron_b2"].isin(gtf_ref_intron_set),
+				"annotated", "unannotated")
+		else:
+			output_df["label"] = "annotated"
+
+	elif event_name == "RI":
+		output_df["pos_id"] = "RI@" + output_df["intron_a"].str.replace(":", "@")
+		output_df = output_df.sort_values("exon_a")
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = "RI_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			output_df["label"] = np.where(
+				output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["exon_c"].isin(gtf_ref_exon_set),
+				"annotated", "unannotated")
+		else:
+			output_df["label"] = "annotated"
+
+	elif event_name == "MSE":
+		output_df["chr"] = output_df["exon"].str.split(":", expand=True)[0]
+		_chr_vals = output_df["chr"].values
+		output_df["exon_for_posid"] = [e.replace(c + ":", "") for e, c in zip(output_df["exon"].values, _chr_vals)]
+		output_df["exc"] = output_df["intron"].str.rsplit(";", n=1).str[-1]
+		_exc_pos = output_df["exc"].str.split(":", expand=True)[1].str.split("-", expand=True)
+		output_df["pos_id"] = "MSE@" + output_df["chr"] + "@" + output_df["exon_for_posid"] + "@" + _exc_pos[0] + "-" + _exc_pos[1]
+		output_df = output_df.sort_values("exon")
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = "MSE_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "mse_n", "exon", "intron", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			_ref = gtf_ref_intron_set
+			output_df["label"] = ["annotated" if set(x.split(";")) <= _ref else "unannotated" for x in output_df["intron"].values]
+		else:
+			output_df["label"] = "annotated"
+
+	elif event_name in ("AFE", "ALE"):
+		output_df["chr"] = output_df["exon_a"].str.split(":", expand=True)[0]
+		_chr_vals = output_df["chr"].values
+		output_df["intron_a_for_posid"] = [a.replace(c + ":", "") for a, c in zip(output_df["intron_a"].values, _chr_vals)]
+		output_df["intron_b_for_posid"] = [b.replace(c + ":", "") for b, c in zip(output_df["intron_b"].values, _chr_vals)]
+		output_df["pos_id"] = event_name + "@" + output_df["chr"] + "@" + output_df["intron_a_for_posid"] + "@" + output_df["intron_b_for_posid"]
+		output_df = output_df.sort_values(["exon_a", "exon_b"], ascending=[True, True])
+		output_df = output_df.drop_duplicates(subset="pos_id", keep="first").reset_index()
+		output_df["event_id"] = event_name + "_" + (output_df.index + 1).astype(str)
+		output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
+		if reference_gtf_path:
+			_ref = gtf_ref_intron_set
+			output_df["label"] = ["annotated" if (set(a.split(";")) <= _ref and set(b.split(";")) <= _ref) else "unannotated" for a, b in zip(output_df["intron_a"].values, output_df["intron_b"].values)]
+		else:
+			output_df["label"] = "annotated"
+
+	return output_df
+
 def main():
 	## Main
 
@@ -1223,358 +1337,91 @@ def main():
 
 	logger.info("Starting event search...")
 	logger.debug(args)
-	logger.info(f"Loading {gtf_path}....")
-	gtf_dic_split = gtf(gtf_path, num_process)
 
+	# Parallel loading: main GTF and reference GTF concurrently via threads
+	# (pd.read_csv releases GIL during I/O, so thread parallelism helps)
 	if reference_gtf_path:
-		logger.info(f"Loading {reference_gtf_path}....")
-		gtf_ref_dic, gtf_ref_exon_set = gtf(reference_gtf_path, 1, return_exon_set=True)
+		with ThreadPoolExecutor(max_workers=2) as tpe:
+			fut_main = tpe.submit(gtf, gtf_path, num_process)
+			fut_ref = tpe.submit(gtf, reference_gtf_path, 1, True)
+			logger.info(f"Loading {gtf_path} and {reference_gtf_path} in parallel....")
+			gtf_dic_split = fut_main.result()
+			gtf_ref_dic, gtf_ref_exon_set = fut_ref.result()
 		logger.debug("Size of exon set in reference GTF: " + str(len(gtf_ref_exon_set)))
 		# Only intron_list is needed
-		gtf_ref_intron_set_dict = {k: v["intron_list"] for k, v in gtf_ref_dic[0].items() if "intron_list" in v}
 		gtf_ref_intron_set = set()
-		for k in gtf_ref_intron_set_dict:
-			gtf_ref_intron_set |= gtf_ref_intron_set_dict[k]
+		for v in gtf_ref_dic[0].values():
+			if "intron_list" in v:
+				gtf_ref_intron_set |= v["intron_list"]
 		logger.debug("Size of intron set in reference GTF: " + str(len(gtf_ref_intron_set)))
+	else:
+		logger.info(f"Loading {gtf_path}....")
+		gtf_dic_split = gtf(gtf_path, num_process)
 
 	#################################### Event search #########################################
 
+	# Store shared data in module global for fork CoW access by worker processes
+	global _shared_gtf_dic_split
+	_shared_gtf_dic_split = gtf_dic_split
+
+	# Define all 8 event types and their metadata
+	EVENT_DEFS = [
+		("SE",    se,    ["exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name"]),
+		("FIVE",  five,  ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]),
+		("THREE", three, ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]),
+		("MXE",   mxe,   ["exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name"]),
+		("RI",    ri,    ["exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name"]),
+		("MSE",   mse,   ["exon", "intron", "mse_n", "strand", "gene_id", "gene_name"]),
+		("AFE",   afe,   ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]),
+		("ALE",   ale,   ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]),
+	]
+
+	# Submit ALL event×partition tasks to a SINGLE pool (eliminates 8 pool create/destroy cycles
+	# and 256 pickle round-trips — fork CoW gives workers access to gtf_dic_split via global)
+	logger.info(f"Submitting all event search tasks to pool ({num_process} workers)...")
+	os.makedirs(output_dir, exist_ok=True)
 	output_df_dict = {}
 
-	#################################### Skipped exon (SE) ####################################
+	with concurrent.futures.ProcessPoolExecutor(
+		max_workers=num_process,
+		initializer=_init_worker,
+		initargs=(gtf_dic_split,)
+	) as executor:
+		# Submit all tasks: 8 event types × num_process partitions
+		# Heavy events (MSE, AFE, ALE) submitted first so they start immediately
+		submit_order = ["MSE", "AFE", "ALE", "MXE", "SE", "FIVE", "THREE", "RI"]
+		event_def_map = {name: (fn, cols) for name, fn, cols in EVENT_DEFS}
+		event_futures = {}  # event_name -> list of futures
 
-	logger.info("Searching skipped exon (SE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(se, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for skipped exon search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name"]
-	)
+		for event_name in submit_order:
+			fn, cols = event_def_map[event_name]
+			futures = [executor.submit(_event_task, fn, i) for i in range(num_process)]
+			event_futures[event_name] = (futures, cols)
+			logger.info(f"Submitted {event_name} ({num_process} tasks)")
 
-	logger.debug("Creating event_id....")
-	_exon_split = output_df["exon"].str.split(":", expand=True)
-	_exon_pos = _exon_split[1].str.split("-", expand=True)
-	_intron_c_pos = output_df["intron_c"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	output_df["pos_id"] = "SE@" + _exon_split[0] + "@" + _exon_pos[0] + "-" + _exon_pos[1] + "@" + _intron_c_pos[0] + "-" + _intron_c_pos[1]
-	output_df = output_df.sort_values("exon")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "SE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name"]]
+		# Collect results and post-process each event type as its futures complete
+		# Process in original order for deterministic output
+		for event_name, fn, columns in EVENT_DEFS:
+			futures, cols = event_futures[event_name]
+			logger.debug(f"Waiting for {event_name} to complete....")
+			output_l = []
+			for future in concurrent.futures.as_completed(futures):
+				output_l += future.result()
+			output_df = pd.DataFrame(output_l, columns=columns)
 
-	logger.debug("Creating label....")
-	if reference_gtf_path:
-		output_df["label"] = np.where(
-			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set) & output_df["intron_c"].isin(gtf_ref_intron_set),
-			"annotated", "unannotated")
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["SE"] = output_df
-	del output_df
+			# Post-process: create pos_id, dedup, label, export
+			output_df = _postprocess_event(event_name, output_df, reference_gtf_path,
+				gtf_ref_intron_set if reference_gtf_path else None,
+				gtf_ref_exon_set if reference_gtf_path else None)
+			# Stream export immediately
+			event_file = os.path.join(output_dir, f"EVENT_{event_name}.txt")
+			output_df.to_csv(event_file, sep="\t", index=False)
+			output_df_dict[event_name] = output_df
+			del output_df
+			logger.info(f"{event_name} search completed and exported.")
 
-	logger.info("Skipped exon search completed.")
-
-	#################################### Alternative Five prime ss (FIVE) ####################################
-
-	logger.info("Searching alternative five prime ss (FIVE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(five, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for alternative five prime ss search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	_intron_a_split = output_df["intron_a"].str.split(":", expand=True)
-	_intron_a_pos = _intron_a_split[1].str.split("-", expand=True)
-	_intron_b_pos = output_df["intron_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	output_df["pos_id"] = "FIVE@" + _intron_a_split[0] + "@" + _intron_a_pos[0] + "-" + _intron_a_pos[1] + "@" + _intron_b_pos[0] + "-" + _intron_b_pos[1]
-	output_df = output_df.sort_values("exon_a")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "FIVE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	if reference_gtf_path:
-		output_df["label"] = np.where(
-			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set),
-			"annotated", "unannotated")
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["FIVE"] = output_df
-	del output_df
-
-	logger.info("Alternative five prime ss search completed.")
-
-	#################################### Alternative three prime ss (THREE) ####################################
-
-	logger.info("Searching alternative three prime ss (THREE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(three, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for alternative three prime ss search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	_intron_a_split = output_df["intron_a"].str.split(":", expand=True)
-	_intron_a_pos = _intron_a_split[1].str.split("-", expand=True)
-	_intron_b_pos = output_df["intron_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	output_df["pos_id"] = "THREE@" + _intron_a_split[0] + "@" + _intron_a_pos[0] + "-" + _intron_a_pos[1] + "@" + _intron_b_pos[0] + "-" + _intron_b_pos[1]
-	output_df = output_df.sort_values("exon_a")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "THREE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	if reference_gtf_path:
-		output_df["label"] = np.where(
-			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set),
-			"annotated", "unannotated")
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["THREE"] = output_df
-	del output_df
-
-	logger.info("Alternative three prime ss search completed.")
-
-	#################################### Mutually exclusive exon (MXE) ####################################
-
-	logger.info("Searching mutually exclusive exons (MXE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(mxe, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for mutually exclusive exon search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	_a1_split = output_df["intron_a1"].str.split(":", expand=True)
-	_a1_pos = _a1_split[1].str.split("-", expand=True)
-	_ea_pos = output_df["exon_a"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	_eb_pos = output_df["exon_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	_b2_end = output_df["intron_b2"].str.split(":", expand=True)[1].str.split("-", expand=True)[1]
-	output_df["pos_id"] = "MXE@" + _a1_split[0] + "@" + _a1_pos[0] + "@" + _ea_pos[0] + "-" + _ea_pos[1] + "@" + _eb_pos[0] + "-" + _eb_pos[1] + "@" + _b2_end
-	output_df = output_df.sort_values("exon_a")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "MXE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	if reference_gtf_path:
-		output_df["label"] = np.where(
-			output_df["intron_a1"].isin(gtf_ref_intron_set) & output_df["intron_a2"].isin(gtf_ref_intron_set) & output_df["intron_b1"].isin(gtf_ref_intron_set) & output_df["intron_b2"].isin(gtf_ref_intron_set),
-			"annotated", "unannotated")
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["MXE"] = output_df
-	del output_df
-
-	logger.info("Mutually exclusive exon search completed.")
-
-	#################################### Retained intron (RI) ####################################
-
-	logger.info("Searching retained intron (RI)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(ri, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for retained intron search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	output_df["pos_id"] = \
-		"RI@" + \
-		output_df["intron_a"].str.replace(":", "@")
-	output_df = output_df.sort_values("exon_a")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "RI_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	if reference_gtf_path:
-		output_df["label"] = np.where(
-			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["exon_c"].isin(gtf_ref_exon_set),
-			"annotated", "unannotated")
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["RI"] = output_df
-	del output_df
-
-	logger.info("Retained intron search completed.")
-
-	#################################### Multiple skipped exons (MSE) ####################################
-
-	logger.info("Searching multiple skipped exons (MSE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(mse, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for multiple skipped exons search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon", "intron", "mse_n", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	# pos_id = chromosome@exon_start-exon_end;exon_start-exon_end@exclusionintron_start-exclusionintron_end
-	output_df["chr"] = output_df["exon"].str.split(":", expand=True)[0]
-	_chr_vals = output_df["chr"].values
-	output_df["exon_for_posid"] = [e.replace(c + ":", "") for e, c in zip(output_df["exon"].values, _chr_vals)]
-	output_df["exc"] = output_df["intron"].str.rsplit(";", n=1).str[-1]
-	_exc_pos = output_df["exc"].str.split(":", expand=True)[1].str.split("-", expand=True)
-	output_df["pos_id"] = \
-		"MSE@" + \
-		output_df["chr"] + "@" + \
-		output_df["exon_for_posid"] + "@" + \
-		_exc_pos[0] + "-" + _exc_pos[1]
-	output_df = output_df.sort_values("exon")
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "MSE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "mse_n", "exon", "intron", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	# Check if the intron is annotated
-	if reference_gtf_path:
-		_ref = gtf_ref_intron_set
-		output_df["label"] = ["annotated" if set(x.split(";")) <= _ref else "unannotated" for x in output_df["intron"].values]
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["MSE"] = output_df
-	del output_df
-
-	logger.info("Multiple skipped exons search completed.")
-
-	#################################### Alternative first exons (AFE) ####################################
-
-	logger.info("Searching alternative first exons (AFE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(afe, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for alternative first exons search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	output_df["chr"] = output_df["exon_a"].str.split(":", expand=True)[0]
-	_chr_vals = output_df["chr"].values
-	output_df["intron_a_for_posid"] = [a.replace(c + ":", "") for a, c in zip(output_df["intron_a"].values, _chr_vals)]
-	output_df["intron_b_for_posid"] = [b.replace(c + ":", "") for b, c in zip(output_df["intron_b"].values, _chr_vals)]
-	output_df["pos_id"] = \
-		"AFE@" + \
-		output_df["chr"] + "@" + \
-		output_df["intron_a_for_posid"] + "@" + \
-		output_df["intron_b_for_posid"]
-	output_df = output_df.sort_values(["exon_a", "exon_b"], ascending = [True, True])
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "AFE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	# Check if the intron is annotated
-	if reference_gtf_path:
-		_ref = gtf_ref_intron_set
-		output_df["label"] = ["annotated" if (set(a.split(";")) <= _ref and set(b.split(";")) <= _ref) else "unannotated" for a, b in zip(output_df["intron_a"].values, output_df["intron_b"].values)]
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["AFE"] = output_df
-	del output_df
-	
-	logger.info("Alternative first exons search completed.")
-
-	################################### Alternative last exons (ALE) ###################################
-	logger.info("Searching alternative last exons (ALE)....")
-	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-		futures = [executor.submit(ale, gtf_dic_split[i]) for i in range(num_process)]
-	output_l = []
-	logger.debug("Waiting for alternative last exons search to complete....")
-	for future in concurrent.futures.as_completed(futures):
-		output_l += future.result()
-	output_df = pd.DataFrame(
-		output_l,
-		columns = ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]
-	)
-
-	logger.debug("Creating event_id....")
-	output_df["chr"] = output_df["exon_a"].str.split(":", expand=True)[0]
-	_chr_vals = output_df["chr"].values
-	output_df["intron_a_for_posid"] = [a.replace(c + ":", "") for a, c in zip(output_df["intron_a"].values, _chr_vals)]
-	output_df["intron_b_for_posid"] = [b.replace(c + ":", "") for b, c in zip(output_df["intron_b"].values, _chr_vals)]
-	output_df["pos_id"] = \
-		"ALE@" + \
-		output_df["chr"] + "@" + \
-		output_df["intron_a_for_posid"] + "@" + \
-		output_df["intron_b_for_posid"]
-	output_df = output_df.sort_values(["exon_a", "exon_b"], ascending = [True, True])
-	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
-	output_df = output_df.reset_index()
-	output_df["event_id_num"] = output_df.index + 1
-	output_df["event_id"] = "ALE_" + output_df["event_id_num"].astype(str)
-	output_df = output_df[["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"]]
-
-	logger.debug("Creating label....")
-	# Check if the intron is annotated
-	if reference_gtf_path:
-		_ref = gtf_ref_intron_set
-		output_df["label"] = ["annotated" if (set(a.split(";")) <= _ref and set(b.split(";")) <= _ref) else "unannotated" for a, b in zip(output_df["intron_a"].values, output_df["intron_b"].values)]
-	else:
-		output_df["label"] = "annotated"
-	output_df_dict["ALE"] = output_df
-	del output_df
-
-	logger.info("Alternative last exons search completed.")
-
-	#################################### Event search end #########################################
-
-	### Export
-	logger.info("Exporting results....")
-	os.makedirs(output_dir, exist_ok = True)
-	for EVENT in output_df_dict.keys():
-		logger.debug(f"Exporting {EVENT}....")
-		event_file = os.path.join(output_dir, f"EVENT_{EVENT}.txt")
-		output_df_dict[EVENT].to_csv(
-			event_file,
-			sep = "\t",
-			index = False
-		)
+	# Clear shared data
+	_shared_gtf_dic_split = None
 
 	logger.info("Event search completed.")
 

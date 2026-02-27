@@ -128,7 +128,7 @@ rule scpsi:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/scpsi_snakemake.py \
+        python {params.base_dir}/src/scpsi.py \
         -p {threads} \
         -f {config[fdr]} \
         -d {config[delta_psi]} \

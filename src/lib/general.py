@@ -1,4 +1,5 @@
 # Modules used in shiba.py and scshiba.py
+import argparse
 import os
 import subprocess
 import sys
@@ -7,6 +8,28 @@ import json
 import logging
 import datetime
 logger = logging.getLogger(__name__)
+
+
+def str2bool(v):
+    """Convert string to boolean for argparse compatibility.
+
+    Accepts both bare flags (via nargs='?' + const=True) and explicit
+    string values passed by Snakemake config interpolation.
+
+    Accepted truthy values: "True", "true", "1", "yes"
+    Accepted falsy values:  "False", "false", "0", "no"
+
+    Usage in argparse:
+        parser.add_argument("--flag", type=str2bool, nargs="?", const=True, default=False)
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("true", "1", "yes"):
+        return True
+    elif v.lower() in ("false", "0", "no"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError(f"Boolean value expected, got '{v}'")
 
 def load_config(config_path):
     """

@@ -2082,14 +2082,23 @@ def _beta_reg_jac_full(params, x, log_n, log_y, log_1_y):
 
     Uses digamma (psi) function: d/da gammaln(a) = digamma(a).
     Returns gradient as array [d/d_beta0, d/d_beta1, d/d_gamma0, d/d_gamma1].
+
+    When mu or phi is clipped, the derivative of the clipped value w.r.t. its
+    upstream parameters is zero.  We mask out those observations so the
+    analytical gradient stays consistent with the (clipped) objective.
     """
     beta0, beta1, gamma0, gamma1 = params
     with np.errstate(over='ignore'):
         eta = beta0 + beta1 * x
-        mu = 1.0 / (1.0 + np.exp(-eta))
-        phi = np.exp(gamma0 + gamma1 * log_n)
-    mu = np.clip(mu, 1e-10, 1 - 1e-10)
-    phi = np.clip(phi, 1e-10, 1e6)
+        mu_raw = 1.0 / (1.0 + np.exp(-eta))
+        phi_raw = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu_raw, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi_raw, 1e-10, 1e6)
+
+    # Masks: gradient flows only through non-clipped observations
+    mu_active = ((mu_raw > 1e-10) & (mu_raw < 1 - 1e-10)).astype(mu.dtype)
+    phi_active = ((phi_raw > 1e-10) & (phi_raw < 1e6)).astype(phi.dtype)
+
     a = mu * phi
     b = (1.0 - mu) * phi
 
@@ -2112,10 +2121,10 @@ def _beta_reg_jac_full(params, x, log_n, log_y, log_1_y):
     d_mu = (dll_da * phi - dll_db * phi)          # d(ll)/d(mu)
     d_phi = (dll_da * mu + dll_db * (1.0 - mu))   # d(ll)/d(phi)
 
-    grad_beta0 = -np.sum(d_mu * mu_deriv)
-    grad_beta1 = -np.sum(d_mu * mu_deriv * x)
-    grad_gamma0 = -np.sum(d_phi * phi)
-    grad_gamma1 = -np.sum(d_phi * phi * log_n)
+    grad_beta0 = -np.sum(d_mu * mu_deriv * mu_active)
+    grad_beta1 = -np.sum(d_mu * mu_deriv * x * mu_active)
+    grad_gamma0 = -np.sum(d_phi * phi * phi_active)
+    grad_gamma1 = -np.sum(d_phi * phi * log_n * phi_active)
 
     return np.array([grad_beta0, grad_beta1, grad_gamma0, grad_gamma1])
 
@@ -2141,13 +2150,20 @@ def _beta_reg_jac_null(params, x, log_n, log_y, log_1_y):
     """Analytical gradient of null model negative log-likelihood.
 
     Returns gradient as array [d/d_beta0, d/d_gamma0, d/d_gamma1].
+
+    Clipping masks are applied for consistency with the clipped objective
+    (see ``_beta_reg_jac_full`` for details).
     """
     beta0, gamma0, gamma1 = params
     with np.errstate(over='ignore'):
-        mu = 1.0 / (1.0 + np.exp(-beta0))
-        phi = np.exp(gamma0 + gamma1 * log_n)
-    mu = np.clip(mu, 1e-10, 1 - 1e-10)
-    phi = np.clip(phi, 1e-10, 1e6)
+        mu_raw = 1.0 / (1.0 + np.exp(-beta0))
+        phi_raw = np.exp(gamma0 + gamma1 * log_n)
+    mu = np.clip(mu_raw, 1e-10, 1 - 1e-10)
+    phi = np.clip(phi_raw, 1e-10, 1e6)
+
+    mu_active = float((mu_raw > 1e-10) and (mu_raw < 1 - 1e-10))
+    phi_active = ((phi_raw > 1e-10) & (phi_raw < 1e6)).astype(phi.dtype)
+
     a = mu * phi
     b = (1.0 - mu) * phi
 
@@ -2162,9 +2178,9 @@ def _beta_reg_jac_null(params, x, log_n, log_y, log_1_y):
     d_mu = (dll_da * phi - dll_db * phi)
     d_phi = (dll_da * mu + dll_db * (1.0 - mu))
 
-    grad_beta0 = -np.sum(d_mu * mu_deriv)
-    grad_gamma0 = -np.sum(d_phi * phi)
-    grad_gamma1 = -np.sum(d_phi * phi * log_n)
+    grad_beta0 = -np.sum(d_mu * mu_deriv) * mu_active
+    grad_gamma0 = -np.sum(d_phi * phi * phi_active)
+    grad_gamma1 = -np.sum(d_phi * phi * log_n * phi_active)
 
     return np.array([grad_beta0, grad_gamma0, grad_gamma1])
 

@@ -238,7 +238,7 @@ rule bam2junc_RI:
         longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
-        python {params.base_dir}/src/bam2junc_RI_snakemake.py \
+        python {params.base_dir}/src/bam2junc.py ri \
         -b {input.bam} \
         -r {input.RI} \
         -o {output.junc} \
@@ -262,7 +262,7 @@ rule merge_junc:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/merge_junc_snakemake.py \
+        python {params.base_dir}/src/bam2junc.py merge \
         --exonexon {input.exonexon} \
         --exonintron {input.exonintron} \
         --output {output} \
@@ -288,7 +288,7 @@ rule psi:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/psi_snakemake.py \
+        python {params.base_dir}/src/psi.py \
         -p {threads} \
         -g {config[experiment_table]} \
         -f {config[fdr]} \
@@ -328,7 +328,7 @@ rule expression_featureCounts:
         longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
-        python {params.base_dir}/src/expression_featureCounts_snakemake.py \
+        python {params.base_dir}/src/expression.py featurecounts \
         -b {input.bam} \
         -g {input.gtf} \
         -o {output.counts} \
@@ -354,7 +354,7 @@ rule expression_tpm:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/tpm_snakemake.py \
+        python {params.base_dir}/src/expression.py tpm \
         --countfiles {input.counts} \
         --reference-gtf {input.gtf} \
         --output results/expression/ \
@@ -376,7 +376,7 @@ rule deseq2:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/deseq2_snakemake.py \
+        python {params.base_dir}/src/expression.py deseq2 \
         --count {input.counts} \
         --experiment-table {config[experiment_table]} \
         --reference {config[reference_group]} \

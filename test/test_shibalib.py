@@ -1206,9 +1206,9 @@ class TestBetaRegAnalyticalGradient(unittest.TestCase):
             method='L-BFGS-B', options={'maxiter': 5000, 'ftol': 1e-15}
         )
         grad_at_opt = shibalib._beta_reg_jac_full(result.x, *self.args)
-        # Clipping in the likelihood can cause non-trivial residual gradients
-        # at the boundary; verify they are reasonably small relative to scale
-        np.testing.assert_allclose(grad_at_opt, 0.0, atol=1.5)
+        # With clipping-aware gradients the optimizer should converge properly;
+        # small residuals remain due to the kink at the clip boundary
+        np.testing.assert_allclose(grad_at_opt, 0.0, atol=0.1)
 
     def test_null_gradient_at_optimum(self):
         """At the null MLE, gradient should be approximately zero."""

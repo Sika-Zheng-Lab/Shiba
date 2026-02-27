@@ -7,6 +7,7 @@ import sys
 import os
 import pandas as pd
 from lib import shibalib
+from lib.general import str2bool
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -29,12 +30,12 @@ def get_args():
     parser.add_argument("-r", "--reference", type = str, help = "Reference group for detecting differential events")
     parser.add_argument("-a", "--alternative", type = str, help = "Alternative group for detecting differential events")
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
-    parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", action = 'store_true')
-    parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", action = 'store_true')
-    parser.add_argument("-b", "--beta-regression", help = "Perform beta regression with Wald test between reference and alternative group", action = 'store_true')
-    parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", action = 'store_true')
-    parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", action = 'store_true')
-    parser.add_argument("--excel", help = "Make result files in excel format", action = 'store_true')
+    parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("-b", "--beta-regression", help = "Perform beta regression with Wald test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()

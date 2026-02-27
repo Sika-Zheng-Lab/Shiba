@@ -11,20 +11,9 @@ from lib import expression, general
 # Configure logging
 logger = logging.getLogger(__name__)
 
-def get_args():
-	parser = argparse.ArgumentParser(
-		description="Pipeline for processing junction read counts."
-	)
-	parser.add_argument("-i", "--input", required=True, help="Experiment table")
-	parser.add_argument("-r", "--ri_event", required=True, help="Intron retention event file")
-	parser.add_argument("-o", "--output", required=True, help="Output junction read counts file")
-	parser.add_argument("-p", "--processors", type=int, default=1, help="Number of processors to use (default: 1)")
-	parser.add_argument("-a", "--anchor", type=int, default=8, help="Minimum anchor length (default: 8)")
-	parser.add_argument("-m", "--min_intron", type=int, default=70, help="Minimum intron size (default: 70)")
-	parser.add_argument("-M", "--max_intron", type=int, default=500000, help="Maximum intron size (default: 500000)")
-	parser.add_argument("-s", "--strand", default="XS", help="Strand specificity (default: XS)")
-	parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
-	return parser.parse_args()
+# ---------------------------------------------------------------------------
+# Shared helper functions
+# ---------------------------------------------------------------------------
 
 def prepare_output_dir(output_path):
 	output_dir = os.path.dirname(output_path)
@@ -52,6 +41,28 @@ def create_saf_file(ri_event, tmp_dir):
 	saf_df = pd.DataFrame(saf_data, columns=["GeneID", "Chr", "Start", "End", "Strand"])
 	saf_df.drop_duplicates().to_csv(saf_file, sep="\t", index=False)
 	return saf_file
+
+def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False):
+	"""Run featureCounts for RI (exon-intron) junction counting on a single BAM.
+
+	Used by both the all-in-one pipeline and the 'ri' subcommand.
+	"""
+	# Check if BAM is paired-end
+	paired_flag = expression.is_paired_end(bam)
+	paired_option = ["-p", "-B"] if paired_flag else []
+	# Check if long read mode is enabled
+	longread_option = ["-L"] if long_read else []
+	# Run featureCounts
+	featurecounts_command = [
+		"featureCounts", "-a", ri_saf, "-o", output, "-F",
+		"SAF", "--fracOverlapFeature", "1.0", "-T", str(threads), "-O"
+	] + paired_option + longread_option + [bam]
+	# Delete empty strings
+	featurecounts_command = list(filter(None, featurecounts_command))
+	returncode = general.execute_command(featurecounts_command)
+	if returncode != 0:
+		logger.error("Error executing featureCounts. Exiting...")
+		sys.exit(1)
 
 def process_samples(experiment_file, strand, anchor, min_intron, max_intron, output_dir, logs_dir, tmp_dir, saf_file, processors):
 	junc_files = []
@@ -105,117 +116,161 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 				sys.exit(1)
 			junc_files.append((exon_junc_file, "exon-exon"))
 
-			# Count exon-intron junctions
+			# Count exon-intron junctions using shared helper
 			logger.info(f"Counting exon-intron junctions for sample {sample}...")
 			exon_intron_file = os.path.join(tmp_dir, f"{sample}_exon-intron.junc")
-			# Check if BAM is paired-end
-			paired_flag = expression.is_paired_end(bam)
-			paired_option = ["-p"] if paired_flag else []
-			# Check if BAM is longread
-			longread_flag = ["-L"] if technology.lower() == "long" else []
-			featurecounts_command = [
-				"featureCounts",
-				"-a", saf_file,
-				"-o", exon_intron_file,
-				"-F", "SAF",
-				"--fracOverlapFeature", "1.0",
-				"-T", str(processors),
-				"-O"
-			] + paired_option + longread_flag + [bam]
-			# Delete empty strings
-			featurecounts_command = list(filter(None, featurecounts_command))
-			logger.debug(f"FeatureCounts command: {featurecounts_command}")
-			return_code = general.execute_command(
-				featurecounts_command, os.path.join(logs_dir, "featureCounts.log")
-			)
-			if return_code != 0:
-				logger.error(f"FeatureCounts failed for sample {sample}")
-				sys.exit(1)
+			long_read = technology.lower() == "long"
+			run_featurecounts_ri(bam, saf_file, exon_intron_file, processors, long_read=long_read)
 			junc_files.append((exon_intron_file, "exon-intron"))
 
 	return junc_files
 
-def merge_junction_files(junc_files, output_file):
-	def process_junction_files(files, junction_type):
-		logger.info(f"Merging {junction_type} junction files...")
-		result_df = []
-		for file in files:
-			sample_name = os.path.basename(file).rsplit("_", 1)[0]
-			logger.debug(f"Processing sample: {sample_name}")
+# ---------------------------------------------------------------------------
+# Junction merge logic (shared by all-in-one and 'merge' subcommand)
+# ---------------------------------------------------------------------------
 
-			df = pd.read_csv(
-				file,
-				sep="\t",
-				comment="#" if junction_type == "exon-intron" else None,
-				header=None,
-				dtype={0: str}
-			)
+def merge_exonexon(filelist):
+	"""Merge exon-exon junction files into a single DataFrame."""
+	result_df = pd.DataFrame()
+	for i in range(len(filelist)):
+		logger.debug(filelist[i].split("/")[-1] + "...")
+		junc_df = pd.read_csv(
+			filelist[i],
+			sep="\t",
+			header=None,
+			dtype=str
+		)
+		sample = filelist[i].split("/")[-1].rstrip("_exon-exon.junc")
+		junc_df = junc_df.iloc[:, [0, 1, 2, 4, 10]]
+		junc_df.columns = ["chr", "start", "end", "count", "block"]
+		junc_df = junc_df.reset_index()
+		junc_df.loc[(junc_df["chr"].str.isdecimal() == True) | (junc_df["chr"].str.len() <= 2), "chr"] = "chr" + junc_df["chr"]
+		junc_df["count"] = junc_df["count"].astype("int32")
+		junc_df["blockSize1"] = junc_df["block"].str.split(",", expand=True)[0].astype("int32")
+		junc_df["start"] = junc_df["start"].astype("int32") + junc_df["blockSize1"]
+		junc_df["blockSize2"] = junc_df["block"].str.split(",", expand=True)[1].astype("int32")
+		junc_df["end"] = junc_df["end"].astype("int32") - junc_df["blockSize2"] + 1
+		junc_df["ID"] = junc_df["chr"].astype(str) + ":" + junc_df["start"].astype(str) + "-" + junc_df["end"].astype(str)
+		junc_df["sample"] = sample
+		junc_df = junc_df[["ID", "sample", "count"]]
+		# Group by ID and sample
+		junc_df = junc_df.groupby(["ID", "sample"], as_index=False).sum()
+		result_df = pd.concat([result_df, junc_df], axis=0) if not result_df.empty else junc_df
 
-			if junction_type == "exon-exon":
-				df = df.iloc[:, [0, 1, 2, 4, 10]]
-				df.columns = ["chr", "start", "end", "count", "block"]
-				df = df.reset_index()
-				df["chr"] = df["chr"].apply(lambda x: f"chr{x}" if x.isdecimal() or len(x) <= 2 else x)
-				df["blockSize1"] = df["block"].str.split(",", expand = True)[0].astype("int32")
-				df["start"] = df["start"].astype("int32") + df["blockSize1"]
-				df["blockSize2"] = df["block"].str.split(",", expand = True)[1].astype("int32")
-				df["end"] = df["end"].astype("int32") - df["blockSize2"] + 1
-				df["ID"] = df["chr"].astype(str) + ":" + df["start"].astype(str) + "-" + df["end"].astype(str)
-			else:
-				df = df.iloc[1:, [1, 2, 3, 0, 6]]
-				df.columns = ["chr", "start", "end", "ID", "count"]
-
-			df["chr"] = df["chr"].apply(lambda x: f"chr{x}" if x.isdecimal() or len(x) <= 2 else x)
-			df["sample"] = sample_name
-			result_df.append(df[["ID", "sample", "count"]] if junction_type == "exon-exon" else df)
-
-		merged_df = pd.concat(result_df, ignore_index=True).drop_duplicates()
-		merged_df["count"] = merged_df["count"].astype(int)
-		return merged_df
-
-	# Separate files by junction type
-	exon_exon_files = [j[0] for j in junc_files if j[1] == "exon-exon"]
-	exon_intron_files = [j[0] for j in junc_files if j[1] == "exon-intron"]
-
-	# Process exon-exon junctions
-	exon_exon_df = process_junction_files(exon_exon_files, "exon-exon")
-	if exon_exon_df.duplicated(subset=["ID", "sample"]).any():
-		duplicates = exon_exon_df[exon_exon_df.duplicated(subset=["ID", "sample"], keep=False)]
+	result_df["count"] = result_df["count"].astype("int32")
+	# Check if there are duplicated junctions
+	if result_df.duplicated(subset=["ID", "sample"]).any():
+		duplicates = result_df[result_df.duplicated(subset=["ID", "sample"], keep=False)]
 		logger.debug(f"Duplicated junctions found: {duplicates}")
 		logger.debug("Duplicated junctions occur when the same junction is detected in both strands.")
 		logger.debug("The duplicated junctions will be summed and merged.")
-		# Group by ID and sample and sum counts
-		exon_exon_df = exon_exon_df.groupby(["ID", "sample"], as_index=False).sum()
+		result_df = result_df.groupby(["ID", "sample"], as_index=False).sum()
 
-	exon_exon_df = exon_exon_df.pivot(index="ID", columns="sample", values="count").fillna(0).reset_index()
-	exon_exon_df["chr"], exon_exon_df["start"], exon_exon_df["end"] = zip(*exon_exon_df["ID"].str.extract(r'([^:]+):(\d+)-(\d+)').values)
-	exon_exon_df = exon_exon_df.astype({"start": int, "end": int})
-	exon_exon_df = exon_exon_df[["chr", "start", "end", "ID"] + [col for col in exon_exon_df.columns if col not in ["chr", "start", "end", "ID"]]]
+	result_df = result_df.pivot(
+		index="ID",
+		columns="sample",
+		values="count"
+	).fillna(0).reset_index()
+	result_df = result_df.rename(columns={"index": "ID"})
 
-	# Process exon-intron junctions
-	exon_intron_df = process_junction_files(exon_intron_files, "exon-intron")
-	exon_intron_df = exon_intron_df.pivot(index=["chr", "start", "end", "ID"], columns="sample", values="count").fillna(0).reset_index()
-	exon_intron_df = exon_intron_df.astype({col: int for col in exon_intron_df.columns if col not in ["chr", "start", "end", "ID"]})
+	result_df["chr"] = result_df["ID"].str.split(":", expand=True)[0]
+	result_df["start"] = result_df["ID"].str.split(":", expand=True)[1].str.split("-", expand=True)[0].astype("int32")
+	result_df["end"] = result_df["ID"].str.split(":", expand=True)[1].str.split("-", expand=True)[1].astype("int32")
+	result_df["chr-start"] = result_df["chr"] + "-" + result_df["start"].astype(str)
+	result_df["chr-end"] = result_df["chr"] + "-" + result_df["end"].astype(str)
+	col = [i for i in result_df.columns if i not in ["chr", "start", "end", "ID", "chr-start", "chr-end", "mean"]]
+	for j in col:
+		result_df = result_df.astype({j: "int32"})
+	col = ["chr", "start", "end", "ID"] + col
+	result_df = result_df[col]
+
+	return result_df
+
+def merge_exonintron(filelist):
+	"""Merge exon-intron junction files into a single DataFrame."""
+	result_df = pd.DataFrame()
+	for i in range(len(filelist)):
+		logger.debug(filelist[i].split("/")[-1] + "...")
+		junc_df = pd.read_csv(
+			filelist[i],
+			sep="\t",
+			comment="#",
+			dtype=str
+		)
+		sample = filelist[i].split("/")[-1].rstrip("_exon-intron.junc")
+		junc_df = junc_df.iloc[:, [1, 2, 3, 0, 6]]
+		junc_df.columns = ["chr", "start", "end", "ID", "count"]
+		junc_df["sample"] = sample
+		junc_df.loc[(junc_df["chr"].str.isdecimal() == True) | (junc_df["chr"].str.len() <= 2), "chr"] = "chr" + junc_df["chr"]
+		result_df = pd.concat([result_df, junc_df], axis=0) if result_df is not None else junc_df
+
+	result_df["count"] = result_df["count"].astype("int32")
+	result_df = result_df.pivot(
+		index=["chr", "start", "end", "ID"],
+		columns="sample",
+		values="count"
+	).fillna(0).reset_index()
+	col = [i for i in result_df.columns if i not in ["chr", "start", "end", "ID"]]
+	for j in col:
+		result_df = result_df.astype({j: "int32"})
+
+	return result_df
+
+def merge_and_save(exonexon_files, exonintron_files, output_file):
+	"""Merge exon-exon and exon-intron junction files and save result."""
+	# exon-exon junctions
+	logger.info("Merge exon-exon junction count...")
+	exon_exon_junc_df = merge_exonexon(exonexon_files)
+
+	# exon-intron junctions
+	logger.info("Merge exon-intron junction count...")
+	exon_intron_junc_df = merge_exonintron(exonintron_files)
 
 	# Combine and save results
-	final_df = pd.concat([exon_exon_df, exon_intron_df], ignore_index=True).sort_values(["chr", "start"])
-	# Make sure values are all integers
-	final_df = final_df.astype({col: int for col in final_df.columns if col not in ["chr", "start", "end", "ID"]})
-	final_df.to_csv(output_file, sep="\t", index=False)
-	logger.info(f"Junction read counts merged into {output_file}")
-
-def main():
-
-	# Parse arguments
-	args = get_args()
-	# Set up logging
-	logging.basicConfig(
-		format = "[%(asctime)s] %(levelname)7s %(message)s",
-		level = logging.DEBUG if args.verbose else logging.INFO
+	logger.info("Combine and save results...")
+	result_df = pd.concat(
+		[exon_exon_junc_df, exon_intron_junc_df]
+	).sort_values(["chr", "start"])
+	result_df.to_csv(
+		output_file,
+		sep="\t",
+		index=False
 	)
-	logger.info("Processing junction read counts...")
-	logger.debug(args)
 
+	junc_num = str(result_df.count()[0])
+	logger.debug(f"Total number of junctions: {junc_num}")
+	logger.info("Merge junctions completed")
+
+def merge_junction_files(junc_files, output_file):
+	"""Merge junction files from all-in-one pipeline (list of tuples)."""
+	exon_exon_files = [j[0] for j in junc_files if j[1] == "exon-exon"]
+	exon_intron_files = [j[0] for j in junc_files if j[1] == "exon-intron"]
+	merge_and_save(exon_exon_files, exon_intron_files, output_file)
+
+# ---------------------------------------------------------------------------
+# Subcommand: ri — run featureCounts for a single BAM (RI junctions)
+# (replaces bam2junc_RI_snakemake.py)
+# ---------------------------------------------------------------------------
+
+def cmd_ri(args):
+	logger.info("Running featureCounts for RI junctions...")
+	run_featurecounts_ri(args.bam, args.RI, args.junc, args.threads, long_read=args.long_read)
+	logger.info("Done.")
+
+# ---------------------------------------------------------------------------
+# Subcommand: merge — merge junction files
+# (replaces merge_junc_snakemake.py)
+# ---------------------------------------------------------------------------
+
+def cmd_merge(args):
+	logger.info("Starting merge junctions")
+	merge_and_save(args.exonexon, args.exonintron, args.output)
+
+# ---------------------------------------------------------------------------
+# Default: all-in-one pipeline (original bam2junc.py behavior)
+# ---------------------------------------------------------------------------
+
+def cmd_all(args):
 	output_dir, logs_dir, tmp_dir = prepare_output_dir(args.output)
 	saf_file = create_saf_file(args.ri_event, tmp_dir)
 	logger.info("Extracting junctions from BAM files...")
@@ -228,9 +283,66 @@ def main():
 
 	# Cleanup
 	logger.debug("Cleaning up temporary files...")
-	shutil.rmtree(tmp_dir) # Temporary directory
+	shutil.rmtree(tmp_dir)  # Temporary directory
 
 	logger.info("Junction read counts processing completed!")
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+
+def parse_args():
+	parser = argparse.ArgumentParser(
+		description="Pipeline for processing junction read counts."
+	)
+	subparsers = parser.add_subparsers(dest="subcommand")
+
+	# Default (all-in-one) arguments — used when no subcommand is given
+	parser.add_argument("-i", "--input", help="Experiment table")
+	parser.add_argument("-r", "--ri_event", help="Intron retention event file")
+	parser.add_argument("-o", "--output", help="Output junction read counts file")
+	parser.add_argument("-p", "--processors", type=int, default=1, help="Number of processors to use (default: 1)")
+	parser.add_argument("-a", "--anchor", type=int, default=8, help="Minimum anchor length (default: 8)")
+	parser.add_argument("-m", "--min_intron", type=int, default=70, help="Minimum intron size (default: 70)")
+	parser.add_argument("-M", "--max_intron", type=int, default=500000, help="Maximum intron size (default: 500000)")
+	parser.add_argument("-s", "--strand", default="XS", help="Strand specificity (default: XS)")
+	parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
+	# Subcommand: ri
+	ri_parser = subparsers.add_parser("ri", help="Run featureCounts for RI (exon-intron) junctions on a single BAM")
+	ri_parser.add_argument("-b", "--bam", type=str, required=True, help="Input BAM file")
+	ri_parser.add_argument("-r", "--RI", type=str, required=True, help="Input RI SAF file")
+	ri_parser.add_argument("-o", "--junc", type=str, required=True, help="Output junction file")
+	ri_parser.add_argument("-t", "--threads", type=int, default=1, help="Number of threads")
+	ri_parser.add_argument("-l", "--long-read", action="store_true", help="Long read mode")
+	ri_parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
+	# Subcommand: merge
+	merge_parser = subparsers.add_parser("merge", help="Merge exon-exon and exon-intron junction files")
+	merge_parser.add_argument("--exonexon", type=str, nargs="+", required=True, help="Exon-exon junction files")
+	merge_parser.add_argument("--exonintron", type=str, nargs="+", required=True, help="Exon-intron junction files")
+	merge_parser.add_argument("--output", type=str, required=True, help="Output file")
+	merge_parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
+	return parser.parse_args()
+
+def main():
+	args = parse_args()
+	# Set up logging
+	logging.basicConfig(
+		format="[%(asctime)s] %(levelname)7s %(message)s",
+		level=logging.DEBUG if args.verbose else logging.INFO
+	)
+	logger.debug(args)
+
+	if args.subcommand == "ri":
+		cmd_ri(args)
+	elif args.subcommand == "merge":
+		cmd_merge(args)
+	else:
+		# Default: all-in-one pipeline (original behavior)
+		logger.info("Processing junction read counts...")
+		cmd_all(args)
 
 if __name__ == "__main__":
 	main()

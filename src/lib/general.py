@@ -49,13 +49,22 @@ def generate_report(name, output_dir, version, command_line, experiment_table, s
     version (str): Version of the tool
     command_line (str): Command line used to run the pipeline
     experiment_table (str): Path to the experiment table file
-    start_time (datetime): Start time of the pipeline execution (optional)
+    start_time (datetime or str): Start time of the pipeline execution (optional).
+        Accepts a datetime object or an ISO 8601 format string.
     
     Returns:
     str: Path to the generated report.json file
     """
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Parse start_time if given as ISO format string
+    if isinstance(start_time, str):
+        try:
+            start_time = datetime.datetime.fromisoformat(start_time)
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid start_time string: '{start_time}'. Treating as None.")
+            start_time = None
     
     # Get end time
     end_time = datetime.datetime.now()

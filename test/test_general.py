@@ -134,6 +134,39 @@ class TestGenerateReport(unittest.TestCase):
         self.assertEqual(data["run"]["start_time"], "NA")
         self.assertEqual(data["run"]["duration_seconds"], "NA")
 
+    def test_generate_report_with_iso_string_start_time(self):
+        start = datetime.datetime(2024, 6, 15, 10, 30, 0)
+        start_iso = start.isoformat(timespec="microseconds")
+        report_path = generate_report(
+            name="SnakeShiba",
+            output_dir=self.tmpdir,
+            version="1.0.0",
+            command_line="snakemake -s snakeshiba.smk",
+            experiment_table="/path/to/exp.tsv",
+            start_time=start_iso
+        )
+        with open(report_path, "r") as f:
+            data = json.load(f)
+        self.assertEqual(data["run"]["start_time"], start_iso)
+        self.assertNotEqual(data["run"]["duration_seconds"], "NA")
+        self.assertIsInstance(data["run"]["duration_seconds"], float)
+        self.assertGreater(data["run"]["duration_seconds"], 0)
+
+    def test_generate_report_with_invalid_string_start_time(self):
+        report_path = generate_report(
+            name="SnakeShiba",
+            output_dir=self.tmpdir,
+            version="1.0.0",
+            command_line="snakemake -s snakeshiba.smk",
+            experiment_table="/path/to/exp.tsv",
+            start_time="not-a-valid-datetime"
+        )
+        with open(report_path, "r") as f:
+            data = json.load(f)
+        # Invalid string should fall back to NA
+        self.assertEqual(data["run"]["start_time"], "NA")
+        self.assertEqual(data["run"]["duration_seconds"], "NA")
+
 
 class TestCheckSamplesize(unittest.TestCase):
     def setUp(self):

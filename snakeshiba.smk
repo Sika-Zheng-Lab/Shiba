@@ -1,8 +1,12 @@
 
 import os
+import datetime
 _version_path = os.path.join(os.path.dirname(workflow.snakefile), "VERSION")
 with open(_version_path, "r") as _vf:
     VERSION = _vf.read().strip()
+
+# Capture pipeline start time as ISO string for report generation
+start_time_str = datetime.datetime.now().isoformat(timespec="microseconds")
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
@@ -94,11 +98,12 @@ rule generate_report:
         workdir = config["workdir"],
         version = VERSION,
         command = command,
-        experiment_table = config["experiment_table"]
+        experiment_table = config["experiment_table"],
+        start_time = start_time_str
     shell:
         """
         export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
-        python -c 'from general import generate_report; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
+        python -c 'from general import generate_report; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}", "{params.start_time}")'
         """
 
 rule bam2gtf:

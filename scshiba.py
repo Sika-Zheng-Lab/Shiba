@@ -130,8 +130,8 @@ def main():
 				"-f", str(config['fdr']),
 				"-d", str(config['delta_psi']),
 				"-m", str(config['minimum_reads']),
-				"--onlypsi" if config['only_psi'] else "",
-				"--excel" if config['excel'] else "",
+				"--onlypsi", str(config['only_psi']),
+				"--excel", str(config['excel']),
 				os.path.join(output_dir, "junctions", "junctions.bed"),
 				os.path.join(output_dir, "events"),
 				os.path.join(output_dir, "results")

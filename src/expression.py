@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def prepare_output_dir(output_dir):
     os.makedirs(f"{output_dir}/logs", exist_ok=True)
 
-def run_featurecounts_single(bam, annotation, output, threads, fmt="GTF", long_read=False, extra_args=None):
+def run_featurecounts_single(bam, annotation, output, threads, fmt="GTF", long_read=False, extra_args=None, log_file=None):
     """Run featureCounts for a single BAM file.
 
     Used by both the all-in-one pipeline and the 'featurecounts' subcommand.
@@ -41,7 +41,7 @@ def run_featurecounts_single(bam, annotation, output, threads, fmt="GTF", long_r
     featurecounts_command += [bam]
     # Remove empty strings
     featurecounts_command = list(filter(None, featurecounts_command))
-    return_code = general.execute_command(featurecounts_command)
+    return_code = general.execute_command(featurecounts_command, log_file)
     if return_code != 0:
         logger.error("Error executing featureCounts. Exiting...")
         sys.exit(1)
@@ -77,7 +77,8 @@ def process_samples(experiment_file, reference_gtf, output_dir, processors):
             # Run featureCounts
             counts_file = f"{output_dir}/{sample}_counts.txt"
             long_read = technology.lower() == "long"
-            run_featurecounts_single(bam_file, reference_gtf, counts_file, processors, fmt="GTF", long_read=long_read)
+            featurecounts_log = f"{output_dir}/logs/featureCounts.log"
+            run_featurecounts_single(bam_file, reference_gtf, counts_file, processors, fmt="GTF", long_read=long_read, log_file=featurecounts_log)
 
             # Simplify counts file
             logger.info(f"Simplifying counts file for sample {sample}")

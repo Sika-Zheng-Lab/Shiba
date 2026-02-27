@@ -42,7 +42,7 @@ def create_saf_file(ri_event, tmp_dir):
 	saf_df.drop_duplicates().to_csv(saf_file, sep="\t", index=False)
 	return saf_file
 
-def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False):
+def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False, log_file=None):
 	"""Run featureCounts for RI (exon-intron) junction counting on a single BAM.
 
 	Used by both the all-in-one pipeline and the 'ri' subcommand.
@@ -59,7 +59,7 @@ def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False):
 	] + paired_option + longread_option + [bam]
 	# Delete empty strings
 	featurecounts_command = list(filter(None, featurecounts_command))
-	returncode = general.execute_command(featurecounts_command)
+	returncode = general.execute_command(featurecounts_command, log_file)
 	if returncode != 0:
 		logger.error("Error executing featureCounts. Exiting...")
 		sys.exit(1)
@@ -120,7 +120,8 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 			logger.info(f"Counting exon-intron junctions for sample {sample}...")
 			exon_intron_file = os.path.join(tmp_dir, f"{sample}_exon-intron.junc")
 			long_read = technology.lower() == "long"
-			run_featurecounts_ri(bam, saf_file, exon_intron_file, processors, long_read=long_read)
+			featurecounts_log = os.path.join(logs_dir, "featureCounts.log")
+			run_featurecounts_ri(bam, saf_file, exon_intron_file, processors, long_read=long_read, log_file=featurecounts_log)
 			junc_files.append((exon_intron_file, "exon-intron"))
 
 	return junc_files

@@ -194,12 +194,12 @@ def main():
                 "-f", str(config['fdr']),
                 "-d", str(config['delta_psi']),
                 "-m", str(config['minimum_reads']),
-                "-i" if config['individual_psi'] else "",
-                "-t" if config['ttest'] else "",
-                "-b" if config.get('beta_regression', False) else "",
-                "--excel" if config['excel'] else "",
-                "--onlypsi" if only_psi else "",
-                "--onlypsi-group" if only_psi_group else "",
+                "-i", str(config['individual_psi']),
+                "-t", str(config['ttest']),
+                "-b", str(config.get('beta_regression', False)),
+                "--excel", str(config['excel']),
+                "--onlypsi", str(only_psi),
+                "--onlypsi-group", str(only_psi_group),
                 os.path.join(output_dir, "junctions", "junctions.bed"),
                 os.path.join(output_dir, "events"),
                 os.path.join(output_dir, "results", "splicing")
@@ -216,7 +216,7 @@ def main():
                 "" if only_psi or only_psi_group else config['reference_group'],
                 "" if only_psi or only_psi_group else "-a",
                 "" if only_psi or only_psi_group else config['alternative_group'],
-                "--excel" if config['excel'] else "",
+                "--excel", str(config['excel']),
                 "-p", processors
             ]
         },

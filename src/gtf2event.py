@@ -1382,11 +1382,8 @@ def main():
 	os.makedirs(output_dir, exist_ok=True)
 	output_df_dict = {}
 
-	with concurrent.futures.ProcessPoolExecutor(
-		max_workers=num_process,
-		initializer=_init_worker,
-		initargs=(gtf_dic_split,)
-	) as executor:
+	# fork CoW: workers inherit _shared_gtf_dic_split from parent — no initializer needed
+	with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
 		# Submit all tasks: 8 event types × num_process partitions
 		# Heavy events (MSE, AFE, ALE) submitted first so they start immediately
 		submit_order = ["MSE", "AFE", "ALE", "MXE", "SE", "FIVE", "THREE", "RI"]

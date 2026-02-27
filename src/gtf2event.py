@@ -116,23 +116,24 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 	gtf_df["gene_name"] = gene_name_col
 	gtf_df["transcript_id"] = transcript_id_col
 
-	gtf_gene_id = gtf_df.gene_id.values
-	gtf_gene_name = gtf_df.gene_name.values
-	gtf_chr = gtf_df.chr.values
+	# Vectorized Counter normalization (replaces O(N*K) row-by-row loop)
+	gene_id_most_common = {k: collections.Counter(v).most_common(1)[0][0] for k, v in gene_id_list_dic.items()}
+	gene_name_most_common = {k: collections.Counter(v).most_common(1)[0][0] for k, v in gene_name_list_dic.items()}
 
-	for index in range(gtf_df.shape[0]):
-		if gtf_gene_id[index] in gene_id_list_dic:
-			l = gene_id_list_dic[gtf_gene_id[index]]
-			c = collections.Counter(l)
-			most_common = c.most_common()[0][0]
-			gtf_df.at[index, "gene_id"] = most_common
-		if gtf_gene_name[index] in gene_name_list_dic:
-			l = gene_name_list_dic[gtf_gene_name[index]]
-			c = collections.Counter(l)
-			most_common = c.most_common()[0][0]
-			gtf_df.at[index, "gene_name"] = most_common
-		if ~(gtf_chr[index].startswith("chr")) and (len(gtf_chr[index]) <= 2):
-			gtf_df.at[index, "chr"] = "chr" + gtf_chr[index]
+	if gene_id_most_common:
+		mapped = gtf_df["gene_id"].map(gene_id_most_common)
+		mask = mapped.notna()
+		gtf_df.loc[mask, "gene_id"] = mapped[mask]
+
+	if gene_name_most_common:
+		mapped = gtf_df["gene_name"].map(gene_name_most_common)
+		mask = mapped.notna()
+		gtf_df.loc[mask, "gene_name"] = mapped[mask]
+
+	chr_col = gtf_df["chr"]
+	chr_mask = ~chr_col.str.startswith("chr") & (chr_col.str.len() <= 2)
+	if chr_mask.any():
+		gtf_df.loc[chr_mask, "chr"] = "chr" + gtf_df.loc[chr_mask, "chr"]
 
 	gtf_df = gtf_df.sort_values(["gene_id", "transcript_id", "start"])
 	gtf_df = gtf_df.reset_index()
@@ -143,87 +144,61 @@ def gtf(gtf, num_process) -> pd.DataFrame:
 	gtf_start = gtf_df.start.values
 	gtf_end = gtf_df.end.values
 	gtf_strand = gtf_df.strand.values
-	gtf_dic = defaultdict(dict)
-	transcript = ""
-	gene = ""
+	gtf_dic = {}
+	_start_lists = defaultdict(list)
+	_end_lists = defaultdict(list)
+	transcript_prev = ""
 
 	for index in range(gtf_df.shape[0]):
-		gtf_dic[gtf_gene_id[index]]["gene_name"] = gtf_gene_name[index]
-		gtf_dic[gtf_gene_id[index]]["chr"] = gtf_chr[index]
-		gtf_dic[gtf_gene_id[index]]["strand"] = gtf_strand[index]
+		gid = gtf_gene_id[index]
+		chr_val = gtf_chr[index]
+		s = gtf_start[index]
+		e = gtf_end[index]
+		tid = gtf_transcript_id[index]
+		s_str = str(s)
+		e_str = str(e)
+		exon_str = chr_val + ":" + s_str + "-" + e_str
 
-		try:
-			gtf_dic[gtf_gene_id[index]]["start"] = np.append(gtf_dic[gtf_gene_id[index]]["start"], gtf_start[index])
-		except:
-			gtf_dic[gtf_gene_id[index]]["start"] = np.array([gtf_start[index]])
+		if gid not in gtf_dic:
+			gtf_dic[gid] = {
+				"gene_name": gtf_gene_name[index],
+				"chr": chr_val,
+				"strand": gtf_strand[index],
+				"exon_list": set(),
+				"start_dic": defaultdict(set),
+				"end_dic": defaultdict(set),
+				"transcript_exon_dic": defaultdict(set),
+			}
 
-		try:
-			gtf_dic[gtf_gene_id[index]]["end"] = np.append(gtf_dic[gtf_gene_id[index]]["end"], gtf_end[index])
-		except:
-			gtf_dic[gtf_gene_id[index]]["end"] = np.array([gtf_end[index]])
+		g = gtf_dic[gid]
+		_start_lists[gid].append(s)
+		_end_lists[gid].append(e)
+		g["exon_list"].add(exon_str)
+		g["start_dic"][s_str].add(e_str)
+		g["end_dic"][e_str].add(s_str)
+		g["transcript_exon_dic"][tid].add(exon_str)
 
-		try:
-			gtf_dic[gtf_gene_id[index]]["exon_list"].add(gtf_chr[index] + ":" + str(gtf_start[index]) + "-" + str(gtf_end[index]))
-		except:
-			gtf_dic[gtf_gene_id[index]]["exon_list"] = {gtf_chr[index] + ":" + str(gtf_start[index]) + "-" + str(gtf_end[index])}
+		if tid == transcript_prev:
+			end_prev_str = str(end_prev)
+			intron_str = chr_val + ":" + end_prev_str + "-" + s_str
+			if "intron_list" not in g:
+				g["intron_start_dic"] = defaultdict(set)
+				g["intron_end_dic"] = defaultdict(set)
+				g["intron_list"] = set()
+				g["transcript_intron_dic"] = defaultdict(set)
+			g["intron_start_dic"][end_prev_str].add(s_str)
+			g["intron_end_dic"][s_str].add(end_prev_str)
+			g["intron_list"].add(intron_str)
+			g["transcript_intron_dic"][tid].add(intron_str)
 
-		if "start_dic" not in gtf_dic[gtf_gene_id[index]]:
-			gtf_dic[gtf_gene_id[index]]["start_dic"] = {}
-		try:
-			gtf_dic[gtf_gene_id[index]]["start_dic"][str(gtf_start[index])].add(str(gtf_end[index]))
-		except:
-			gtf_dic[gtf_gene_id[index]]["start_dic"][str(gtf_start[index])] = {str(gtf_end[index])}
+		end_prev = e
+		transcript_prev = tid
 
-		if "end_dic" not in gtf_dic[gtf_gene_id[index]]:
-			gtf_dic[gtf_gene_id[index]]["end_dic"] = {}
-		try:
-			gtf_dic[gtf_gene_id[index]]["end_dic"][str(gtf_end[index])].add(str(gtf_start[index]))
-		except:
-			gtf_dic[gtf_gene_id[index]]["end_dic"][str(gtf_end[index])] = {str(gtf_start[index])}
-
-		if "transcript_exon_dic" not in gtf_dic[gtf_gene_id[index]]:
-			gtf_dic[gtf_gene_id[index]]["transcript_exon_dic"] = {}
-		if gtf_transcript_id[index] not in gtf_dic[gtf_gene_id[index]]["transcript_exon_dic"]:
-			gtf_dic[gtf_gene_id[index]]["transcript_exon_dic"][gtf_transcript_id[index]] = set()
-		try:
-			gtf_dic[gtf_gene_id[index]]["transcript_exon_dic"][gtf_transcript_id[index]].add(gtf_chr[index] + ":" + str(gtf_start[index]) + "-" + str(gtf_end[index]))
-		except:
-			gtf_dic[gtf_gene_id[index]]["transcript_exon_dic"][gtf_transcript_id[index]] = {gtf_chr[index] + ":" + str(gtf_start[index]) + "-" + str(gtf_end[index])}
-
-		if gtf_transcript_id[index] == transcript:
-
-			if "intron_start_dic" not in gtf_dic[gtf_gene_id[index]]:
-				gtf_dic[gtf_gene_id[index]]["intron_start_dic"] = {}
-			try:
-				gtf_dic[gtf_gene_id[index]]["intron_start_dic"][str(end)].add(str(gtf_start[index]))
-			except:
-				gtf_dic[gtf_gene_id[index]]["intron_start_dic"][str(end)] = {str(gtf_start[index])}
-
-			if "intron_end_dic" not in gtf_dic[gtf_gene_id[index]]:
-				gtf_dic[gtf_gene_id[index]]["intron_end_dic"] = {}
-			try:
-				gtf_dic[gtf_gene_id[index]]["intron_end_dic"][str(gtf_start[index])].add(str(end))
-			except:
-				gtf_dic[gtf_gene_id[index]]["intron_end_dic"][str(gtf_start[index])] = {str(end)}
-
-			if "intron_list" not in gtf_dic[gtf_gene_id[index]]:
-				gtf_dic[gtf_gene_id[index]]["intron_list"] = set()
-			try:
-				gtf_dic[gtf_gene_id[index]]["intron_list"].add(gtf_chr[index] + ":" + str(end) + "-" + str(gtf_start[index]))
-			except:
-				gtf_dic[gtf_gene_id[index]]["intron_list"] = {gtf_chr[index] + ":" + str(end) + "-" + str(gtf_start[index])}
-
-			if "transcript_intron_dic" not in gtf_dic[gtf_gene_id[index]]:
-				gtf_dic[gtf_gene_id[index]]["transcript_intron_dic"] = {}
-			if gtf_transcript_id[index] not in gtf_dic[gtf_gene_id[index]]["transcript_intron_dic"]:
-				gtf_dic[gtf_gene_id[index]]["transcript_intron_dic"][gtf_transcript_id[index]] = set()
-			try:
-				gtf_dic[gtf_gene_id[index]]["transcript_intron_dic"][gtf_transcript_id[index]].add(gtf_chr[index] + ":" + str(end) + "-" + str(gtf_start[index]))
-			except:
-				gtf_dic[gtf_gene_id[index]]["transcript_intron_dic"][gtf_transcript_id[index]] = {gtf_chr[index] + ":" + str(end) + "-" + str(gtf_start[index])}
-
-		end = gtf_end[index]
-		transcript = gtf_transcript_id[index]
+	# Convert accumulated lists to numpy arrays
+	for gid in gtf_dic:
+		gtf_dic[gid]["start"] = np.array(_start_lists[gid], dtype="int32")
+		gtf_dic[gid]["end"] = np.array(_end_lists[gid], dtype="int32")
+	del _start_lists, _end_lists
 
 	# Discard genes with only one transcript
 	gtf_dic = {k: v for k, v in gtf_dic.items() if len(v["transcript_exon_dic"]) > 1}
@@ -360,16 +335,28 @@ def mse(gtf_dic) -> list:
 		# Transcript list sorted by exon number
 		transcript_list = sorted(exon_dic, key = lambda x: len(exon_dic[x]))
 
+		# Pre-cache parsed exon coordinates per transcript (avoids repeated split in inner loops)
+		_parsed_exons = {}
+		for _t, _exons in exon_dic.items():
+			_starts = np.array([e.split(":")[1].split("-")[0] for e in _exons], dtype="int32")
+			_ends = np.array([e.split(":")[1].split("-")[1] for e in _exons], dtype="int32")
+			_parsed_exons[_t] = (_starts, _ends)
+
+		# Sort transcripts by exon count descending for efficient cutoff
+		_transcript_by_exon_count = sorted(exon_dic.keys(), key=lambda x: len(exon_dic[x]), reverse=True)
+		_max_exon_count = len(exon_dic[_transcript_by_exon_count[0]]) if _transcript_by_exon_count else 0
+
 		# Identify multi-skipped exon events until five-hundredth exon skipping
 		for mse_n in range(2, 501):
-			# Get transcript with at least mse_n+2 exons
-			transcript_list = [transcript for transcript in exon_dic.keys() if len(exon_dic[transcript]) >= mse_n + 2]
-			if len(transcript_list) == 0:
+			if mse_n + 2 > _max_exon_count:
 				break
-			for transcript in transcript_list:
+			# Get transcripts with at least mse_n+2 exons (sorted desc by count, so we can break early)
+			transcript_list_mse = [t for t in _transcript_by_exon_count if len(exon_dic[t]) >= mse_n + 2]
+			if len(transcript_list_mse) == 0:
+				break
+			for transcript in transcript_list_mse:
 				exon_list_in_transcript = exon_dic[transcript]
-				exon_start_in_transcript = np.array([i.split(":")[1].split("-")[0] for i in exon_list_in_transcript]).astype("int32")
-				exon_end_in_transcript = np.array([i.split(":")[1].split("-")[1] for i in exon_list_in_transcript]).astype("int32")
+				exon_start_in_transcript, exon_end_in_transcript = _parsed_exons[transcript]
 
 				# Get combinations of n adjuscent index
 				# e.g. (1, 2) when mse_n = 2 and exon number = 3, first and last exons are excluded
@@ -622,6 +609,24 @@ def afe(gtf_dic) -> list:
 		transcript_list = [transcript for transcript in transcript_list if len(exon_dic[transcript]) >= 2]
 		if len(transcript_list) < 2:
 			continue
+
+		# Cache reversed exon lists; pre-compute non-first intron sets (once per gene)
+		exon_dic_rev = {k: v[::-1] for k, v in exon_dic.items()}
+		_non_first_introns_fwd = set()
+		for _t in transcript_list:
+			_exons = exon_dic[_t]
+			for _i in range(2, len(_exons)):
+				_iend = _exons[_i].split(":")[1].split("-")[0]
+				_istart = _exons[_i - 1].split(":")[1].split("-")[1]
+				_non_first_introns_fwd.add(chr + ":" + _istart + "-" + _iend)
+		_non_first_introns_rev = set()
+		for _t in transcript_list:
+			_exons_rev = exon_dic_rev[_t]
+			for _i in range(2, len(_exons_rev)):
+				_istart = _exons_rev[_i].split(":")[1].split("-")[1]
+				_iend = _exons_rev[_i - 1].split(":")[1].split("-")[0]
+				_non_first_introns_rev.add(chr + ":" + _istart + "-" + _iend)
+
 		for transcript1, transcript2 in itertools.combinations(transcript_list, 2):
 			# Get first exons
 			first_exon_list = [exon_dic[transcript][0] if strand == "+" else exon_dic[transcript][-1] for transcript in [transcript1, transcript2]]
@@ -703,18 +708,7 @@ def afe(gtf_dic) -> list:
 					exon_b_list.append(exon_dic[proximal_transcript][exon_number])
 
 				# Check if no intron connecting the first exons and the next exons that other transcripts have
-				intron_connecting_other_transcripts = False
-				for transcript in transcript_list:
-					for i in range(2, len(exon_dic[transcript])):
-						intron_end = exon_dic[transcript][i].split(":")[1].split("-")[0]
-						intron_start = exon_dic[transcript][i - 1].split(":")[1].split("-")[1]
-						intron_connecting = f"{chr}:{intron_start}-{intron_end}"
-						if intron_connecting in {intron_a_list[0], intron_b_list[0]}:
-							intron_connecting_other_transcripts = True
-							break
-					if intron_connecting_other_transcripts:
-						break
-				if intron_connecting_other_transcripts:
+				if intron_a_list[0] in _non_first_introns_fwd or intron_b_list[0] in _non_first_introns_fwd:
 					continue
 
 			else:  # strand == "-"
@@ -789,18 +783,7 @@ def afe(gtf_dic) -> list:
 					exon_b_list.append(exon_dic[proximal_transcript][::-1][exon_number])
 
 				# Check if no intron connecting the first exons and the next exons that other transcripts have
-				intron_connecting_other_transcripts = False
-				for transcript in transcript_list:
-					for i in range(2, len(exon_dic[transcript])):
-						intron_start = exon_dic[transcript][::-1][i].split(":")[1].split("-")[1]
-						intron_end = exon_dic[transcript][::-1][i - 1].split(":")[1].split("-")[0]
-						intron_connecting = f"{chr}:{intron_start}-{intron_end}"
-						if intron_connecting in {intron_a_list[0], intron_b_list[0]}:
-							intron_connecting_other_transcripts = True
-							break
-					if intron_connecting_other_transcripts:
-						break
-				if intron_connecting_other_transcripts:
+				if intron_a_list[0] in _non_first_introns_rev or intron_b_list[0] in _non_first_introns_rev:
 					continue
 
 			# Check if no intron connecting the distal transcript exons and the proximal transcript exons present
@@ -870,6 +853,24 @@ def ale(gtf_dic) -> list:
 		transcript_list = [transcript for transcript in transcript_list if len(exon_dic[transcript]) >= 2]
 		if len(transcript_list) < 2:
 			continue
+
+		# Cache reversed exon lists; pre-compute non-first intron sets (once per gene)
+		exon_dic_rev = {k: v[::-1] for k, v in exon_dic.items()}
+		_non_first_introns_fwd = set()
+		for _t in transcript_list:
+			_exons = exon_dic[_t]
+			for _i in range(2, len(_exons)):
+				_iend = _exons[_i].split(":")[1].split("-")[0]
+				_istart = _exons[_i - 1].split(":")[1].split("-")[1]
+				_non_first_introns_fwd.add(chr + ":" + _istart + "-" + _iend)
+		_non_first_introns_rev = set()
+		for _t in transcript_list:
+			_exons_rev = exon_dic_rev[_t]
+			for _i in range(2, len(_exons_rev)):
+				_istart = _exons_rev[_i].split(":")[1].split("-")[1]
+				_iend = _exons_rev[_i - 1].split(":")[1].split("-")[0]
+				_non_first_introns_rev.add(chr + ":" + _istart + "-" + _iend)
+
 		for transcript1, transcript2 in itertools.combinations(transcript_list, 2):
 			# Get last exons
 			last_exon_list = [exon_dic[transcript][-1] if strand == "+" else exon_dic[transcript][0] for transcript in [transcript1, transcript2]]
@@ -950,18 +951,7 @@ def ale(gtf_dic) -> list:
 					exon_b_list.append(exon_dic[proximal_transcript][::-1][exon_number])
 				
 				# Check if no intron connecting the first exons and the next exons that other transcripts have
-				intron_connecting_other_transcripts = False
-				for transcript in transcript_list:
-					for i in range(2, len(exon_dic[transcript])):
-						intron_start = exon_dic[transcript][::-1][i].split(":")[1].split("-")[1]
-						intron_end = exon_dic[transcript][::-1][i - 1].split(":")[1].split("-")[0]
-						intron_connecting = f"{chr}:{intron_start}-{intron_end}"
-						if intron_connecting in {intron_a_list[0], intron_b_list[0]}:
-							intron_connecting_other_transcripts = True
-							break
-					if intron_connecting_other_transcripts:
-						break
-				if intron_connecting_other_transcripts:
+				if intron_a_list[0] in _non_first_introns_rev or intron_b_list[0] in _non_first_introns_rev:
 					continue
 
 			else:  # strand == "-"
@@ -1035,18 +1025,7 @@ def ale(gtf_dic) -> list:
 					exon_b_list.append(exon_dic[proximal_transcript][exon_number])
 
 				# Check if no intron connecting the first exons and the next exons that other transcripts have
-				intron_connecting_other_transcripts = False
-				for transcript in transcript_list:
-					for i in range(2, len(exon_dic[transcript])):
-						intron_end = exon_dic[transcript][i].split(":")[1].split("-")[0]
-						intron_start = exon_dic[transcript][i - 1].split(":")[1].split("-")[1]
-						intron_connecting = f"{chr}:{intron_start}-{intron_end}"
-						if intron_connecting in {intron_a_list[0], intron_b_list[0]}:
-							intron_connecting_other_transcripts = True
-							break
-					if intron_connecting_other_transcripts:
-						break
-				if intron_connecting_other_transcripts:
+				if intron_a_list[0] in _non_first_introns_fwd or intron_b_list[0] in _non_first_introns_fwd:
 					continue
 
 			# Check if no intron connecting the distal transcript exons and the proximal transcript exons present
@@ -1103,8 +1082,6 @@ def mxe(gtf_dic) -> list:
 		chr = gtf_dic[gene]["chr"]
 		strand = gtf_dic[gene]["strand"]
 		gene_name = gtf_dic[gene]["gene_name"]
-		gene_start_values = gtf_dic[gene]["start"]
-		gene_end_values = gtf_dic[gene]["end"]
 		intron_list = gtf_dic[gene]["intron_list"]
 		intron_start_dic = gtf_dic[gene]["intron_start_dic"]
 		intron_end_dic = gtf_dic[gene]["intron_end_dic"]
@@ -1114,42 +1091,69 @@ def mxe(gtf_dic) -> list:
 		exon_list_unique = np.unique([[i.split(":")[1].split("-")[0], i.split(":")[1].split("-")[1]] for i in exon_list], axis = 0)
 		exon_start = np.array([i[0] for i in exon_list_unique]).astype("int32")
 		exon_end = np.array([i[1] for i in exon_list_unique]).astype("int32")
-		idx1_idx2_iter = itertools.combinations(range(len(exon_start)), 2)
-		for idx1, idx2 in idx1_idx2_iter:
-			retained_intron = chr + ":" + str(exon_start[idx1]) + "-" + str(exon_end[idx2])
-			# exon_a is upstream of exon_b
-			# Not retained intron
-			if (exon_end[idx1] < exon_start[idx2]) and (retained_intron not in exon_list) and (str(exon_start[idx1]) in intron_end_dic) and (str(exon_end[idx1]) in intron_start_dic) and (str(exon_start[idx2]) in intron_end_dic) and (str(exon_end[idx2]) in intron_start_dic):
-				intron_a1_start_list = intron_end_dic[str(exon_start[idx1])]
-				intron_a1_end = exon_start[idx1]
-				intron_a2_start = exon_end[idx1]
-				intron_a2_end_list = intron_start_dic[str(exon_end[idx1])]
-				intron_b1_start_list = intron_end_dic[str(exon_start[idx2])]
-				intron_b1_end = exon_start[idx2]
-				intron_b2_start = exon_end[idx2]
-				intron_b2_end_list = intron_start_dic[str(exon_end[idx2])]
-				intron_iter = itertools.product(intron_a1_start_list, intron_a2_end_list, intron_b1_start_list, intron_b2_end_list)
-				for intron_a1_start, intron_a2_end, intron_b1_start, intron_b2_end in intron_iter:
-					exon_a = chr + ":" + str(exon_start[idx1]) + "-" + str(exon_end[idx1])
-					exon_b = chr + ":" + str(exon_start[idx2]) + "-" + str(exon_end[idx2])
-					intron_a1 = chr + ":" + str(intron_a1_start) + "-" + str(intron_a1_end)
-					intron_a2 = chr + ":" + str(intron_a2_start) + "-" + str(intron_a2_end)
-					intron_b1 = chr + ":" + str(intron_b1_start) + "-" + str(intron_b1_end)
-					intron_b2 = chr + ":" + str(intron_b2_start) + "-" + str(intron_b2_end)
-					intron_c = chr + ":" + str(intron_a2_start) + "-" + str(intron_b1_end)
-					intron_d = chr + ":" + str(intron_a1_start) + "-" + str(intron_b2_end)
-					if (int(intron_a1_start) == int(intron_b1_start)) and (int(intron_a1_end) != int(intron_b1_end)) and (int(intron_a2_start) != int(intron_b2_start)) and (int(intron_a2_end) == int(intron_b2_end)) and (intron_c not in intron_list) and (intron_d not in intron_list):
-						key1_key2_iter = itertools.permutations(intron_dic.keys(), 2)
-						for key1, key2 in key1_key2_iter:
-							if (intron_a1 in intron_dic[key1]) and (intron_a2 in intron_dic[key1]) and (intron_b1 in intron_dic[key2]) and (intron_b2 in intron_dic[key2]):
-								# exons not present in the same transcript
-								flag = False
-								for key3 in exon_dic.keys():
-									if (exon_a in exon_dic[key3]) and (exon_b in exon_dic[key3]):
-										flag = True
-										break
-								if flag == False:
-									event_l += [[exon_a, exon_b, intron_a1, intron_a2, intron_b1, intron_b2, strand, gene, gene_name]]
+
+		# Pre-build intron -> transcript set mapping for fast lookup
+		intron_to_transcripts = defaultdict(set)
+		for tid, introns in intron_dic.items():
+			for intron in introns:
+				intron_to_transcripts[intron].add(tid)
+
+		# Pre-build exon -> transcript set mapping
+		exon_to_transcripts = defaultdict(set)
+		for tid, exons in exon_dic.items():
+			for exon in exons:
+				exon_to_transcripts[exon].add(tid)
+
+		for idx1, idx2 in itertools.combinations(range(len(exon_start)), 2):
+			if exon_end[idx1] >= exon_start[idx2]:
+				continue
+			es1_str = str(exon_start[idx1])
+			ee1_str = str(exon_end[idx1])
+			es2_str = str(exon_start[idx2])
+			ee2_str = str(exon_end[idx2])
+			retained_intron = chr + ":" + es1_str + "-" + ee2_str
+			if retained_intron in exon_list:
+				continue
+			if not (es1_str in intron_end_dic and ee1_str in intron_start_dic and es2_str in intron_end_dic and ee2_str in intron_start_dic):
+				continue
+
+			exon_a = chr + ":" + es1_str + "-" + ee1_str
+			exon_b = chr + ":" + es2_str + "-" + ee2_str
+
+			# Early exit: exons must not co-occur in any transcript
+			if exon_to_transcripts.get(exon_a, set()) & exon_to_transcripts.get(exon_b, set()):
+				continue
+
+			# Use set intersection to only iterate matching starts/ends (key MXE constraint)
+			common_starts = intron_end_dic[es1_str] & intron_end_dic[es2_str]
+			common_ends = intron_start_dic[ee1_str] & intron_start_dic[ee2_str]
+			if not common_starts or not common_ends:
+				continue
+
+			# intron_c is fixed for this exon pair
+			intron_c = chr + ":" + ee1_str + "-" + es2_str
+			if intron_c in intron_list:
+				continue
+
+			for shared_start in common_starts:
+				intron_a1 = chr + ":" + str(shared_start) + "-" + es1_str
+				intron_b1 = chr + ":" + str(shared_start) + "-" + es2_str
+				a1_txs = intron_to_transcripts.get(intron_a1, set())
+				b1_txs = intron_to_transcripts.get(intron_b1, set())
+				if not a1_txs or not b1_txs:
+					continue
+
+				for shared_end in common_ends:
+					intron_d = chr + ":" + str(shared_start) + "-" + str(shared_end)
+					if intron_d in intron_list:
+						continue
+					intron_a2 = chr + ":" + ee1_str + "-" + str(shared_end)
+					intron_b2 = chr + ":" + ee2_str + "-" + str(shared_end)
+					a2_txs = intron_to_transcripts.get(intron_a2, set())
+					b2_txs = intron_to_transcripts.get(intron_b2, set())
+					# Require transcripts with both a-introns and both b-introns
+					if (a1_txs & a2_txs) and (b1_txs & b2_txs):
+						event_l.append([exon_a, exon_b, intron_a1, intron_a2, intron_b1, intron_b2, strand, gene, gene_name])
 
 	return(event_l)
 
@@ -1250,11 +1254,10 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["pos_id"] = \
-		"SE@" + \
-		output_df["exon"].str.split(":", expand = True)[0].astype(str) + "@" + \
-		output_df["exon"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["exon"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str) + "@" + \
-		output_df["intron_c"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["intron_c"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str)
+	_exon_split = output_df["exon"].str.split(":", expand=True)
+	_exon_pos = _exon_split[1].str.split("-", expand=True)
+	_intron_c_pos = output_df["intron_c"].str.split(":", expand=True)[1].str.split("-", expand=True)
+	output_df["pos_id"] = "SE@" + _exon_split[0] + "@" + _exon_pos[0] + "-" + _exon_pos[1] + "@" + _intron_c_pos[0] + "-" + _intron_c_pos[1]
 	output_df = output_df.sort_values("exon")
 	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
 	output_df = output_df.reset_index()
@@ -1264,7 +1267,9 @@ def main():
 
 	logger.debug("Creating label....")
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (x["intron_a"] in gtf_ref_intron_set) and (x["intron_b"] in gtf_ref_intron_set) and (x["intron_c"] in gtf_ref_intron_set) else "unannotated", axis = 1)
+		output_df["label"] = np.where(
+			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set) & output_df["intron_c"].isin(gtf_ref_intron_set),
+			"annotated", "unannotated")
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["SE"] = output_df
@@ -1287,11 +1292,10 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["pos_id"] = \
-		"FIVE@" + \
-		output_df["intron_a"].str.split(":", expand = True)[0].astype(str) + "@" + \
-		output_df["intron_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["intron_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str) + "@" + \
-		output_df["intron_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["intron_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str)
+	_intron_a_split = output_df["intron_a"].str.split(":", expand=True)
+	_intron_a_pos = _intron_a_split[1].str.split("-", expand=True)
+	_intron_b_pos = output_df["intron_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
+	output_df["pos_id"] = "FIVE@" + _intron_a_split[0] + "@" + _intron_a_pos[0] + "-" + _intron_a_pos[1] + "@" + _intron_b_pos[0] + "-" + _intron_b_pos[1]
 	output_df = output_df.sort_values("exon_a")
 	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
 	output_df = output_df.reset_index()
@@ -1301,7 +1305,9 @@ def main():
 
 	logger.debug("Creating label....")
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (x["intron_a"] in gtf_ref_intron_set) and (x["intron_b"] in gtf_ref_intron_set) else "unannotated", axis = 1)
+		output_df["label"] = np.where(
+			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set),
+			"annotated", "unannotated")
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["FIVE"] = output_df
@@ -1324,11 +1330,10 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["pos_id"] = \
-		"THREE@" + \
-		output_df["intron_a"].str.split(":", expand = True)[0].astype(str) + "@" + \
-		output_df["intron_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["intron_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str) + "@" + \
-		output_df["intron_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["intron_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str)
+	_intron_a_split = output_df["intron_a"].str.split(":", expand=True)
+	_intron_a_pos = _intron_a_split[1].str.split("-", expand=True)
+	_intron_b_pos = output_df["intron_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
+	output_df["pos_id"] = "THREE@" + _intron_a_split[0] + "@" + _intron_a_pos[0] + "-" + _intron_a_pos[1] + "@" + _intron_b_pos[0] + "-" + _intron_b_pos[1]
 	output_df = output_df.sort_values("exon_a")
 	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
 	output_df = output_df.reset_index()
@@ -1338,7 +1343,9 @@ def main():
 
 	logger.debug("Creating label....")
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (x["intron_a"] in gtf_ref_intron_set) and (x["intron_b"] in gtf_ref_intron_set) else "unannotated", axis = 1)
+		output_df["label"] = np.where(
+			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["intron_b"].isin(gtf_ref_intron_set),
+			"annotated", "unannotated")
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["THREE"] = output_df
@@ -1361,13 +1368,12 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["pos_id"] = \
-		"MXE@" + \
-		output_df["intron_a1"].str.split(":", expand = True)[0].astype(str) + "@" + \
-		output_df["intron_a1"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "@" + \
-		output_df["exon_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["exon_a"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str) + "@" + \
-		output_df["exon_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["exon_b"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str) + "@" + \
-		output_df["intron_b2"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str)
+	_a1_split = output_df["intron_a1"].str.split(":", expand=True)
+	_a1_pos = _a1_split[1].str.split("-", expand=True)
+	_ea_pos = output_df["exon_a"].str.split(":", expand=True)[1].str.split("-", expand=True)
+	_eb_pos = output_df["exon_b"].str.split(":", expand=True)[1].str.split("-", expand=True)
+	_b2_end = output_df["intron_b2"].str.split(":", expand=True)[1].str.split("-", expand=True)[1]
+	output_df["pos_id"] = "MXE@" + _a1_split[0] + "@" + _a1_pos[0] + "@" + _ea_pos[0] + "-" + _ea_pos[1] + "@" + _eb_pos[0] + "-" + _eb_pos[1] + "@" + _b2_end
 	output_df = output_df.sort_values("exon_a")
 	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
 	output_df = output_df.reset_index()
@@ -1377,7 +1383,9 @@ def main():
 
 	logger.debug("Creating label....")
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (x["intron_a1"] in gtf_ref_intron_set) and (x["intron_a2"] in gtf_ref_intron_set) and (x["intron_b1"] in gtf_ref_intron_set) and (x["intron_b2"] in gtf_ref_intron_set) else "unannotated", axis = 1)
+		output_df["label"] = np.where(
+			output_df["intron_a1"].isin(gtf_ref_intron_set) & output_df["intron_a2"].isin(gtf_ref_intron_set) & output_df["intron_b1"].isin(gtf_ref_intron_set) & output_df["intron_b2"].isin(gtf_ref_intron_set),
+			"annotated", "unannotated")
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["MXE"] = output_df
@@ -1412,7 +1420,9 @@ def main():
 
 	logger.debug("Creating label....")
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (x["intron_a"] in gtf_ref_intron_set) and (x["exon_c"] in gtf_ref_exon_set) else "unannotated", axis = 1)
+		output_df["label"] = np.where(
+			output_df["intron_a"].isin(gtf_ref_intron_set) & output_df["exon_c"].isin(gtf_ref_exon_set),
+			"annotated", "unannotated")
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["RI"] = output_df
@@ -1436,14 +1446,16 @@ def main():
 
 	logger.debug("Creating event_id....")
 	# pos_id = chromosome@exon_start-exon_end;exon_start-exon_end@exclusionintron_start-exclusionintron_end
-	output_df["chr"] = output_df["exon"].str.split(":", expand = True)[0]
-	output_df["exon_for_posid"] = output_df.apply(lambda x: x["exon"].replace(x["chr"] + ":", ""), axis = 1)
-	output_df["exc"] = output_df["intron"].apply(lambda x: x.split(";")[-1])
+	output_df["chr"] = output_df["exon"].str.split(":", expand=True)[0]
+	_chr_vals = output_df["chr"].values
+	output_df["exon_for_posid"] = [e.replace(c + ":", "") for e, c in zip(output_df["exon"].values, _chr_vals)]
+	output_df["exc"] = output_df["intron"].str.rsplit(";", n=1).str[-1]
+	_exc_pos = output_df["exc"].str.split(":", expand=True)[1].str.split("-", expand=True)
 	output_df["pos_id"] = \
 		"MSE@" + \
 		output_df["chr"] + "@" + \
 		output_df["exon_for_posid"] + "@" + \
-		output_df["exc"].str.split(":", expand = True)[1].str.split("-", expand = True)[0].astype(str) + "-" + output_df["exc"].str.split(":", expand = True)[1].str.split("-", expand = True)[1].astype(str)
+		_exc_pos[0] + "-" + _exc_pos[1]
 	output_df = output_df.sort_values("exon")
 	output_df = output_df.drop_duplicates(subset = "pos_id", keep = "first")
 	output_df = output_df.reset_index()
@@ -1454,7 +1466,8 @@ def main():
 	logger.debug("Creating label....")
 	# Check if the intron is annotated
 	if reference_gtf_path:
-		output_df["label"] = output_df["intron"].apply(lambda x: "annotated" if set(x.split(";")) <= gtf_ref_intron_set else "unannotated")
+		_ref = gtf_ref_intron_set
+		output_df["label"] = ["annotated" if set(x.split(";")) <= _ref else "unannotated" for x in output_df["intron"].values]
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["MSE"] = output_df
@@ -1477,9 +1490,10 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["chr"] = output_df["exon_a"].str.split(":", expand = True)[0]
-	output_df["intron_a_for_posid"] = output_df.apply(lambda x: x["intron_a"].replace(x["chr"] + ":", ""), axis = 1)
-	output_df["intron_b_for_posid"] = output_df.apply(lambda x: x["intron_b"].replace(x["chr"] + ":", ""), axis = 1)
+	output_df["chr"] = output_df["exon_a"].str.split(":", expand=True)[0]
+	_chr_vals = output_df["chr"].values
+	output_df["intron_a_for_posid"] = [a.replace(c + ":", "") for a, c in zip(output_df["intron_a"].values, _chr_vals)]
+	output_df["intron_b_for_posid"] = [b.replace(c + ":", "") for b, c in zip(output_df["intron_b"].values, _chr_vals)]
 	output_df["pos_id"] = \
 		"AFE@" + \
 		output_df["chr"] + "@" + \
@@ -1495,7 +1509,8 @@ def main():
 	logger.debug("Creating label....")
 	# Check if the intron is annotated
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (set(x["intron_a"].split(";")) <= gtf_ref_intron_set) and (set(x["intron_b"].split(";")) <= gtf_ref_intron_set) else "unannotated", axis = 1)
+		_ref = gtf_ref_intron_set
+		output_df["label"] = ["annotated" if (set(a.split(";")) <= _ref and set(b.split(";")) <= _ref) else "unannotated" for a, b in zip(output_df["intron_a"].values, output_df["intron_b"].values)]
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["AFE"] = output_df
@@ -1517,9 +1532,10 @@ def main():
 	)
 
 	logger.debug("Creating event_id....")
-	output_df["chr"] = output_df["exon_a"].str.split(":", expand = True)[0]
-	output_df["intron_a_for_posid"] = output_df.apply(lambda x: x["intron_a"].replace(x["chr"] + ":", ""), axis = 1)
-	output_df["intron_b_for_posid"] = output_df.apply(lambda x: x["intron_b"].replace(x["chr"] + ":", ""), axis = 1)
+	output_df["chr"] = output_df["exon_a"].str.split(":", expand=True)[0]
+	_chr_vals = output_df["chr"].values
+	output_df["intron_a_for_posid"] = [a.replace(c + ":", "") for a, c in zip(output_df["intron_a"].values, _chr_vals)]
+	output_df["intron_b_for_posid"] = [b.replace(c + ":", "") for b, c in zip(output_df["intron_b"].values, _chr_vals)]
 	output_df["pos_id"] = \
 		"ALE@" + \
 		output_df["chr"] + "@" + \
@@ -1535,7 +1551,8 @@ def main():
 	logger.debug("Creating label....")
 	# Check if the intron is annotated
 	if reference_gtf_path:
-		output_df["label"] = output_df.apply(lambda x: "annotated" if (set(x["intron_a"].split(";")) <= gtf_ref_intron_set) and (set(x["intron_b"].split(";")) <= gtf_ref_intron_set) else "unannotated", axis = 1)
+		_ref = gtf_ref_intron_set
+		output_df["label"] = ["annotated" if (set(a.split(";")) <= _ref and set(b.split(";")) <= _ref) else "unannotated" for a, b in zip(output_df["intron_a"].values, output_df["intron_b"].values)]
 	else:
 		output_df["label"] = "annotated"
 	output_df_dict["ALE"] = output_df

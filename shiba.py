@@ -26,7 +26,7 @@ def parse_args():
                 description=f"""Shiba {VERSION} - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
-    - Assembles transcript structures based on mapped reads using StringTie2.
+    - Assembles transcript structures based on mapped reads using StringTie.
 Step 2: gtf2event.py
     - Converts GTF files to event format.
 Step 3: bam2junc.py

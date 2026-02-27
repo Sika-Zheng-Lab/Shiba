@@ -6,7 +6,7 @@ usage: shiba.py [-h] [-p PROCESS] [-s START_STEP] [--mame] [-v] config
 Shiba v0.8.2 - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
-    - Assembles transcript structures based on mapped reads using StringTie2.
+    - Assembles transcript structures based on mapped reads using StringTie.
 Step 2: gtf2event.py
     - Converts GTF files to event format.
 Step 3: bam2junc.py
@@ -52,7 +52,7 @@ The `Shiba` command will run the following steps sequentially:
 ``` bash
 usage: bam2gtf.py [-h] -i INPUT -r REFERENCE -o OUTPUT [-p PROCESSORS] [-v]
 
-Pipeline for transcript assembly using StringTie2
+Pipeline for transcript assembly using StringTie
 
 optional arguments:
   -h, --help            show this help message and exit

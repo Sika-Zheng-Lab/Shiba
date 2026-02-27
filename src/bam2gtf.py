@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
 	parser = argparse.ArgumentParser(
-		description="Pipeline for transcript assembly using StringTie2"
+		description="Pipeline for transcript assembly using StringTie"
 	)
 	parser.add_argument("-i", "--input", required=True, help="Experiment table")
 	parser.add_argument("-r", "--reference", required=True, help="Reference GTF file")
@@ -87,7 +87,7 @@ def main():
 			else:
 				logger.debug(f"Found BAM index for {bam_file}")
 
-			# Run StringTie2 for assembly
+			# Run StringTie for assembly
 			sample_gtf = os.path.join(os.path.dirname(assembled_gtf), f"{sample}.assembled.gtf")
 			longread_flag = ["-L"] if technology.lower() == "long" else []
 			stringtie_command = [
@@ -97,10 +97,10 @@ def main():
 				"-o", sample_gtf
 			] + longread_flag + [bam_file]
 			# Add -L option if long read experiment
-			logger.debug(f"StringTie2 command: {stringtie_command}")
+			logger.debug(f"StringTie command: {stringtie_command}")
 			return_code = general.execute_command(stringtie_command)
 			if return_code != 0:
-				logger.error(f"StringTie2 failed for sample {sample}")
+				logger.error(f"StringTie failed for sample {sample}")
 				sys.exit(1)
 
 			# Add to GTF list
@@ -115,10 +115,10 @@ def main():
 		"-G", reference_gtf,
 		"-o", assembled_gtf
 	] + gtf_list
-	logger.debug(f"StringTie2 merge command: {merge_command}")
+	logger.debug(f"StringTie merge command: {merge_command}")
 	return_code = general.execute_command(merge_command)
 	if return_code != 0:
-		logger.error("StringTie2 merge failed")
+		logger.error("StringTie merge failed")
 		sys.exit(1)
 
 	# Cleanup assembled GTF files

@@ -1169,7 +1169,14 @@ def mxe(gtf_dic) -> list:
 					b2_txs = intron_to_transcripts.get(intron_b2, set())
 					# Require transcripts with both a-introns and both b-introns
 					if (a1_txs & a2_txs) and (b1_txs & b2_txs):
-						event_l.append([exon_a, exon_b, intron_a1, intron_a2, intron_b1, intron_b2, strand, gene, gene_name])
+						if strand == "-":
+							# For minus strand, exon_a = upstream (5') = genomic right
+							# exon_b = downstream (3') = genomic left
+							# intron_a1 = 5' of exon_a, intron_a2 = 3' of exon_a
+							# intron_b1 = 5' of exon_b, intron_b2 = 3' of exon_b
+							event_l.append([exon_b, exon_a, intron_b2, intron_b1, intron_a2, intron_a1, strand, gene, gene_name])
+						else:
+							event_l.append([exon_a, exon_b, intron_a1, intron_a2, intron_b1, intron_b2, strand, gene, gene_name])
 
 	return(event_l)
 

@@ -595,6 +595,49 @@ class TestMXEPsi(unittest.TestCase):
         self.assertAlmostEqual(row[1], 98.0 / 112.0, places=4)
 
 
+class TestMXEPsiMinusStrand(unittest.TestCase):
+    """Test MXE PSI with minus strand (strand-aware exon_a/b assignment)."""
+    def setUp(self):
+        # Minus strand: exon_a = upstream (5') = genomic right exon
+        #               exon_b = downstream (3') = genomic left exon
+        # intron_a1 = 5' of exon_a (genomic right), intron_a2 = 3' of exon_a (genomic left)
+        # intron_b1 = 5' of exon_b (genomic right), intron_b2 = 3' of exon_b (genomic left)
+        self.event_df = pd.DataFrame({
+            "event_id": ["MXE_1"],
+            "pos_id": ["MXE@chr1@10700-10800@10500-10700@10200-10400@10000"],
+            "exon_a": ["chr1:10500-10700"],
+            "exon_b": ["chr1:10200-10400"],
+            "intron_a1": ["chr1:10700-10800"],
+            "intron_a2": ["chr1:10000-10500"],
+            "intron_b1": ["chr1:10400-10800"],
+            "intron_b2": ["chr1:10000-10200"],
+            "strand": ["-"],
+            "gene_id": ["G10"],
+            "gene_name": ["GeneJ"],
+            "label": ["annotated"]
+        })
+        self.junc_dict = {
+            "s1": {
+                "chr1:10700-10800": 6,   # intron_a1
+                "chr1:10000-10500": 8,   # intron_a2
+                "chr1:10400-10800": 48,  # intron_b1
+                "chr1:10000-10200": 50,  # intron_b2
+            },
+        }
+
+    def test_mxe_psi_minus_strand(self):
+        result = shibalib.mxe(self.junc_dict, ["s1"], self.event_df, 1, 5, 0)
+        row = result[0]
+        # a1+a2=14, b1+b2=98 -> PSI = 14/(14+98) = 0.125
+        s1_psi = row[16]
+        self.assertAlmostEqual(s1_psi, 14.0 / 112.0, places=4)
+
+    def test_mxe_ind_psi_minus_strand(self):
+        result = shibalib.mxe_ind(self.junc_dict, self.event_df, ["s1"], 1, 0)
+        row = result[0]
+        self.assertAlmostEqual(row[1], 14.0 / 112.0, places=4)
+
+
 # ============================================================================
 # PSI Calculation - RI
 # ============================================================================

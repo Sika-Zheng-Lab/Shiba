@@ -2,7 +2,10 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
-## [v0.9.0] - 2026-XX-XX
+## [v1.0.0] - 2026-XX-XX
+
+> [!IMPORTANT]
+> This version includes a **breaking change** in the MXE (Mutually Exclusive Exons) coordinate definition. `exon_a`/`exon_b` and their associated introns are now assigned based on gene strand direction (upstream/downstream) instead of genomic position (left/right). This affects all MXE output files (`EVENT_MXE.txt`, `PSI_MXE.txt`) for minus-strand genes. Results from previous versions are **not directly comparable** for MXE events on the minus strand. Please re-run the analysis with this version if you need consistent strand-aware MXE annotations.
 
 ### Added
 
@@ -18,6 +21,7 @@ All notable changes to this Shiba project will be documented in this file.
 - Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.
 - Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
 - Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.
+- Changed MXE (Mutually Exclusive Exons) coordinate definition from genomic-position-based to strand-aware assignment. `exon_a` now refers to the upstream (5') exon and `exon_b` to the downstream (3') exon relative to the gene's strand. Introns follow accordingly: `intron_a1`/`intron_a2` = 5'/3' side of `exon_a`, `intron_b1`/`intron_b2` = 5'/3' side of `exon_b`. This ensures PSI consistently represents the inclusion ratio of the upstream exon for both plus- and minus-strand genes.
 
 ## [v0.8.2] - 2026-02-23
 

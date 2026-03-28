@@ -22,6 +22,7 @@ All notable changes to this Shiba project will be documented in this file.
 - Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
 - Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.
 - Changed MXE (Mutually Exclusive Exons) coordinate definition from genomic-position-based to strand-aware assignment. `exon_a` now refers to the upstream (5') exon and `exon_b` to the downstream (3') exon relative to the gene's strand. Introns follow accordingly: `intron_a1`/`intron_a2` = 5'/3' side of `exon_a`, `intron_b1`/`intron_b2` = 5'/3' side of `exon_b`. This ensures PSI consistently represents the inclusion ratio of the upstream exon for both plus- and minus-strand genes.
+- `PSI_matrix_group.txt` now includes PSI values for all groups defined in the experiment table, not just the reference and alternative groups used for differential analysis. This applies to both `shiba.py` and `SnakeShiba`.
 
 ## [v0.8.2] - 2026-02-23
 

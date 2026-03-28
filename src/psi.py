@@ -89,9 +89,11 @@ def main():
         logger.info("Processing group data...")
         group_df = shibalib.read_group(paths["group"])
         group_list = shibalib.set_group(group_df, params["onlypsi_group"], params["reference"], params["alternative"])
+        # Collect all groups from the experiment table for PSI_matrix_group.txt
+        group_list_all = sorted(group_df['group'].unique().tolist())
         sample_list_diff = None if params["onlypsi_group"] or len(group_list) == 1 else shibalib.sample_in_group_list(group_df, group_list)
-        junc_dict_group = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list)
-        group_data = {"group_list": group_list, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
+        junc_dict_group = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list_all)
+        group_data = {"group_list": group_list, "group_list_all": group_list_all, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
 
     # Free junction DataFrame (no longer needed — data is in junc_data)
     del junc_df
@@ -120,19 +122,23 @@ def main():
         # Generate PSI tables
         psi_table_group_df, psi_table_sample_df = None, None
         if params["onlypsi_group"]:
-            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list_all"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
         elif params["onlypsi"]:
             psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
         else:
-            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list_all"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
             psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
 
-        # Perform differential analysis
+        # Perform differential analysis (using only reference/alternative groups)
         diff_df = None
         if not params["onlypsi"] and not params["onlypsi_group"]:
+            # Filter psi_table_group_df to only ref/alt columns for differential analysis
+            diff_group_list = [params["reference"], params["alternative"]]
+            diff_group_cols = col_func(diff_group_list, True)
+            psi_table_diff_df = psi_table_group_df[diff_group_cols]
             diff_df = shibalib.diff_event(
-                event_for_analysis_df, psi_table_group_df, junc_data, group_data["group_df"],
-                [params["reference"], params["alternative"]], group_data["sample_list_diff"],
+                event_for_analysis_df, psi_table_diff_df, junc_data, group_data["group_df"],
+                diff_group_list, group_data["sample_list_diff"],
                 diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"], params["beta_regression"],
                 shm_info=shm_info
             )

@@ -1,0 +1,237 @@
+/* Apple-inspired modern gradient design with cool colors */
+
+/* Define cool color variables */
+:root {
+  /* Primary gradients - cool blue to purple */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient-light: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  --header-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --accent-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  
+  /* Soft cool colors */
+  --cool-blue: #4facfe;
+  --soft-cyan: #00f2fe;
+  --mint-green: #38f9d7;
+  --light-blue: #a8edea;
+  --soft-purple: #764ba2;
+  
+  /* Background variations */
+  --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --card-gradient: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,248,255,0.8) 100%);
+}
+
+/* Header styling with gradient */
+.md-header {
+  background: var(--header-gradient) !important;
+  box-shadow: 0 8px 32px rgba(79, 172, 254, 0.2);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Header title */
+.md-header__title {
+  color: white !important;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation tabs */
+.md-tabs {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.9) 0%, rgba(0, 242, 254, 0.9) 100%) !important;
+  backdrop-filter: blur(10px);
+}
+
+.md-tabs__link {
+  color: white !important;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: white !important;
+  opacity: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Search box */
+.md-search__input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(79, 172, 254, 0.3);
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+}
+
+.md-search__input:focus {
+  border-color: var(--cool-blue);
+  box-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
+}
+
+/* Sidebar */
+.md-sidebar {
+  background: var(--card-gradient);
+  backdrop-filter: blur(10px);
+}
+
+.md-nav__link {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+.md-nav__link:hover {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+  transform: translateX(4px);
+}
+
+.md-nav__link--active {
+  background: var(--primary-gradient) !important;
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+}
+
+/* Main content area */
+.md-main {
+  background: var(--bg-gradient);
+}
+
+.md-content {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  margin: 20px;
+  padding: 30px;
+}
+
+/* Buttons */
+.md-button {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  border-radius: 25px !important;
+  color: white !important;
+  padding: 12px 30px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3) !important;
+}
+
+.md-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 35px rgba(79, 172, 254, 0.4) !important;
+}
+
+.md-button--primary {
+  background: var(--accent-gradient) !important;
+}
+
+/* Code blocks */
+.codehilite,
+.highlight {
+  border-radius: 15px !important;
+  border: 1px solid rgba(79, 172, 254, 0.2) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Admonitions */
+.md-typeset .admonition {
+  border-radius: 15px;
+  border: none;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.md-typeset .admonition.note {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+  border-left: 4px solid var(--cool-blue);
+}
+
+.md-typeset .admonition.tip {
+  background: linear-gradient(135deg, rgba(67, 233, 123, 0.1) 0%, rgba(56, 249, 215, 0.1) 100%);
+  border-left: 4px solid var(--mint-green);
+}
+
+.md-typeset .admonition.warning {
+  background: linear-gradient(135deg, rgba(255, 206, 84, 0.1) 0%, rgba(255, 180, 82, 0.1) 100%);
+  border-left: 4px solid #ffce54;
+}
+
+/* Footer */
+.md-footer {
+  background: var(--primary-gradient) !important;
+  color: white !important;
+}
+
+.md-footer-meta {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Tables */
+.md-typeset table:not([class]) {
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--primary-gradient);
+  color: white;
+}
+
+.md-typeset table:not([class]) tr:nth-child(even) {
+  background: rgba(79, 172, 254, 0.05);
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] {
+  --bg-gradient: linear-gradient(135deg, #1e1e1e 0%, #2d3748 100%);
+  --card-gradient: linear-gradient(135deg, rgba(45, 55, 72, 0.9) 0%, rgba(30, 30, 30, 0.8) 100%);
+  --header-gradient: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+}
+
+[data-md-color-scheme="slate"] .md-content {
+  background: var(--card-gradient);
+  color: #e2e8f0;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%);
+}
+
+/* Smooth animations */
+* {
+  transition: all 0.3s ease;
+}
+
+/* Glassmorphism effect for cards */
+.md-typeset .admonition,
+.md-content,
+.md-sidebar {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Hero section (if present on homepage) */
+.md-typeset h1:first-child {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 3rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Links with gradient hover effect */
+.md-typeset a {
+  transition: all 0.3s ease;
+}
+
+.md-typeset a:hover {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+}

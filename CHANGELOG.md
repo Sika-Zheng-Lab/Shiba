@@ -9,12 +9,12 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
-- Added beta regression as an optional statistical method for differential splicing analysis (`beta_regression: True` in configuration). This method fits a beta regression model to PSI values and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.
+- Added beta-binomial as an optional statistical method for differential splicing analysis (`beta_binomial: True` in configuration). This method models splicing counts with a beta-binomial likelihood and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.
   - Optimized with analytical gradients using digamma functions for faster convergence.
   - Supports parallel computation via `ProcessPoolExecutor` using the `-p` option.
   - Includes pre-filters (zero-variance PSI, identical group means) to skip unnecessary optimization.
   - Uses moment-based initial parameter estimation for robust and fast convergence.
-- Added unit tests for beta regression covering core functionality, analytical gradients, edge cases, and parallel execution.
+- Added unit tests for beta-binomial testing covering core functionality, edge cases, and parallel execution.
 
 ### Changed
 

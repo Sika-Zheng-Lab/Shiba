@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument("-r", "--reference", type = str, help = "Reference group for detecting differential events")
     parser.add_argument("-a", "--alternative", type = str, help = "Alternative group for detecting differential events")
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
+    parser.add_argument("-b", "--beta-binomial", help = "Perform beta-binomial test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -58,6 +59,7 @@ def main():
         "reference": args.reference,
         "alternative": args.alternative,
         "minimum_reads": args.minimum_reads,
+        "beta_binomial": args.beta_binomial,
         "onlypsi": args.onlypsi,
         "excel": args.excel,
     }
@@ -79,7 +81,11 @@ def main():
             group_list = [params["reference"], params["alternative"]]
             junc_group_df = junc_df[["chr", "start", "end", "ID"] + group_list]
             junc_dict_group = shibalib.junc_dict(junc_group_df)
-            group_data = {"group_list": group_list, "junc_dict_group": junc_dict_group, "group_df": junc_group_df, "sample_list_diff": sample_list}
+            group_df = pd.DataFrame({
+                "sample": group_list,
+                "group": group_list,
+            })
+            group_data = {"group_list": group_list, "junc_dict_group": junc_dict_group, "group_df": group_df, "sample_list_diff": group_list}
         else:
             logger.error(f"Error: {params['reference']} or {params['alternative']} is not in the sample list")
             sys.exit(1)
@@ -108,9 +114,9 @@ def main():
         output_mtx_sample_df = None
         if not params["onlypsi"]:
             diff_df = shibalib.diff_event(
-                event_for_analysis_df, psi_table_group_df, junc_dict_all, False,
-                [params["reference"], params["alternative"]], sample_list,
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], False, False
+                event_for_analysis_df, psi_table_group_df, junc_dict_all, group_data["group_df"],
+                [params["reference"], params["alternative"]], group_data["sample_list_diff"],
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], False, False, params["beta_binomial"]
             )
         else:
             # Generate PSI matrices

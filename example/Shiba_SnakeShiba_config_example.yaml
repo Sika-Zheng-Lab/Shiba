@@ -38,7 +38,7 @@ individual_psi:
   True
 ttest:
   True
-beta_regression:
+beta_binomial:
   False
 excel:
   True

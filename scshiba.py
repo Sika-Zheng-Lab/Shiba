@@ -64,6 +64,7 @@ def main():
 	logger.info("Loading configuration...")
 	config_path = args.config
 	config = general.load_config(config_path)
+	general.apply_config_defaults(config)
 
 	# Check essential config keys
 	missing_keys = general.check_config(config, ["workdir", "experiment_table", "gtf"])
@@ -130,6 +131,7 @@ def main():
 				"-f", str(config['fdr']),
 				"-d", str(config['delta_psi']),
 				"-m", str(config['minimum_reads']),
+				"-b", str(config.get('beta_binomial', False)),
 				"--onlypsi", str(config['only_psi']),
 				"--excel", str(config['excel']),
 				os.path.join(output_dir, "junctions", "junctions.bed"),

@@ -196,7 +196,7 @@ def main():
                 "-m", str(config['minimum_reads']),
                 "-i", str(config['individual_psi']),
                 "-t", str(config['ttest']),
-                "-b", str(config.get('beta_regression', False)),
+                "-b", str(config.get('beta_binomial', False)),
                 "--excel", str(config['excel']),
                 "--onlypsi", str(only_psi),
                 "--onlypsi-group", str(only_psi_group),

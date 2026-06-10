@@ -96,3 +96,4 @@ nav:
   - scShiba: usage/scshiba.md
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
+  - Beta-binomial regression: usage/beta_binomial_regression.md

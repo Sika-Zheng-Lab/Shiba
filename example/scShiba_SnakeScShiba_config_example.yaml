@@ -20,5 +20,7 @@ alternative_group:
   Cluster-2
 minimum_reads:
   10
+beta_binomial:
+  False
 excel:
   False

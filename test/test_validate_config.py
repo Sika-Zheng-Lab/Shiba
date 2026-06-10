@@ -453,41 +453,41 @@ class TestValidateConfig(unittest.TestCase):
 # apply_config_defaults
 # ============================================================================
 class TestApplyConfigDefaults(unittest.TestCase):
-    def test_beta_regression_missing_defaults_to_false(self):
-        """When beta_regression is absent, it should be set to False."""
+    def test_beta_binomial_missing_defaults_to_false(self):
+        """When beta_binomial is absent, it should be set to False."""
         config = {"fdr": 0.05}
         apply_config_defaults(config)
-        self.assertIn("beta_regression", config)
-        self.assertFalse(config["beta_regression"])
+        self.assertIn("beta_binomial", config)
+        self.assertFalse(config["beta_binomial"])
 
-    def test_beta_regression_present_not_overwritten(self):
-        """When beta_regression is already set (even False), it should not be changed."""
-        config = {"beta_regression": False}
+    def test_beta_binomial_present_not_overwritten(self):
+        """When beta_binomial is already set (even False), it should not be changed."""
+        config = {"beta_binomial": False}
         apply_config_defaults(config)
-        self.assertFalse(config["beta_regression"])
+        self.assertFalse(config["beta_binomial"])
 
-    def test_beta_regression_true_not_overwritten(self):
-        """When beta_regression is explicitly True, it should remain True."""
-        config = {"beta_regression": True}
+    def test_beta_binomial_true_not_overwritten(self):
+        """When beta_binomial is explicitly True, it should remain True."""
+        config = {"beta_binomial": True}
         apply_config_defaults(config)
-        self.assertTrue(config["beta_regression"])
+        self.assertTrue(config["beta_binomial"])
 
-    def test_beta_regression_missing_logs_warning(self):
-        """A warning should be logged when beta_regression is missing."""
+    def test_beta_binomial_missing_logs_warning(self):
+        """A warning should be logged when beta_binomial is missing."""
         config = {"fdr": 0.05}
         with self.assertLogs("lib.general", level="WARNING") as cm:
             apply_config_defaults(config)
-        self.assertTrue(any("beta_regression" in msg for msg in cm.output))
+        self.assertTrue(any("beta_binomial" in msg for msg in cm.output))
 
-    def test_beta_regression_present_no_warning(self):
-        """No warning should be logged when beta_regression is present."""
-        config = {"beta_regression": False}
+    def test_beta_binomial_present_no_warning(self):
+        """No warning should be logged when beta_binomial is present."""
+        config = {"beta_binomial": False}
         # assertNoLogs is Python 3.10+; use assertRaises instead
         try:
             with self.assertLogs("lib.general", level="WARNING"):
                 apply_config_defaults(config)
             # If we get here, a warning WAS logged — fail
-            self.fail("Unexpected warning logged when beta_regression is present")
+            self.fail("Unexpected warning logged when beta_binomial is present")
         except AssertionError as e:
             if "no logs" in str(e).lower() or "Unexpected warning" not in str(e):
                 pass  # Expected: no warning logged

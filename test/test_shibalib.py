@@ -355,7 +355,10 @@ class TestColSE(unittest.TestCase):
 class TestColInd(unittest.TestCase):
     def test_col_ind(self):
         cols = shibalib.col_ind(["s1", "s2"])
-        self.assertEqual(cols, ["event_id", "s1_PSI", "s2_PSI", "s1_total_reads", "s2_total_reads"])
+        self.assertEqual(
+            cols,
+            ["event_id", "s1_PSI", "s2_PSI", "s1_success", "s2_success", "s1_total_reads", "s2_total_reads"]
+        )
 
 
 class TestColMSE(unittest.TestCase):
@@ -922,10 +925,10 @@ class TestTtest(unittest.TestCase):
 
 
 # ============================================================================
-# Beta Regression
+# Beta-Binomial
 # ============================================================================
-class TestBetaRegression(unittest.TestCase):
-    """Tests for beta_regression() — Beta regression with LRT."""
+class TestBetaBinomial(unittest.TestCase):
+    """Tests for beta_binomial() — Beta regression with LRT."""
 
     def setUp(self):
         self.group_df = pd.DataFrame({
@@ -934,125 +937,125 @@ class TestBetaRegression(unittest.TestCase):
         })
         self.group_list = ["ctrl", "treat"]
 
-    def _make_ind_df(self, psi_g1, psi_g2, total_g1, total_g2, event_ids=None):
-        """Build output_ind_df with _PSI and _total_reads columns.
+    def _make_ind_df(self, success_g1, success_g2, total_g1, total_g2, event_ids=None):
+        """Build output_ind_df with _success and _total_reads columns.
 
         Args:
-            psi_g1: list of lists, one per sample in group1 (e.g. [[0.9, 0.5], [0.85, 0.55]])
-            psi_g2: same for group2
+            success_g1: list of lists, one per sample in group1
+            success_g2: same for group2
             total_g1: list of lists, total reads per sample in group1
             total_g2: same for group2
             event_ids: optional list of event IDs
         """
-        n_events = len(psi_g1[0])
+        n_events = len(success_g1[0])
         if event_ids is None:
             event_ids = [f"SE_{i+1}" for i in range(n_events)]
         data = {"event_id": event_ids}
-        for i, (psi, total) in enumerate(zip(psi_g1, total_g1)):
+        for i, (success, total) in enumerate(zip(success_g1, total_g1)):
             s = f"s{i+1}"
-            data[f"{s}_PSI"] = psi
+            data[f"{s}_success"] = success
             data[f"{s}_total_reads"] = total
-        for i, (psi, total) in enumerate(zip(psi_g2, total_g2)):
-            s = f"s{len(psi_g1)+i+1}"
-            data[f"{s}_PSI"] = psi
+        for i, (success, total) in enumerate(zip(success_g2, total_g2)):
+            s = f"s{len(success_g1)+i+1}"
+            data[f"{s}_success"] = success
             data[f"{s}_total_reads"] = total
         return pd.DataFrame(data)
 
-    def test_beta_regression_basic(self):
+    def test_beta_binomial_basic(self):
         """Clear group difference should yield a small p-value."""
         df = self._make_ind_df(
-            psi_g1=[[0.9], [0.85]],
-            psi_g2=[[0.1], [0.15]],
+            success_g1=[[90], [102]],
+            success_g2=[[11], [16]],
             total_g1=[[100], [120]],
             total_g2=[[110], [105]],
         )
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertEqual(len(result), 1)
         self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
         self.assertLess(result["p_beta"].iloc[0], 0.05)
 
-    def test_beta_regression_no_difference(self):
+    def test_beta_binomial_no_difference(self):
         """Identical PSI across groups should yield a large p-value."""
         df = self._make_ind_df(
-            psi_g1=[[0.50], [0.52]],
-            psi_g2=[[0.51], [0.49]],
+            success_g1=[[50], [52]],
+            success_g2=[[51], [49]],
             total_g1=[[100], [100]],
             total_g2=[[100], [100]],
         )
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertGreater(result["p_beta"].iloc[0], 0.05)
 
-    def test_beta_regression_with_nan_psi(self):
-        """NaN PSI for one sample, but enough remaining samples (>=2 per group)."""
+    def test_beta_binomial_with_nan_success(self):
+        """NaN success for one sample, but enough remaining samples (>=2 per group)."""
         group_df = pd.DataFrame({
             "sample": ["s1", "s2", "s3", "s4", "s5", "s6"],
             "group": ["ctrl", "ctrl", "ctrl", "treat", "treat", "treat"]
         })
         df = pd.DataFrame({
             "event_id": ["SE_1"],
-            "s1_PSI": [0.9], "s1_total_reads": [100],
-            "s2_PSI": [np.nan], "s2_total_reads": [80],
-            "s3_PSI": [0.88], "s3_total_reads": [90],
-            "s4_PSI": [0.1], "s4_total_reads": [110],
-            "s5_PSI": [0.15], "s5_total_reads": [95],
-            "s6_PSI": [np.nan], "s6_total_reads": [100],
+            "s1_success": [90], "s1_total_reads": [100],
+            "s2_success": [np.nan], "s2_total_reads": [80],
+            "s3_success": [79], "s3_total_reads": [90],
+            "s4_success": [11], "s4_total_reads": [110],
+            "s5_success": [14], "s5_total_reads": [95],
+            "s6_success": [np.nan], "s6_total_reads": [100],
         })
-        result = shibalib.beta_regression(df, group_df, ["ctrl", "treat"])
+        result = shibalib.beta_binomial(df, group_df, ["ctrl", "treat"])
         self.assertIn("p_beta", result.columns)
         # Should still compute (2 valid per group remain)
         self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
 
-    def test_beta_regression_insufficient_samples(self):
+    def test_beta_binomial_insufficient_samples(self):
         """Only 1 valid sample per group → p_beta should be NaN."""
         df = pd.DataFrame({
             "event_id": ["SE_1"],
-            "s1_PSI": [0.9], "s1_total_reads": [100],
-            "s2_PSI": [np.nan], "s2_total_reads": [80],
-            "s3_PSI": [0.1], "s3_total_reads": [110],
-            "s4_PSI": [np.nan], "s4_total_reads": [95],
+            "s1_success": [90], "s1_total_reads": [100],
+            "s2_success": [np.nan], "s2_total_reads": [80],
+            "s3_success": [11], "s3_total_reads": [110],
+            "s4_success": [np.nan], "s4_total_reads": [95],
         })
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertTrue(np.isnan(result["p_beta"].iloc[0]))
 
-    def test_beta_regression_total_reads_zero(self):
+    def test_beta_binomial_total_reads_zero(self):
         """total_reads=0 should be filtered out; if insufficient remain → NaN."""
         df = pd.DataFrame({
             "event_id": ["SE_1"],
-            "s1_PSI": [0.9], "s1_total_reads": [100],
-            "s2_PSI": [0.85], "s2_total_reads": [0],  # filtered out
-            "s3_PSI": [0.1], "s3_total_reads": [0],    # filtered out
-            "s4_PSI": [0.15], "s4_total_reads": [105],
+            "s1_success": [90], "s1_total_reads": [100],
+            "s2_success": [0], "s2_total_reads": [0],  # filtered out
+            "s3_success": [0], "s3_total_reads": [0],  # filtered out
+            "s4_success": [16], "s4_total_reads": [105],
         })
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         # Only 1 valid per group → NaN
         self.assertTrue(np.isnan(result["p_beta"].iloc[0]))
 
-    def test_beta_regression_psi_boundary(self):
-        """PSI at exact boundaries (0.0 and 1.0) should not cause errors."""
+    def test_beta_binomial_success_boundary(self):
+        """Success at exact boundaries (0 and n) should not cause errors."""
         df = self._make_ind_df(
-            psi_g1=[[1.0], [0.95]],
-            psi_g2=[[0.0], [0.05]],
+            success_g1=[[100], [114]],
+            success_g2=[[0], [5]],
             total_g1=[[100], [120]],
             total_g2=[[110], [105]],
         )
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
 
-    def test_beta_regression_multiple_events(self):
+    def test_beta_binomial_multiple_events(self):
         """Multiple rows (events) should each get a p_beta value."""
         df = self._make_ind_df(
-            psi_g1=[[0.9, 0.5, 0.3], [0.85, 0.52, 0.28]],
-            psi_g2=[[0.1, 0.48, 0.7], [0.15, 0.51, 0.75]],
+            success_g1=[[90, 40, 27], [102, 44, 27]],
+            success_g2=[[11, 43, 70], [16, 45, 69]],
             total_g1=[[100, 80, 90], [120, 85, 95]],
             total_g2=[[110, 90, 100], [105, 88, 92]],
             event_ids=["SE_1", "SE_2", "SE_3"],
         )
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertEqual(len(result), 3)
         # SE_1: large difference → small p
@@ -1060,29 +1063,29 @@ class TestBetaRegression(unittest.TestCase):
         # SE_2: almost no difference → large p
         self.assertGreater(result["p_beta"].iloc[1], 0.05)
 
-    def test_beta_regression_column_mismatch(self):
+    def test_beta_binomial_column_mismatch(self):
         """Missing columns should raise ValueError."""
         df = pd.DataFrame({
             "event_id": ["SE_1"],
-            "s1_PSI": [0.9],  # missing s2, s3, s4 and all _total_reads
+            "s1_success": [90],  # missing s2, s3, s4 and all _total_reads
         })
         with self.assertRaises(ValueError):
-            shibalib.beta_regression(df, self.group_df, self.group_list)
+            shibalib.beta_binomial(df, self.group_df, self.group_list)
 
-    def test_beta_regression_empty_dataframe(self):
+    def test_beta_binomial_empty_dataframe(self):
         """Empty DataFrame should return with p_beta column, 0 rows."""
         df = pd.DataFrame({
             "event_id": pd.Series([], dtype=str),
-            "s1_PSI": pd.Series([], dtype=float), "s1_total_reads": pd.Series([], dtype=float),
-            "s2_PSI": pd.Series([], dtype=float), "s2_total_reads": pd.Series([], dtype=float),
-            "s3_PSI": pd.Series([], dtype=float), "s3_total_reads": pd.Series([], dtype=float),
-            "s4_PSI": pd.Series([], dtype=float), "s4_total_reads": pd.Series([], dtype=float),
+            "s1_success": pd.Series([], dtype=float), "s1_total_reads": pd.Series([], dtype=float),
+            "s2_success": pd.Series([], dtype=float), "s2_total_reads": pd.Series([], dtype=float),
+            "s3_success": pd.Series([], dtype=float), "s3_total_reads": pd.Series([], dtype=float),
+            "s4_success": pd.Series([], dtype=float), "s4_total_reads": pd.Series([], dtype=float),
         })
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         self.assertEqual(len(result), 0)
 
-    def test_beta_regression_many_samples(self):
+    def test_beta_binomial_many_samples(self):
         """More samples (5 per group) should still work and give a small p-value for clear difference."""
         samples_g1 = ["a1", "a2", "a3", "a4", "a5"]
         samples_g2 = ["b1", "b2", "b3", "b4", "b5"]
@@ -1092,191 +1095,127 @@ class TestBetaRegression(unittest.TestCase):
         })
         data = {"event_id": ["SE_1"]}
         for s in samples_g1:
-            data[f"{s}_PSI"] = [np.random.uniform(0.80, 0.95)]
-            data[f"{s}_total_reads"] = [np.random.randint(80, 150)]
+            total = np.random.randint(80, 150)
+            ratio = np.random.uniform(0.80, 0.95)
+            data[f"{s}_success"] = [int(round(total * ratio))]
+            data[f"{s}_total_reads"] = [total]
         for s in samples_g2:
-            data[f"{s}_PSI"] = [np.random.uniform(0.05, 0.20)]
-            data[f"{s}_total_reads"] = [np.random.randint(80, 150)]
+            total = np.random.randint(80, 150)
+            ratio = np.random.uniform(0.05, 0.20)
+            data[f"{s}_success"] = [int(round(total * ratio))]
+            data[f"{s}_total_reads"] = [total]
         np.random.seed(42)
         df = pd.DataFrame(data)
-        result = shibalib.beta_regression(df, group_df, ["ctrl", "treat"])
+        result = shibalib.beta_binomial(df, group_df, ["ctrl", "treat"])
         self.assertIn("p_beta", result.columns)
         self.assertFalse(np.isnan(result["p_beta"].iloc[0]))
 
-    def test_beta_regression_parallel_matches_serial(self):
+    def test_beta_binomial_parallel_matches_serial(self):
         """Parallel (num_process=2) should produce same p-values as serial."""
         df = self._make_ind_df(
-            psi_g1=[[0.9, 0.5, 0.3, 0.7, 0.85], [0.85, 0.52, 0.28, 0.72, 0.80]],
-            psi_g2=[[0.1, 0.48, 0.7, 0.3, 0.15], [0.15, 0.51, 0.75, 0.28, 0.12]],
+            success_g1=[[90, 40, 27, 77, 81], [102, 44, 27, 76, 80]],
+            success_g2=[[11, 43, 70, 26, 14], [16, 45, 69, 25, 10]],
             total_g1=[[100, 80, 90, 110, 95], [120, 85, 95, 105, 100]],
             total_g2=[[110, 90, 100, 88, 92], [105, 88, 92, 90, 85]],
             event_ids=["SE_1", "SE_2", "SE_3", "SE_4", "SE_5"],
         )
-        result_serial = shibalib.beta_regression(df.copy(), self.group_df, self.group_list, num_process=1)
-        result_parallel = shibalib.beta_regression(df.copy(), self.group_df, self.group_list, num_process=2)
+        result_serial = shibalib.beta_binomial(df.copy(), self.group_df, self.group_list, num_process=1)
+        result_parallel = shibalib.beta_binomial(df.copy(), self.group_df, self.group_list, num_process=2)
         np.testing.assert_allclose(
             result_serial["p_beta"].values,
             result_parallel["p_beta"].values,
             rtol=1e-10, equal_nan=True
         )
 
-    def test_beta_regression_prefilter_identical_psi(self):
-        """If all PSI values are identical across groups, p should be ~1.0."""
+    def test_beta_binomial_prefilter_identical_ratio(self):
+        """If all success ratios are identical across groups, p should be ~1.0."""
         df = self._make_ind_df(
-            psi_g1=[[0.5], [0.5]],
-            psi_g2=[[0.5], [0.5]],
+            success_g1=[[50], [50]],
+            success_g2=[[50], [50]],
             total_g1=[[100], [100]],
             total_g2=[[100], [100]],
         )
-        result = shibalib.beta_regression(df, self.group_df, self.group_list)
+        result = shibalib.beta_binomial(df, self.group_df, self.group_list)
         self.assertIn("p_beta", result.columns)
         # Pre-filter should catch this (var < 1e-10) and return p≈1.0
         self.assertGreater(result["p_beta"].iloc[0], 0.99)
 
 
-class TestBetaRegressionSingleEvent(unittest.TestCase):
-    """Tests for _beta_regression_single_event (module-level worker function)."""
+class TestBetaBinomialSingleEvent(unittest.TestCase):
+    """Tests for _beta_binomial_single_event (module-level worker function)."""
 
     def test_clear_difference_returns_large_lr_stat(self):
         """Clear group separation should yield a large LR statistic."""
-        y = np.array([0.9, 0.85, 0.1, 0.15], dtype=np.float64)
+        k = np.array([90, 102, 11, 16], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([100, 120, 110, 105], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertTrue(np.isfinite(lr))
         self.assertGreater(lr, 0)
 
     def test_no_difference_returns_small_lr_stat(self):
         """Nearly identical PSI across groups should yield LR ~ 0."""
-        y = np.array([0.50, 0.52, 0.51, 0.49], dtype=np.float64)
+        k = np.array([50, 52, 51, 49], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([100, 100, 100, 100], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertTrue(np.isfinite(lr))
         self.assertLess(lr, 3.84)  # chi2 critical value at p=0.05, df=1
 
     def test_insufficient_samples_returns_nan(self):
         """< 2 per group → NaN."""
-        y = np.array([0.9, 0.1], dtype=np.float64)
+        k = np.array([90, 10], dtype=np.float64)
         x = np.array([0, 1], dtype=np.float64)
         n = np.array([100, 100], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertTrue(np.isnan(lr))
 
     def test_zero_variance_returns_zero(self):
         """All PSI identical → LR=0 via pre-filter."""
-        y = np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float64)
+        k = np.array([50, 50, 50, 50], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([100, 100, 100, 100], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertEqual(lr, 0.0)
 
     def test_identical_group_means_returns_zero(self):
         """Group means within 1e-8 → LR=0 via pre-filter."""
-        y = np.array([0.500000001, 0.499999999, 0.500000001, 0.499999999], dtype=np.float64)
+        k = np.array([50, 50, 50, 50], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([100, 100, 100, 100], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertEqual(lr, 0.0)
 
     def test_boundary_psi_values(self):
         """PSI at 0.0 and 1.0 should not crash."""
-        y = np.array([1.0, 0.95, 0.0, 0.05], dtype=np.float64)
+        k = np.array([100, 114, 0, 5], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([100, 120, 110, 105], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         self.assertTrue(np.isfinite(lr))
 
     def test_optimizer_failure_returns_nan(self):
         """If optimization fails, should return NaN (no Nelder-Mead fallback)."""
         # Pathological data: all samples have same PSI but high variance in reads
-        y = np.array([0.99999, 0.99999, 0.00001, 0.00001], dtype=np.float64)
+        k = np.array([1, 1, 0, 0], dtype=np.float64)
         x = np.array([0, 0, 1, 1], dtype=np.float64)
         n = np.array([1, 1, 1, 1], dtype=np.float64)
-        lr = shibalib._beta_regression_single_event(y, x, n)
+        lr = shibalib._beta_binomial_single_event(k, x, n)
         # Should return either a valid statistic or NaN — never raise
         self.assertTrue(np.isfinite(lr) or np.isnan(lr))
 
 
-class TestBetaRegAnalyticalGradient(unittest.TestCase):
-    """Verify analytical gradients match numerical approximation."""
-
-    def setUp(self):
-        """Set up test data for gradient checks."""
-        self.y = np.array([0.8, 0.85, 0.2, 0.15], dtype=np.float64)
-        self.x = np.array([0, 0, 1, 1], dtype=np.float64)
-        self.n = np.array([100, 120, 110, 105], dtype=np.float64)
-        n_total = len(self.y)
-        self.y_t = (self.y * (n_total - 1) + 0.5) / n_total
-        self.log_n = np.log(self.n)
-        self.log_y = np.log(self.y_t)
-        self.log_1_y = np.log(1 - self.y_t)
-        self.args = (self.x, self.log_n, self.log_y, self.log_1_y)
-
-    def _numerical_grad(self, func, params, args, eps=1e-7):
-        """Compute numerical gradient via forward differences."""
-        grad = np.zeros_like(params)
-        for i in range(len(params)):
-            p_plus = params.copy()
-            p_plus[i] += eps
-            p_minus = params.copy()
-            p_minus[i] -= eps
-            grad[i] = (func(p_plus, *args) - func(p_minus, *args)) / (2 * eps)
-        return grad
-
-    def test_full_model_gradient(self):
-        """Analytical gradient of full model should match numerical approx."""
-        from scipy.optimize import approx_fprime
-        params = np.array([0.5, -1.0, 2.3, 0.1])
-        analytical = shibalib._beta_reg_jac_full(params, *self.args)
-        numerical = self._numerical_grad(shibalib._beta_reg_neg_ll_full, params, self.args)
-        np.testing.assert_allclose(analytical, numerical, rtol=1e-4, atol=1e-6)
-
-    def test_null_model_gradient(self):
-        """Analytical gradient of null model should match numerical approx."""
-        params = np.array([0.5, 2.3, 0.1])
-        analytical = shibalib._beta_reg_jac_null(params, *self.args)
-        numerical = self._numerical_grad(shibalib._beta_reg_neg_ll_null, params, self.args)
-        np.testing.assert_allclose(analytical, numerical, rtol=1e-4, atol=1e-6)
-
-    def test_full_gradient_at_optimum(self):
-        """At the MLE, gradient should be approximately zero."""
-        from scipy.optimize import minimize as sp_minimize
-        params0 = np.array([0.5, -2.0, 2.3, 0.1])
-        result = sp_minimize(
-            shibalib._beta_reg_neg_ll_full, params0,
-            args=self.args, jac=shibalib._beta_reg_jac_full,
-            method='L-BFGS-B', options={'maxiter': 5000, 'ftol': 1e-15}
-        )
-        grad_at_opt = shibalib._beta_reg_jac_full(result.x, *self.args)
-        # With clipping-aware gradients the optimizer should converge properly;
-        # small residuals remain due to the kink at the clip boundary
-        np.testing.assert_allclose(grad_at_opt, 0.0, atol=0.1)
-
-    def test_null_gradient_at_optimum(self):
-        """At the null MLE, gradient should be approximately zero."""
-        from scipy.optimize import minimize as sp_minimize
-        params0 = np.array([0.0, 2.3, 0.1])
-        result = sp_minimize(
-            shibalib._beta_reg_neg_ll_null, params0,
-            args=self.args, jac=shibalib._beta_reg_jac_null,
-            method='L-BFGS-B', options={'maxiter': 1000, 'ftol': 1e-14}
-        )
-        grad_at_opt = shibalib._beta_reg_jac_null(result.x, *self.args)
-        np.testing.assert_allclose(grad_at_opt, 0.0, atol=1e-4)
-
-
-class TestBetaRegressionChunk(unittest.TestCase):
-    """Tests for _beta_regression_chunk."""
+class TestBetaBinomialChunk(unittest.TestCase):
+    """Tests for _beta_binomial_chunk."""
 
     def test_chunk_processes_multiple_events(self):
         """A chunk of events should return one LR stat per event."""
         chunk = [
-            (np.array([0.9, 0.85, 0.1, 0.15]), np.array([0, 0, 1, 1]), np.array([100, 120, 110, 105])),
-            (np.array([0.5, 0.52, 0.51, 0.49]), np.array([0, 0, 1, 1]), np.array([100, 100, 100, 100])),
-            (np.array([0.5, 0.1]), np.array([0, 1]), np.array([100, 100])),  # insufficient
+            (np.array([90, 102, 11, 16]), np.array([0, 0, 1, 1]), np.array([100, 120, 110, 105])),
+            (np.array([50, 52, 51, 49]), np.array([0, 0, 1, 1]), np.array([100, 100, 100, 100])),
+            (np.array([50, 10]), np.array([0, 1]), np.array([100, 100])),  # insufficient
         ]
-        results = shibalib._beta_regression_chunk(chunk)
+        results = shibalib._beta_binomial_chunk(chunk)
         self.assertEqual(len(results), 3)
         self.assertTrue(np.isfinite(results[0]))
         self.assertTrue(np.isfinite(results[1]))

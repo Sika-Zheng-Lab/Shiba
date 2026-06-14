@@ -1,5 +1,9 @@
 # Beta-binomial regression in Shiba
 
+!!! Under development
+
+	This document is currently under development and may contain inaccuracies or incomplete information. Please refer to the latest version on GitHub for updates.
+
 This document summarizes the statistical theory and the current implementation of beta-binomial regression used in Shiba.
 
 The implementation targets event-wise differential splicing testing between two groups, using read counts directly.
@@ -306,13 +310,3 @@ For each event type:
 2. For candidate events, compute sample-level PSI and count columns (`_success`, `_total_reads`).
 3. Run beta-binomial LRT to get `p_beta`.
 4. Apply BH correction to get `q_beta`.
-5. Drop internal count columns from final output table.
-
-## GitHub markdown equation compatibility notes
-
-This document uses GitHub-compatible math syntax:
-
-- inline math with `$...$`
-- display math with `$$...$$`
-
-Avoid indenting math blocks with 4 spaces or placing them inside fenced code blocks if you want GitHub to render formulas.

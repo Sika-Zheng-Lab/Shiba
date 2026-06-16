@@ -1,8 +1,9 @@
 name: Publish MkDocs
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - develop
+      - main
 permissions:
   contents: write
 jobs:

@@ -1225,8 +1225,22 @@ def ri(gtf_dic) -> list:
 
 	return(event_l)
 
+_EVENT_OUTPUT_COLUMNS = {
+	"SE": ["event_id", "pos_id", "exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name", "label"],
+	"FIVE": ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"],
+	"THREE": ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"],
+	"MXE": ["event_id", "pos_id", "exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name", "label"],
+	"RI": ["event_id", "pos_id", "exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name", "label"],
+	"MSE": ["event_id", "pos_id", "mse_n", "exon", "intron", "strand", "gene_id", "gene_name", "label"],
+	"AFE": ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"],
+	"ALE": ["event_id", "pos_id", "exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name", "label"],
+}
+
 def _postprocess_event(event_name, output_df, reference_gtf_path, gtf_ref_intron_set, gtf_ref_exon_set):
 	"""Post-process a single event type: create pos_id, dedup, assign event_id, label."""
+
+	if output_df.empty:
+		return pd.DataFrame(columns=_EVENT_OUTPUT_COLUMNS[event_name])
 
 	if event_name == "SE":
 		_exon_split = output_df["exon"].str.split(":", expand=True)

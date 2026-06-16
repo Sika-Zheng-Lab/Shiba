@@ -2498,11 +2498,16 @@ def make_psi_mtx(psi_table_df) -> pd.DataFrame:
 
     """
 
+    ind_psi_col = ["event_id", "pos_id"] + [i for i in list(psi_table_df.columns) if i.endswith("_PSI")]
+    if psi_table_df.empty:
+        output_mtx_df = psi_table_df[ind_psi_col].copy()
+        output_mtx_df.columns = [i.rstrip("_PSI") for i in list(output_mtx_df.columns)]
+        return(psi_table_df, output_mtx_df)
+
     psi_table_df["key"] = psi_table_df["event_id"].str.split("_", expand = True)[1].astype(int)
     psi_table_df = psi_table_df.sort_values("key")
     psi_table_df = psi_table_df.drop(columns = ["key"])
     # Simple PSI matrix
-    ind_psi_col = ["event_id", "pos_id"] + [i for i in list(psi_table_df.columns) if i.endswith("_PSI")]
     output_mtx_df = psi_table_df[ind_psi_col]
     output_mtx_df.columns = [i.rstrip("_PSI") for i in list(output_mtx_df.columns)]
     return(psi_table_df, output_mtx_df)

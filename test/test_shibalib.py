@@ -1243,6 +1243,15 @@ class TestMakePsiMtx(unittest.TestCase):
         self.assertIn("s1", mtx_df.columns)
         self.assertIn("s2", mtx_df.columns)
 
+    def test_make_psi_mtx_empty_df(self):
+        df = pd.DataFrame(columns=["event_id", "pos_id", "extra", "s1_PSI", "s2_PSI"])
+        sorted_df, mtx_df = shibalib.make_psi_mtx(df)
+
+        self.assertEqual(len(sorted_df), 0)
+        self.assertEqual(len(mtx_df), 0)
+        self.assertEqual(list(sorted_df.columns), ["event_id", "pos_id", "extra", "s1_PSI", "s2_PSI"])
+        self.assertEqual(list(mtx_df.columns), ["event_id", "pos_id", "s1", "s2"])
+
 
 # ============================================================================
 # EventCounter

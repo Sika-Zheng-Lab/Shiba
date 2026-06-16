@@ -238,7 +238,7 @@ def merge_and_save(exonexon_files, exonintron_files, output_file):
 		index=False
 	)
 
-	junc_num = str(result_df.count()[0])
+	junc_num = str(result_df.shape[0])
 	logger.debug(f"Total number of junctions: {junc_num}")
 	logger.info("Merge junctions completed")
 

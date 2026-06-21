@@ -74,6 +74,15 @@ class TestCreateSafFile(unittest.TestCase):
         self.assertIn("chr1:15100-15101", gene_ids)
         self.assertIn("chr1:15199-15200", gene_ids)
 
+    def test_create_saf_file_deduplicates_coordinates_across_strands(self):
+        with open(self.ri_event_path, "a") as f:
+            f.write("RI_3\tp3\tea\teb\tec\tchr1:15100-15200\t-\tG3\tG3\tannotated\n")
+
+        saf_path = bam2junc.create_saf_file(self.ri_event_path, self.tmpdir)
+        df = pd.read_csv(saf_path, sep="\t")
+        self.assertEqual(len(df[df["GeneID"] == "chr1:15100-15101"]), 1)
+        self.assertEqual(len(df[df["GeneID"] == "chr1:15199-15200"]), 1)
+
 
 @unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
 class TestMergeJunctionFiles(unittest.TestCase):
@@ -97,12 +106,14 @@ class TestMergeJunctionFiles(unittest.TestCase):
             f.write("# Program:featureCounts\n")
             f.write("Geneid\tChr\tStart\tEnd\tStrand\tLength\ts1.bam\n")
             f.write("chr1:500-501\tchr1\t500\t501\t+\t1\t20\n")
+            f.write("chr9:35660647-35660648\tchr9;chr9\t35660647;35660647\t35660648;35660648\t+;-\t2\t57\n")
 
         self.ei_junc2 = os.path.join(self.tmpdir, "s2_exon-intron.junc")
         with open(self.ei_junc2, "w") as f:
             f.write("# Program:featureCounts\n")
             f.write("Geneid\tChr\tStart\tEnd\tStrand\tLength\ts2.bam\n")
             f.write("chr1:500-501\tchr1\t500\t501\t+\t1\t25\n")
+            f.write("chr9:35660647-35660648\tchr9\t35660647\t35660648\t+\t1\t10\n")
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
@@ -121,6 +132,25 @@ class TestMergeJunctionFiles(unittest.TestCase):
         self.assertIn("chr", result.columns)
         self.assertIn("ID", result.columns)
         self.assertGreater(len(result), 0)
+
+    def test_merge_junction_files_normalizes_featurecounts_meta_feature_coordinates(self):
+        junc_files = [
+            (self.junc1, "exon-exon"),
+            (self.junc2, "exon-exon"),
+            (self.ei_junc1, "exon-intron"),
+            (self.ei_junc2, "exon-intron"),
+        ]
+        output_path = os.path.join(self.tmpdir, "merged_junctions.bed")
+        bam2junc.merge_junction_files(junc_files, output_path)
+        result = pd.read_csv(output_path, sep="\t")
+        row = result[result["ID"] == "chr9:35660647-35660648"].iloc[0]
+
+        self.assertEqual(row["chr"], "chr9")
+        self.assertEqual(row["start"], 35660647)
+        self.assertEqual(row["end"], 35660648)
+        self.assertEqual(row["s1"], 57)
+        self.assertEqual(row["s2"], 10)
+        self.assertNotIn(";", str(row["chr"]))
 
 
 if __name__ == "__main__":

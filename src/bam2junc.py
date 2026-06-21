@@ -39,7 +39,7 @@ def create_saf_file(ri_event, tmp_dir):
 			saf_data.append([f"{chrom}:{start}-{start_plus_1}", chrom, start, start_plus_1, strand])
 			saf_data.append([f"{chrom}:{end_minus_1}-{end}", chrom, end_minus_1, end, strand])
 	saf_df = pd.DataFrame(saf_data, columns=["GeneID", "Chr", "Start", "End", "Strand"])
-	saf_df.drop_duplicates().to_csv(saf_file, sep="\t", index=False)
+	saf_df.drop_duplicates(subset=["GeneID", "Chr", "Start", "End"]).to_csv(saf_file, sep="\t", index=False)
 	return saf_file
 
 def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False, log_file=None):
@@ -130,6 +130,15 @@ def process_samples(experiment_file, strand, anchor, min_intron, max_intron, out
 # Junction merge logic (shared by all-in-one and 'merge' subcommand)
 # ---------------------------------------------------------------------------
 
+def add_coordinates_from_id(junc_df):
+	"""Add chr/start/end columns parsed from junction ID."""
+	id_split = junc_df["ID"].str.split(":", expand=True)
+	pos_split = id_split[1].str.split("-", expand=True)
+	junc_df["chr"] = id_split[0]
+	junc_df["start"] = pos_split[0].astype("int32")
+	junc_df["end"] = pos_split[1].astype("int32")
+	return junc_df
+
 def merge_exonexon(filelist):
 	"""Merge exon-exon junction files into a single DataFrame."""
 	result_df = pd.DataFrame()
@@ -174,9 +183,7 @@ def merge_exonexon(filelist):
 	).fillna(0).reset_index()
 	result_df = result_df.rename(columns={"index": "ID"})
 
-	result_df["chr"] = result_df["ID"].str.split(":", expand=True)[0]
-	result_df["start"] = result_df["ID"].str.split(":", expand=True)[1].str.split("-", expand=True)[0].astype("int32")
-	result_df["end"] = result_df["ID"].str.split(":", expand=True)[1].str.split("-", expand=True)[1].astype("int32")
+	result_df = add_coordinates_from_id(result_df)
 	result_df["chr-start"] = result_df["chr"] + "-" + result_df["start"].astype(str)
 	result_df["chr-end"] = result_df["chr"] + "-" + result_df["end"].astype(str)
 	col = [i for i in result_df.columns if i not in ["chr", "start", "end", "ID", "chr-start", "chr-end", "mean"]]
@@ -199,21 +206,25 @@ def merge_exonintron(filelist):
 			dtype=str
 		)
 		sample = filelist[i].split("/")[-1].rstrip("_exon-intron.junc")
-		junc_df = junc_df.iloc[:, [1, 2, 3, 0, 6]]
-		junc_df.columns = ["chr", "start", "end", "ID", "count"]
+		junc_df = junc_df.iloc[:, [0, 6]]
+		junc_df.columns = ["ID", "count"]
 		junc_df["sample"] = sample
-		junc_df.loc[(junc_df["chr"].str.isdecimal() == True) | (junc_df["chr"].str.len() <= 2), "chr"] = "chr" + junc_df["chr"]
-		result_df = pd.concat([result_df, junc_df], axis=0) if result_df is not None else junc_df
+		result_df = pd.concat([result_df, junc_df], axis=0) if not result_df.empty else junc_df
 
 	result_df["count"] = result_df["count"].astype("int32")
+	result_df = result_df.groupby(["ID", "sample"], as_index=False).sum()
 	result_df = result_df.pivot(
-		index=["chr", "start", "end", "ID"],
+		index="ID",
 		columns="sample",
 		values="count"
 	).fillna(0).reset_index()
+	result_df = result_df.rename(columns={"index": "ID"})
+	result_df = add_coordinates_from_id(result_df)
 	col = [i for i in result_df.columns if i not in ["chr", "start", "end", "ID"]]
 	for j in col:
 		result_df = result_df.astype({j: "int32"})
+	col = ["chr", "start", "end", "ID"] + col
+	result_df = result_df[col]
 
 	return result_df
 

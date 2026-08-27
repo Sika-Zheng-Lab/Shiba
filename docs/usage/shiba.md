@@ -126,7 +126,7 @@ optional arguments:
   -M MAX_INTRON, --max_intron MAX_INTRON
                         Maximum intron size (default: 500000)
   -s STRAND, --strand STRAND
-                        Strand specificity (default: XS)
+                        Strand specificity for regtools. Use XS, RF, or FR (default: XS). Legacy values 0/1/2 are also accepted.
   -v, --verbose         Verbose output
 ```
 

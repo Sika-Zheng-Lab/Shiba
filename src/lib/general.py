@@ -322,6 +322,29 @@ def validate_groups_sc(experiment_table, reference_group, alternative_group):
         errors.append(f'Experiment table not found: {experiment_table}')
     return errors
 
+def normalize_regtools_strand(strand_value):
+    """Normalize Shiba strand configuration to regtools-compatible values.
+
+    regtools >= 1.0.0 expects XS, RF, or FR instead of the legacy numeric values
+    0, 1, and 2. This helper keeps the older config values accepted while
+    translating them to the newer spellings before invoking regtools.
+    """
+    if strand_value is None:
+        return "XS"
+
+    strand = str(strand_value).strip()
+    legacy_mapping = {
+        "0": "XS",
+        "1": "RF",
+        "2": "FR",
+    }
+    if strand in legacy_mapping:
+        return legacy_mapping[strand]
+    if strand in {"XS", "RF", "FR"}:
+        return strand
+    raise ValueError(f"Unsupported strand value: {strand_value!r}")
+
+
 def validate_config_types(config, mode="bulk"):
     """
     Validates config parameter types and value ranges.
@@ -401,9 +424,9 @@ def validate_config_types(config, mode="bulk"):
             except (TypeError, ValueError):
                 errors.append(f'maximum_intron_length must be an integer, got "{config["maximum_intron_length"]}"')
 
-        # strand: one of XS, 0, 1, 2
+        # strand: one of XS, RF, FR, 0, 1, 2 (legacy values accepted for compatibility)
         if 'strand' in config:
-            valid_strands = {"XS", "0", "1", "2"}
+            valid_strands = {"XS", "RF", "FR", "0", "1", "2"}
             if str(config['strand']) not in valid_strands:
                 errors.append(
                     f'strand must be one of {", ".join(sorted(valid_strands))}, '

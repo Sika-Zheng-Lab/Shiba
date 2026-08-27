@@ -66,6 +66,7 @@ def run_featurecounts_ri(bam, ri_saf, output, threads, long_read=False, log_file
 
 def process_samples(experiment_file, strand, anchor, min_intron, max_intron, output_dir, logs_dir, tmp_dir, saf_file, processors):
 	junc_files = []
+	strand = general.normalize_regtools_strand(strand)
 	with open(experiment_file, "r") as experiment:
 		for line in experiment:
 			line = line.strip()

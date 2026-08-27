@@ -272,7 +272,7 @@ class TestValidateConfigTypes(unittest.TestCase):
         self.assertIn("strand", errors[0])
 
     def test_strand_valid_values(self):
-        for strand in ["XS", "0", "1", "2"]:
+        for strand in ["XS", "RF", "FR", "0", "1", "2"]:
             errors = validate_config_types({"strand": strand}, mode="bulk")
             self.assertEqual(errors, [], f"strand={strand} should be valid")
 

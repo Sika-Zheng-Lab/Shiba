@@ -59,8 +59,8 @@ def load_tpm_pca_table(input_dir: str, experiment_table_df: pd.DataFrame, output
 		sep = "\t",
 		names = ["PC", "contribution"]
 	)
-	contribution_tpm_PC1 = str((contribution_tpm_df.iloc[0][1]*100).round(2))
-	contribution_tpm_PC2 = str((contribution_tpm_df.iloc[1][1]*100).round(2))
+	contribution_tpm_PC1 = str((contribution_tpm_df.iloc[0, 1]*100).round(2))
+	contribution_tpm_PC2 = str((contribution_tpm_df.iloc[1, 1]*100).round(2))
 	return pca_tpm_df, contribution_tpm_PC1, contribution_tpm_PC2
 
 def load_psi_pca_table(input_dir: str, experiment_table_df: pd.DataFrame, output_dir: str):
@@ -79,8 +79,8 @@ def load_psi_pca_table(input_dir: str, experiment_table_df: pd.DataFrame, output
 		sep = "\t",
 		names = ["PC", "contribution"]
 	)
-	contribution_psi_PC1 = str((contribution_psi_df.iloc[0][1]*100).round(2))
-	contribution_psi_PC2 = str((contribution_psi_df.iloc[1][1]*100).round(2))
+	contribution_psi_PC1 = str((contribution_psi_df.iloc[0, 1]*100).round(2))
+	contribution_psi_PC2 = str((contribution_psi_df.iloc[1, 1]*100).round(2))
 	return pca_psi_df, contribution_psi_PC1, contribution_psi_PC2
 
 def plots_pca(name: str, pca_df: pd.DataFrame, contribution_PC1: str, contribution_PC2: str, output_dir: str):

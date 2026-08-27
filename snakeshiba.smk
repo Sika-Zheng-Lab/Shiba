@@ -215,7 +215,7 @@ rule make_RI_saf:
         cut -f 6,7 | \
         sed -e 1d | \
         awk -F'\t' -v OFS='\t' '{{split($1,l,":"); split(l[2],m,"-"); print l[1]":"m[1]"-"m[1]+1,l[1],m[1],m[1]+1,$2; print l[1]":"m[2]-1"-"m[2],l[1],m[2]-1,m[2],$2}}' | \
-        awk '!a[$0]++' > {output}
+        awk -F'\t' -v OFS='\t' '!a[$1 FS $2 FS $3 FS $4]++' > {output}
         """
 
 rule bam2junc_RI:

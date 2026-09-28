@@ -1,7 +1,7 @@
 workdir:
   /path/to/workdir/output
 container:
-  docker://naotokubota/shiba:v0.8.2
+  docker://naotokubota/shiba:v1.0.0
 gtf:
   /path/to/workdir/annotation.gtf
 experiment_table:
@@ -12,6 +12,8 @@ unannotated:
 # Junction read filtering
 minimum_anchor_length:
   6
+boundary_anchor_length:
+  1
 minimum_intron_length:
   70
 maximum_intron_length:

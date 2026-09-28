@@ -85,6 +85,8 @@ unannotated:
 # Junction read filtering
 minimum_anchor_length:
   6 # (5)!
+boundary_anchor_length:
+  1 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:
@@ -182,11 +184,13 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 
 `config.yaml`: A yaml file of the configuration. This is the same as the configuration for **Shiba** but with the addition of the `container` field and without the `only_psi` and `only_psi_group` fields as they are not supported in **SnakeShiba**.
 
+The `v1.0.0` container tag below is for the upcoming Tosa-enabled release. For a development checkout, build `docker/Dockerfile_develop` and make the image available to your container runtime, or run Snakemake locally with Tosa installed on `PATH`.
+
 ``` yaml
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.8.2 # (2)!
+  docker://naotokubota/shiba:v1.0.0 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:
@@ -195,6 +199,8 @@ experiment_table:
 # Junction read filtering
 minimum_anchor_length:
   6 # (5)!
+boundary_anchor_length:
+  1 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:

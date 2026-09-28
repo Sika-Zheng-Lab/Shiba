@@ -1,156 +1,72 @@
-"""
-Unit tests for src/bam2junc.py
-Tests cover: prepare_output_dir, create_saf_file, merge_junction_files
-(process_samples is skipped since it requires external tools: regtools, featureCounts)
-"""
+"""Tests for Tosa output conversion into Shiba's junction matrix."""
 
-import unittest
+import csv
+import gzip
 import os
 import sys
 import tempfile
-import shutil
+import unittest
 
-import pandas as pd
-
-# Add src directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
-try:
-    import bam2junc
-    HAS_BAM2JUNC = True
-except ImportError:
-    HAS_BAM2JUNC = False
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+import bam2junc
 
 
-@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
-class TestPrepareOutputDir(unittest.TestCase):
+class TestTosaAdapter(unittest.TestCase):
     def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.ri = os.path.join(self.tmp.name, "EVENT_RI.txt")
+        with open(self.ri, "w") as handle:
+            handle.write("event_id\tintron_a\nRI_1\tchr1:100-200\nRI_2\tchr2:300-400\n")
 
-    def tearDown(self):
-        shutil.rmtree(self.tmpdir)
+    def write_tosa(self, sample, junction_rows, boundary_rows):
+        prefix = os.path.join(self.tmp.name, sample)
+        with gzip.open(prefix + "_junction.tsv.gz", "wt") as handle:
+            writer = csv.writer(handle, delimiter="\t")
+            writer.writerow(["Junction", "Strand", "Count"])
+            writer.writerows(junction_rows)
+        with gzip.open(prefix + "_boundary.tsv.gz", "wt") as handle:
+            writer = csv.writer(handle, delimiter="\t")
+            writer.writerow(["Boundary", "Type", "Strand", "Count"])
+            writer.writerows(boundary_rows)
+        return prefix
 
-    def test_creates_directories(self):
-        output_path = os.path.join(self.tmpdir, "output", "junctions.bed")
-        output_dir, logs_dir, tmp_dir = bam2junc.prepare_output_dir(output_path)
-        self.assertTrue(os.path.isdir(logs_dir))
-        self.assertTrue(os.path.isdir(tmp_dir))
-        self.assertEqual(os.path.basename(logs_dir), "logs")
-        self.assertEqual(os.path.basename(tmp_dir), "tmp")
+    def test_coordinates_strands_ri_zeros_and_sample_names(self):
+        second = self.write_tosa("sample_2", [["1:101-199", "+", 3]],
+                                 [["1:99-101", "5p", "+", 2],
+                                  ["1:198-200", "3p", "+", 4]])
+        first = self.write_tosa("sample_1", [["1:101-199", "+", 5],
+                                              ["1:101-199", "-", 7]],
+                                [["1:99-101", "5p", "+", 6],
+                                 ["1:99-101", "5p", "-", 1],
+                                 ["1:198-200", "3p", "+", 8],
+                                 ["1:500-502", "5p", "+", 9]])
+        output = os.path.join(self.tmp.name, "junctions.bed")
+        bam2junc.merge_tosa_samples({"sample_2": second, "sample_1": first}, self.ri, output)
+        with open(output) as handle:
+            reader = csv.DictReader(handle, delimiter="\t")
+            self.assertEqual(reader.fieldnames, ["chr", "start", "end", "ID", "sample_1", "sample_2"])
+            rows = {row["ID"]: row for row in reader}
+        self.assertEqual(len(rows), 5)
+        self.assertEqual((rows["chr1:100-200"]["sample_1"], rows["chr1:100-200"]["sample_2"]), ("12", "3"))
+        self.assertEqual((rows["chr1:100-101"]["sample_1"], rows["chr1:100-101"]["sample_2"]), ("7", "2"))
+        self.assertEqual(rows["chr1:199-200"]["sample_1"], "8")
+        self.assertEqual(rows["chr2:300-301"]["sample_1"], "0")
+        self.assertNotIn("chr1:501-502", rows)
 
+    def test_boundary_anchor_two(self):
+        prefix = self.write_tosa("s", [], [["chr1:98-102", "5p", "+", 3],
+                                                  ["chr1:197-201", "3p", "+", 4]])
+        counts = bam2junc.read_tosa_counts(prefix, 2, bam2junc.ri_boundary_ids(self.ri))
+        self.assertEqual(counts["chr1:100-101"], 3)
+        self.assertEqual(counts["chr1:199-200"], 4)
 
-@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
-class TestCreateSafFile(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        # Create a minimal RI event file
-        self.ri_event_path = os.path.join(self.tmpdir, "EVENT_RI.txt")
-        with open(self.ri_event_path, "w") as f:
-            f.write("event_id\tpos_id\texon_a\texon_b\texon_c\tintron_a\tstrand\tgene_id\tgene_name\tlabel\n")
-            f.write("RI_1\tp1\tea\teb\tec\tchr1:15100-15200\t+\tG1\tG1\tannotated\n")
-            f.write("RI_2\tp2\tea\teb\tec\tchr2:4100-4200\t-\tG2\tG2\tunannotated\n")
-
-    def tearDown(self):
-        shutil.rmtree(self.tmpdir)
-
-    def test_create_saf_file(self):
-        saf_path = bam2junc.create_saf_file(self.ri_event_path, self.tmpdir)
-        self.assertTrue(os.path.isfile(saf_path))
-        df = pd.read_csv(saf_path, sep="\t")
-        self.assertIn("GeneID", df.columns)
-        self.assertIn("Chr", df.columns)
-        self.assertIn("Start", df.columns)
-        self.assertIn("End", df.columns)
-        self.assertIn("Strand", df.columns)
-        # 2 RI events → 4 SAF entries (start+end for each), deduplicated
-        self.assertEqual(len(df), 4)
-
-    def test_saf_file_content(self):
-        saf_path = bam2junc.create_saf_file(self.ri_event_path, self.tmpdir)
-        df = pd.read_csv(saf_path, sep="\t")
-        # chr1:15100-15200 → start junc chr1:15100-15101, end junc chr1:15199-15200
-        gene_ids = set(df["GeneID"].values)
-        self.assertIn("chr1:15100-15101", gene_ids)
-        self.assertIn("chr1:15199-15200", gene_ids)
-
-    def test_create_saf_file_deduplicates_coordinates_across_strands(self):
-        with open(self.ri_event_path, "a") as f:
-            f.write("RI_3\tp3\tea\teb\tec\tchr1:15100-15200\t-\tG3\tG3\tannotated\n")
-
-        saf_path = bam2junc.create_saf_file(self.ri_event_path, self.tmpdir)
-        df = pd.read_csv(saf_path, sep="\t")
-        self.assertEqual(len(df[df["GeneID"] == "chr1:15100-15101"]), 1)
-        self.assertEqual(len(df[df["GeneID"] == "chr1:15199-15200"]), 1)
-
-
-@unittest.skipUnless(HAS_BAM2JUNC, "pysam not installed")
-class TestMergeJunctionFiles(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        # Create mock exon-exon junction files (regtools output format)
-        # regtools format: chr start end name count strand thickStart thickEnd color blockCount blockSizes blockStarts
-        self.junc1 = os.path.join(self.tmpdir, "s1_exon-exon.junc")
-        with open(self.junc1, "w") as f:
-            f.write("chr1\t100\t300\tjunc1\t50\t+\t100\t300\t0\t2\t20,25\t0,175\n")
-            f.write("chr1\t400\t600\tjunc2\t30\t+\t400\t600\t0\t2\t15,20\t0,180\n")
-
-        self.junc2 = os.path.join(self.tmpdir, "s2_exon-exon.junc")
-        with open(self.junc2, "w") as f:
-            f.write("chr1\t100\t300\tjunc1\t45\t+\t100\t300\t0\t2\t20,25\t0,175\n")
-            f.write("chr1\t400\t600\tjunc2\t35\t+\t400\t600\t0\t2\t15,20\t0,180\n")
-
-        # Create mock exon-intron junction files (featureCounts output format)
-        self.ei_junc1 = os.path.join(self.tmpdir, "s1_exon-intron.junc")
-        with open(self.ei_junc1, "w") as f:
-            f.write("# Program:featureCounts\n")
-            f.write("Geneid\tChr\tStart\tEnd\tStrand\tLength\ts1.bam\n")
-            f.write("chr1:500-501\tchr1\t500\t501\t+\t1\t20\n")
-            f.write("chr9:35660647-35660648\tchr9;chr9\t35660647;35660647\t35660648;35660648\t+;-\t2\t57\n")
-
-        self.ei_junc2 = os.path.join(self.tmpdir, "s2_exon-intron.junc")
-        with open(self.ei_junc2, "w") as f:
-            f.write("# Program:featureCounts\n")
-            f.write("Geneid\tChr\tStart\tEnd\tStrand\tLength\ts2.bam\n")
-            f.write("chr1:500-501\tchr1\t500\t501\t+\t1\t25\n")
-            f.write("chr9:35660647-35660648\tchr9\t35660647\t35660648\t+\t1\t10\n")
-
-    def tearDown(self):
-        shutil.rmtree(self.tmpdir)
-
-    def test_merge_junction_files(self):
-        junc_files = [
-            (self.junc1, "exon-exon"),
-            (self.junc2, "exon-exon"),
-            (self.ei_junc1, "exon-intron"),
-            (self.ei_junc2, "exon-intron"),
-        ]
-        output_path = os.path.join(self.tmpdir, "merged_junctions.bed")
-        bam2junc.merge_junction_files(junc_files, output_path)
-        self.assertTrue(os.path.isfile(output_path))
-        result = pd.read_csv(output_path, sep="\t")
-        self.assertIn("chr", result.columns)
-        self.assertIn("ID", result.columns)
-        self.assertGreater(len(result), 0)
-
-    def test_merge_junction_files_normalizes_featurecounts_meta_feature_coordinates(self):
-        junc_files = [
-            (self.junc1, "exon-exon"),
-            (self.junc2, "exon-exon"),
-            (self.ei_junc1, "exon-intron"),
-            (self.ei_junc2, "exon-intron"),
-        ]
-        output_path = os.path.join(self.tmpdir, "merged_junctions.bed")
-        bam2junc.merge_junction_files(junc_files, output_path)
-        result = pd.read_csv(output_path, sep="\t")
-        row = result[result["ID"] == "chr9:35660647-35660648"].iloc[0]
-
-        self.assertEqual(row["chr"], "chr9")
-        self.assertEqual(row["start"], 35660647)
-        self.assertEqual(row["end"], 35660648)
-        self.assertEqual(row["s1"], 57)
-        self.assertEqual(row["s2"], 10)
-        self.assertNotIn(";", str(row["chr"]))
+    def test_strand_translation(self):
+        args = ("x.bam", "x.gtf", "out", 2, 6, 1, 70, 500000)
+        self.assertIn("RF", bam2junc.tosa_command(*args, "1"))
+        self.assertNotIn("-s", bam2junc.tosa_command(*args, "unstranded"))
+        with self.assertRaises(ValueError):
+            bam2junc.tosa_command(*args, "invalid")
 
 
 if __name__ == "__main__":

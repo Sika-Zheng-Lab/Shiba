@@ -18,6 +18,8 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
+- Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
+- Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. Until Tosa is available from Bioconda, install it from crates.io with Cargo.
 - Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.
 - Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
 - Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.

@@ -105,30 +105,35 @@ SE_9  SE@chr10@100610596-100610715@100609254-100612429  chr10:100610596-10061071
 ## Step3: `bam2junc.py`
 
 ``` bash
-usage: bam2junc.py [-h] -i INPUT -r RI_EVENT -o OUTPUT [-p PROCESSORS] [-a ANCHOR] [-m MIN_INTRON] [-M MAX_INTRON] [-s STRAND] [-v]
+usage: bam2junc.py [-h] -i INPUT -r RI_EVENT -o OUTPUT -g GTF [-p PROCESSORS] [-a ANCHOR] [-b BOUNDARY_ANCHOR] [-m MIN_INTRON] [-M MAX_INTRON] [-s STRAND] [-v]
 
-Pipeline for processing junction read counts.
+Count junction and RI boundary reads with Tosa and write Shiba's junctions.bed.
 
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
                         Experiment table
-  -r RI_EVENT, --ri_event RI_EVENT
+  -r RI_EVENT, --ri-event RI_EVENT
                         Intron retention event file
   -o OUTPUT, --output OUTPUT
                         Output junction read counts file
+  -g GTF, --gtf GTF    GTF used to generate events
   -p PROCESSORS, --processors PROCESSORS
                         Number of processors to use (default: 1)
   -a ANCHOR, --anchor ANCHOR
                         Minimum anchor length (default: 8)
-  -m MIN_INTRON, --min_intron MIN_INTRON
+  -b BOUNDARY_ANCHOR, --boundary-anchor BOUNDARY_ANCHOR
+                        Bases required on each side of an RI boundary (default: 1)
+  -m MIN_INTRON, --min-intron MIN_INTRON
                         Minimum intron size (default: 70)
-  -M MAX_INTRON, --max_intron MAX_INTRON
+  -M MAX_INTRON, --max-intron MAX_INTRON
                         Maximum intron size (default: 500000)
   -s STRAND, --strand STRAND
-                        Strand specificity for regtools. Use XS, RF, or FR (default: XS). Legacy values 0/1/2 are also accepted.
+                        Tosa strand mode: XS, RF, FR, or unstranded (default: XS). Legacy values 0/1/2 are accepted.
   -v, --verbose         Verbose output
 ```
+
+Tosa writes gzip-compressed junction and boundary tables for each BAM. Shiba converts their coordinates, combines strand rows, adds zero-count RI boundaries, and writes `junctions/junctions.bed`. For SnakeShiba, `bam2junc.py run` processes a single BAM and `bam2junc.py merge` combines the per-sample tables.
 
 ## Step4: `psi.py`
 

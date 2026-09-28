@@ -345,6 +345,13 @@ def normalize_regtools_strand(strand_value):
     raise ValueError(f"Unsupported strand value: {strand_value!r}")
 
 
+def normalize_tosa_strand(strand_value):
+    """Translate bulk strand settings to Tosa's XS/RF/FR modes."""
+    if strand_value is not None and str(strand_value).strip().lower() in {"unstranded", "none"}:
+        return None
+    return normalize_regtools_strand(strand_value)
+
+
 def validate_config_types(config, mode="bulk"):
     """
     Validates config parameter types and value ranges.
@@ -387,6 +394,13 @@ def validate_config_types(config, mode="bulk"):
 
     # Bulk-specific validations
     if mode == "bulk":
+        if 'boundary_anchor_length' in config:
+            try:
+                value = int(config['boundary_anchor_length'])
+                if value <= 0:
+                    errors.append('boundary_anchor_length must be a positive integer')
+            except (TypeError, ValueError):
+                errors.append('boundary_anchor_length must be an integer')
         # minimum_anchor_length: int, > 0
         if 'minimum_anchor_length' in config:
             try:
@@ -424,9 +438,9 @@ def validate_config_types(config, mode="bulk"):
             except (TypeError, ValueError):
                 errors.append(f'maximum_intron_length must be an integer, got "{config["maximum_intron_length"]}"')
 
-        # strand: one of XS, RF, FR, 0, 1, 2 (legacy values accepted for compatibility)
+        # strand: Tosa's modes, unstranded, or legacy numeric values
         if 'strand' in config:
-            valid_strands = {"XS", "RF", "FR", "0", "1", "2"}
+            valid_strands = {"XS", "RF", "FR", "0", "1", "2", "unstranded", "none"}
             if str(config['strand']) not in valid_strands:
                 errors.append(
                     f'strand must be one of {", ".join(sorted(valid_strands))}, '

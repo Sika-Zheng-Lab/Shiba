@@ -184,74 +184,40 @@ rule bam2junc:
     wildcard_constraints:
         sample = "|".join(experiment_dict)
     input:
-        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"]
+        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"],
+        gtf = "annotation/assembled.gtf"
     output:
-        junc = temp("junctions/{sample}.junc")
-    threads:
-        1
-    benchmark:
-        "benchmark/bam2junc/{sample}_regtools.txt"
-    log:
-        "log/bam2junc/{sample}_regtools.log"
-    shell:
-        """
-        regtools junctions extract \
-        -a {config[minimum_anchor_length]} \
-        -m {config[minimum_intron_length]} \
-        -M {config[maximum_intron_length]} \
-        -s {config[strand]} \
-        -o {output.junc} \
-        {input.bam} >& {log}
-        """
-
-rule make_RI_saf:
-    input:
-        "events"
-    output:
-        temp("junctions/RI.saf")
-    shell:
-        """
-        cat {input}/EVENT_RI.txt | \
-        cut -f 6,7 | \
-        sed -e 1d | \
-        awk -F'\t' -v OFS='\t' '{{split($1,l,":"); split(l[2],m,"-"); print l[1]":"m[1]"-"m[1]+1,l[1],m[1],m[1]+1,$2; print l[1]":"m[2]-1"-"m[2],l[1],m[2]-1,m[2],$2}}' | \
-        awk -F'\t' -v OFS='\t' '!a[$1 FS $2 FS $3 FS $4]++' > {output}
-        """
-
-rule bam2junc_RI:
-    wildcard_constraints:
-        sample = "|".join(experiment_dict)
-    input:
-        RI = "junctions/RI.saf",
-        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"]
-    output:
-        junc = temp("junctions/{sample}_exon-intron.junc"),
-        junc_summary = temp("junctions/{sample}_exon-intron.junc.summary")
+        junc = temp("junctions/{sample}_junction.tsv.gz"),
+        boundary = temp("junctions/{sample}_boundary.tsv.gz")
     threads:
         8
     benchmark:
-        "benchmark/bam2junc/{sample}_featureCounts_RI.txt"
+        "benchmark/bam2junc/{sample}_tosa.txt"
     log:
-        "log/bam2junc/{sample}_featureCounts_RI.log"
+        "log/bam2junc/{sample}_tosa.log"
     params:
         base_dir = base_dir,
-        longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
+        boundary_anchor = config.get("boundary_anchor_length", 1)
     shell:
         """
-        python {params.base_dir}/src/bam2junc.py ri \
-        -b {input.bam} \
-        -r {input.RI} \
-        -o {output.junc} \
-        -t {threads} \
-        {params.longread_option} \
-        -v \
-        &> {log}
+        python {params.base_dir}/src/bam2junc.py run \
+        --bam {input.bam} \
+        --prefix junctions/{wildcards.sample} \
+        -g {input.gtf} \
+        -p {threads} \
+        -a {config[minimum_anchor_length]} \
+        -b {params.boundary_anchor} \
+        -m {config[minimum_intron_length]} \
+        -M {config[maximum_intron_length]} \
+        -s {config[strand]} \
+        -v >& {log}
         """
 
 rule merge_junc:
     input:
-        exonexon = expand("junctions/{sample}.junc", sample = experiment_dict),
-        exonintron = expand("junctions/{sample}_exon-intron.junc", sample = experiment_dict)
+        junctions = expand("junctions/{sample}_junction.tsv.gz", sample = experiment_dict),
+        boundaries = expand("junctions/{sample}_boundary.tsv.gz", sample = experiment_dict),
+        RI = "events/EVENT_RI.txt"
     output:
         "junctions/junctions.bed"
     benchmark:
@@ -259,13 +225,16 @@ rule merge_junc:
     log:
         "log/merge_junc.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        boundary_anchor = config.get("boundary_anchor_length", 1)
     shell:
         """
         python {params.base_dir}/src/bam2junc.py merge \
-        --exonexon {input.exonexon} \
-        --exonintron {input.exonintron} \
-        --output {output} \
+        -i {config[experiment_table]} \
+        -d junctions \
+        -r {input.RI} \
+        -o {output} \
+        -b {params.boundary_anchor} \
         -v \
         >& {log}
         """

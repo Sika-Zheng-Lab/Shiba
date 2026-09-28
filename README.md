@@ -27,7 +27,7 @@ See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.m
 Shiba comprises four main steps:
 1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie](https://github.com/gpertea/stringtie)
 2. **Splicing event identification**: Identify alternative mRNA splicing events from assembled transcripts
-3. **Read counting**: Count reads mapped to each splicing event using [RegTools](https://github.com/griffithlab/regtools) and [featureCounts](https://subread.sourceforge.net/)
+3. **Read counting**: Count splice junction and intron retention boundary reads using [Tosa](https://github.com/Sika-Zheng-Lab/Tosa)
 4. **Statistical analysis**: Identify DSEs based on Fisher's exact test
 
 <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
@@ -39,8 +39,12 @@ Shiba comprises four main steps:
 ```bash
 conda create -n shiba -c conda-forge -c bioconda shiba
 conda activate shiba
+conda install -c conda-forge rust
+cargo install tosa --version 1.0.0 --locked
 pip install styleframe==4.2 # optional, for generating outputs in Excel format.
 ```
+
+Tosa-based counting is in this repository's development code. The published Shiba v0.8.2 Conda package and Docker image still contain the earlier counting pipeline.
 
 If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
 

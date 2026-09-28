@@ -1,5 +1,5 @@
 ###############################################################
-# Dockerfile to build container images for Shiba (v0.8.2)
+# Dockerfile to build container images for Shiba
 # Based on mambaorg/micromamba:2.5
 ################################################################
 
@@ -21,6 +21,12 @@ RUN apt-get -qq update && \
     libboost-dev libcurl4-openssl-dev libboost-all-dev libbz2-dev liblzma-dev \
     libpcre2-dev
 
+# Tosa is installed from crates.io until its Bioconda package is available.
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal && \
+    /root/.cargo/bin/cargo install tosa --version 1.0.0 --locked && \
+    install /root/.cargo/bin/tosa /opt/conda/bin/tosa && \
+    rm -rf /root/.cargo /root/.rustup
+
 USER $MAMBA_USER
 
 # Install shiba with micromamba
@@ -34,11 +40,10 @@ RUN pip install --upgrade pip && \
 # Install shiba2sashimi
 RUN pip install shiba2sashimi
 
-# Install Shiba repository
+# Install the checked-out Shiba source
 USER root
-RUN cd /opt && \
-	git clone https://github.com/Sika-Zheng-Lab/Shiba.git -b v0.8.2 && \
-	ln -sf /opt/Shiba/shiba.py /opt/conda/bin/shiba.py && \
+COPY . /opt/Shiba
+RUN ln -sf /opt/Shiba/shiba.py /opt/conda/bin/shiba.py && \
 	ln -sf /opt/Shiba/scshiba.py /opt/conda/bin/scshiba.py
 USER $MAMBA_USER
 

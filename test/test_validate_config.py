@@ -272,9 +272,14 @@ class TestValidateConfigTypes(unittest.TestCase):
         self.assertIn("strand", errors[0])
 
     def test_strand_valid_values(self):
-        for strand in ["XS", "RF", "FR", "0", "1", "2"]:
+        for strand in ["XS", "RF", "FR", "0", "1", "2", "unstranded"]:
             errors = validate_config_types({"strand": strand}, mode="bulk")
             self.assertEqual(errors, [], f"strand={strand} should be valid")
+
+    def test_boundary_anchor_validation(self):
+        self.assertEqual(validate_config_types({"boundary_anchor_length": 1}, mode="bulk"), [])
+        self.assertTrue(validate_config_types({"boundary_anchor_length": 0}, mode="bulk"))
+        self.assertTrue(validate_config_types({"boundary_anchor_length": "bad"}, mode="bulk"))
 
     def test_max_intron_less_than_min(self):
         config = {

@@ -28,7 +28,7 @@ def parse_args():
 Step 1: gtf2event.py
     - Converts GTF files to event format.
 Step 2: sc2junc.py
-    - Counts junction reads from STARsolo output files.
+    - Counts junction and RI boundary reads from BAM/CRAM with Tosa.
 Step 3: scpsi.py
     - Calculates PSI values and perform differential analysis.""",
         formatter_class=argparse.RawTextHelpFormatter
@@ -118,7 +118,15 @@ def main():
 			"command": [
 				"python", os.path.join(script_dir, "src", "sc2junc.py"),
 				"-i", experiment_table,
-				"-o", os.path.join(output_dir, "junctions", "junctions.bed")
+				"-o", os.path.join(output_dir, "junctions", "junctions.bed"),
+				"-r", os.path.join(output_dir, "events", "EVENT_RI.txt"),
+				"-g", gtf,
+				"-p", processors,
+				"-a", str(config.get('minimum_anchor_length', 8)),
+				"-b", str(config.get('boundary_anchor_length', 1)),
+				"-m", str(config.get('minimum_intron_length', 20)),
+				"-M", str(config.get('maximum_intron_length', 500000)),
+				"-s", str(config.get('strand', 'unstranded'))
 			]
 		},
 		{

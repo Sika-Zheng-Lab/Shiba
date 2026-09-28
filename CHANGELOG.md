@@ -9,6 +9,8 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
+- Added intron-retention (RI) PSI and differential analysis to scShiba and SnakeScShiba, including summary and Excel output.
+- Added a generated two-library BAM fixture to test single-cell Tosa counting, UMI deduplication, group aggregation, and RI PSI.
 - Added beta-binomial as an optional statistical method for differential splicing analysis (`beta_binomial: True` in configuration). This method models splicing counts with a beta-binomial likelihood and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.
   - Optimized with analytical gradients using digamma functions for faster convergence.
   - Supports parallel computation via `ProcessPoolExecutor` using the `-p` option.
@@ -18,6 +20,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
+- Replaced STARsolo SJ matrix input for scShiba and SnakeScShiba with Tosa single-cell BAM/CRAM counting. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
 - Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
 - Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. Until Tosa is available from Bioconda, install it from crates.io with Cargo.
 - Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.

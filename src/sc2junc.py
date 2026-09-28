@@ -1,215 +1,233 @@
-import warnings
-warnings.simplefilter('ignore')
+"""Count single-cell junctions and RI boundaries from BAM/CRAM with Tosa."""
+
 import argparse
+import csv
+import gzip
 import logging
-import sys
 import os
-import pandas as pd
-import scanpy as sc
+import re
+import subprocess
+import tempfile
+from collections import Counter
 
-# Configure logging
+from lib.general import normalize_tosa_strand
+
+
 logger = logging.getLogger(__name__)
+SAMPLE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
-def get_args():
-	'''
-	Get arguments from command line
-	'''
 
-	parser = argparse.ArgumentParser(
-		description = "This script takes STARsolo SJ files and outputs junction read counts",
-		formatter_class = argparse.ArgumentDefaultsHelpFormatter
-	)
+def parse_coordinate(value):
+    chrom, positions = value.rsplit(":", 1)
+    start, end = map(int, positions.split("-", 1))
+    return chrom, start, end
 
-	parser.add_argument('-i', '--experiment', type = str, help = 'Experiment table', required = True)
-	parser.add_argument('-o', '--out', type = str, help = 'Output junction file', required = True)
-	parser.add_argument("-v", "--verbose", action="store_true", help="Verbose mode")
 
-	args = parser.parse_args()
-	return(args)
+def read_experiment_table(path):
+    samples = {}
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if not reader.fieldnames or not {"sample", "alignment", "barcode"}.issubset(reader.fieldnames):
+            raise ValueError("Single-cell experiment table needs sample, alignment, and barcode columns")
+        for row in reader:
+            sample = row["sample"]
+            if not sample or not SAMPLE_NAME.fullmatch(sample) or sample in samples:
+                raise ValueError(f"Invalid or duplicate sample name: {sample!r}")
+            if not row["alignment"] or not row["barcode"]:
+                raise ValueError(f"Missing alignment or barcode file for {sample}")
+            samples[sample] = row
+    if not samples:
+        raise ValueError("Single-cell experiment table has no samples")
+    return samples
 
-def load_experiment_table(experiment_table):
-	'''
-	Load experiment table and returns a DataFrame object
-	'''
 
-	experiment_table_df = pd.read_csv(experiment_table, sep = "\t")
-	return(experiment_table_df)
+def read_barcode_groups(path):
+    groups = {}
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if not reader.fieldnames or not {"barcode", "group"}.issubset(reader.fieldnames):
+            raise ValueError(f"Barcode table needs barcode and group columns: {path}")
+        for row in reader:
+            barcode, group = row["barcode"], row["group"]
+            if not barcode or not group:
+                raise ValueError(f"Empty barcode or group in {path}")
+            if barcode in groups and groups[barcode] != group:
+                raise ValueError(f"Barcode {barcode} has conflicting groups in {path}")
+            groups[barcode] = group
+    if not groups:
+        raise ValueError(f"Barcode table has no cells: {path}")
+    return groups
 
-def make_sjpath_list(experiment_table_df):
-	'''
-	Generate a list of SJ file paths
-	'''
 
-	sjpath_list = experiment_table_df["SJ"].tolist()
-	return(sjpath_list)
+def ri_boundary_ids(path):
+    ids = set()
+    with open(path, newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if not reader.fieldnames or "intron_a" not in reader.fieldnames:
+            raise ValueError("RI event file needs an intron_a column")
+        for row in reader:
+            chrom, start, end = parse_coordinate(row["intron_a"])
+            ids.add(f"{chrom}:{start}-{start + 1}")
+            ids.add(f"{chrom}:{end - 1}-{end}")
+    return ids
 
-def load_sj(sj_file):
-	'''
-	Load SJ file and returns a DataFrame object
-	'''
 
-	adata = sc.read_mtx(sj_file + "/matrix.mtx")
-	var = pd.read_csv(sj_file + "/barcodes.tsv", header = None)
-	obs = pd.read_csv(sj_file + "/features.tsv", sep = "\t", header = None, usecols = [0, 1, 2])
-	obs["SJ"] = obs[0].astype(str) + ":" + obs[1].astype(str) + "-" + obs[2].astype(str)
-	adata.obs.index = obs["SJ"]
-	adata.var.index = var[0]
+def tosa_command(alignment, gtf, prefix, whitelist, threads, anchor,
+                 boundary_anchor, min_intron, max_intron, strand):
+    command = ["tosa", "single", "-c", whitelist, "-g", gtf,
+               "-a", str(anchor), "-b", str(boundary_anchor),
+               "-m", str(min_intron), "-M", str(max_intron), "-p", str(threads)]
+    strand = normalize_tosa_strand(strand)
+    if strand is not None:
+        command.extend(["-s", strand])
+    command.extend([alignment, prefix])
+    return command
 
-	return(adata)
 
-def make_grouppath_list(experiment_table_df):
-	'''
-	Generate a list of group file paths
-	'''
+def run_tosa(alignment, barcode_table, gtf, prefix, threads=1, anchor=8,
+             boundary_anchor=1, min_intron=20, max_intron=500000,
+             strand="unstranded"):
+    groups = read_barcode_groups(barcode_table)
+    directory = os.path.dirname(os.path.abspath(prefix))
+    os.makedirs(directory, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", prefix="barcodes_", suffix=".tsv",
+                                     dir=directory, delete=False) as handle:
+        whitelist = handle.name
+        handle.writelines(f"{barcode}\n" for barcode in sorted(groups))
+    try:
+        command = tosa_command(alignment, gtf, prefix, whitelist, threads, anchor,
+                               boundary_anchor, min_intron, max_intron, strand)
+        logger.info("Running Tosa single on %s", alignment)
+        subprocess.run(command, check=True)
+    except FileNotFoundError as error:
+        raise RuntimeError("Tosa executable was not found; install tosa and add it to PATH") from error
+    finally:
+        os.unlink(whitelist)
 
-	grouppath_list = experiment_table_df["barcode"].tolist()
-	return(grouppath_list)
 
-def load_group(grouppath):
-	'''
-	Load group file and returns a DataFrame object
-	'''
+def add_tosa_counts(prefix, barcode_groups, boundary_anchor, wanted_boundaries, counts):
+    junction_file = f"{prefix}_junction_barcodes.tsv.gz"
+    with gzip.open(junction_file, "rt", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if reader.fieldnames != ["Feature", "Strand", "Barcode", "Count"]:
+            raise ValueError(f"Unexpected Tosa junction columns in {junction_file}: {reader.fieldnames}")
+        for row in reader:
+            group = barcode_groups.get(row["Barcode"])
+            if group is None:
+                continue
+            chrom, start, end = parse_coordinate(row["Feature"])
+            key = f"{chrom}:{start - 1}-{end + 1}"
+            counts[group][key] += int(row["Count"])
 
-	group_df = pd.read_csv(grouppath, sep = "\t")
-	group_df = group_df.drop_duplicates()
-	return(group_df)
+    boundary_file = f"{prefix}_boundary_barcodes_detail.tsv.gz"
+    with gzip.open(boundary_file, "rt", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if reader.fieldnames != ["Boundary", "Type", "Strand", "Barcode", "Count"]:
+            raise ValueError(f"Unexpected Tosa boundary columns in {boundary_file}: {reader.fieldnames}")
+        for row in reader:
+            group = barcode_groups.get(row["Barcode"])
+            if group is None:
+                continue
+            chrom, start, end = parse_coordinate(row["Boundary"])
+            if row["Type"] == "5p":
+                site = start + boundary_anchor
+            elif row["Type"] == "3p":
+                site = end - boundary_anchor
+            else:
+                raise ValueError(f"Unexpected Tosa boundary type: {row['Type']}")
+            key = f"{chrom}:{site}-{site + 1}"
+            if key in wanted_boundaries:
+                counts[group][key] += int(row["Count"])
 
-def make_sample_group_dict(group_df):
-	'''
-	Generate a dictionary of sample and group
-	'''
 
-	sample_group_dict = {}
-	group_list = group_df["group"].unique().tolist()
-	for i in range(len(group_list)):
-		sample_group_dict[group_list[i]] = group_df[group_df["group"] == group_list[i]]["barcode"].tolist()
+def merge_tosa_samples(samples, prefixes, ri_event, output, boundary_anchor=1):
+    wanted_boundaries = ri_boundary_ids(ri_event)
+    counts = {}
+    for sample, row in samples.items():
+        barcode_groups = read_barcode_groups(row["barcode"])
+        for group in barcode_groups.values():
+            counts.setdefault(group, Counter())
+        add_tosa_counts(prefixes[sample], barcode_groups, boundary_anchor,
+                        wanted_boundaries, counts)
+    groups = sorted(counts)
+    ids = set(wanted_boundaries)
+    for group_counts in counts.values():
+        ids.update(group_counts)
+    rows = []
+    for key in ids:
+        chrom, start, end = parse_coordinate(key)
+        rows.append((chrom, start, end, key))
+    rows.sort(key=lambda row: (row[0], row[1], row[2], row[3]))
+    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
+    with open(output, "w", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["chr", "start", "end", "ID", *groups])
+        for chrom, start, end, key in rows:
+            writer.writerow([chrom, start, end, key,
+                             *(counts[group].get(key, 0) for group in groups)])
+    logger.info("Wrote %d junction and RI boundary rows to %s", len(rows), output)
 
-	return(sample_group_dict)
 
-def grouping_read_count_each(adata, sample_group_dict, group, j):
-	'''
-	Group junction read counts
-	'''
+def add_tosa_options(parser, require_gtf):
+    parser.add_argument("-g", "--gtf", required=require_gtf)
+    parser.add_argument("-p", "--processors", type=int, default=1)
+    parser.add_argument("-a", "--anchor", type=int, default=8)
+    parser.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    parser.add_argument("-m", "--min-intron", type=int, default=20)
+    parser.add_argument("-M", "--max-intron", type=int, default=500000)
+    parser.add_argument("-s", "--strand", default="unstranded")
+    parser.add_argument("-v", "--verbose", action="store_true")
 
-	# Sample list
-	if group not in sample_group_dict:
-		count_df = pd.DataFrame()
-	else:
-		sample_list = list(sample_group_dict[group])
-		adata = adata[:, sample_list]
-		count_sum = adata.X.sum(axis = 1).flatten().tolist()[0]
-		# Summarize junction read counts
-		count_df = pd.DataFrame({"SJ": list(adata.obs.index), j: count_sum})
-		count_df = count_df[count_df[j] != 0]
 
-	return(count_df)
+def build_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-i", "--input", help="sample/alignment/barcode experiment table")
+    parser.add_argument("-r", "--ri-event", help="EVENT_RI.txt")
+    parser.add_argument("-o", "--output", help="Shiba junctions.bed")
+    add_tosa_options(parser, False)
+    commands = parser.add_subparsers(dest="subcommand")
+    run = commands.add_parser("run", help="Run Tosa on one alignment")
+    run.add_argument("--alignment", required=True)
+    run.add_argument("--barcode", required=True)
+    run.add_argument("--prefix", required=True)
+    add_tosa_options(run, True)
+    merge = commands.add_parser("merge", help="Combine per-sample Tosa results")
+    merge.add_argument("-i", "--input", required=True)
+    merge.add_argument("-d", "--directory", required=True)
+    merge.add_argument("-r", "--ri-event", required=True)
+    merge.add_argument("-o", "--output", required=True)
+    merge.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    merge.add_argument("-v", "--verbose", action="store_true")
+    return parser
 
-def formatting_output(count_df):
-	'''
-	Formatting output junction file
-	'''
 
-	output_df = count_df.astype(int)
-	output_df = output_df.reset_index()
-	output_df.columns = ["ID"] + list(output_df.columns[1:])
-	output_df["chr"] = output_df["ID"].str.split(":").str[0]
-	output_df["start"] = output_df["ID"].str.split(":").str[1].str.split("-").str[0].astype(int) - 1
-	output_df["start"] = output_df["start"].astype(str)
-	output_df["end"] = output_df["ID"].str.split(":").str[1].str.split("-").str[1].astype(int) + 1
-	output_df["end"] = output_df["end"].astype(str)
-	output_df["ID"] = output_df["chr"] + ":" + output_df["start"] + "-" + output_df["end"]
-	output_df = output_df[["chr", "start", "end", "ID"] + list(output_df.columns[1:-3])]
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format="[%(asctime)s] %(levelname)7s %(message)s")
+    if args.subcommand == "run":
+        run_tosa(args.alignment, args.barcode, args.gtf, args.prefix, args.processors,
+                 args.anchor, args.boundary_anchor, args.min_intron, args.max_intron, args.strand)
+    elif args.subcommand == "merge":
+        samples = read_experiment_table(args.input)
+        prefixes = {sample: os.path.join(args.directory, sample) for sample in samples}
+        merge_tosa_samples(samples, prefixes, args.ri_event, args.output, args.boundary_anchor)
+    else:
+        if not all((args.input, args.ri_event, args.output, args.gtf)):
+            parser.error("-i, -r, -o, and -g are required for the all-in-one run")
+        samples = read_experiment_table(args.input)
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        os.makedirs(output_dir, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="tosa_sc_", dir=output_dir) as tmp:
+            prefixes = {}
+            for sample, row in samples.items():
+                prefixes[sample] = os.path.join(tmp, sample)
+                run_tosa(row["alignment"], row["barcode"], args.gtf, prefixes[sample],
+                         args.processors, args.anchor, args.boundary_anchor,
+                         args.min_intron, args.max_intron, args.strand)
+            merge_tosa_samples(samples, prefixes, args.ri_event, args.output, args.boundary_anchor)
 
-	return(output_df)
 
-def main():
-	'''
-	Main function
-	'''
-	args = get_args()
-
-	# Set up logging
-	logging.basicConfig(
-		format="[%(asctime)s] %(levelname)7s %(message)s",
-		level=logging.DEBUG if args.verbose else logging.INFO,
-	)
-	logger.info("Starting junction read count calculation")
-	logger.debug(args)
-
-	# Parse arguments
-	experiment_table = args.experiment
-	output_path = args.out
-
-	# Make directory
-	logger.info("Making output directory ...")
-	os.makedirs(os.path.dirname(output_path), exist_ok = True)
-
-	# Load experiment table
-	logger.info("Loading experiment table ...")
-	experiment_table_df = load_experiment_table(experiment_table)
-
-	# Make a list of SJ file paths
-	logger.info("Making SJ file paths ...")
-	sjpath_list = make_sjpath_list(experiment_table_df)
-
-	# Load SJ files
-	logger.info("Loading SJ files ...")
-	adata_list = []
-	for x in sjpath_list:
-		logger.debug(f"Loading {x}...")
-		adata = load_sj(x)
-		adata_list.append(adata)
-
-	# Make a list of group file paths
-	logger.info("Making group file paths ...")
-	grouppath_list = make_grouppath_list(experiment_table_df)
-
-	# Load group files
-	logger.info("Loading group files ...")
-	group_df_list = []
-	group_list = []
-	sample_group_dict_list = []
-	for x in grouppath_list:
-		logger.debug(f"Loading {x}...")
-		group_df = load_group(x)
-		group_df_list.append(group_df)
-		sample_group_dict = make_sample_group_dict(group_df)
-		sample_group_dict_list.append(sample_group_dict)
-		group_list += list(sample_group_dict.keys())
-	group_list = sorted(list(set(group_list)))
-
-	logger.info("Grouping junction read counts ...")
-	sj_grouped_df = pd.DataFrame()
-	for group in group_list:
-		logger.debug(f"Group: {group}")
-		sj_tmp_df = pd.DataFrame()
-		for j in range(len(adata_list)):
-			logger.debug(f"Sample: {j}")
-			tmp_df = grouping_read_count_each(adata_list[j], sample_group_dict_list[j], group, j)
-			if tmp_df.empty:
-				logger.warning(f"No junction read counts found for group {group} in sample {j}.")
-				continue
-			sj_tmp_df = pd.merge(sj_tmp_df, tmp_df, on="SJ", how="outer").fillna(0) if not sj_tmp_df.empty else tmp_df
-
-		sj_tmp_df = sj_tmp_df.set_index("SJ")
-		# Summarize junction read counts
-		sj_tmp_df = pd.DataFrame({group: sj_tmp_df.sum(axis = 1)})
-		if sj_grouped_df.empty:
-			sj_grouped_df = sj_tmp_df
-		else:
-			sj_grouped_df = pd.merge(sj_grouped_df, sj_tmp_df, on = "SJ", how = "outer")
-			sj_grouped_df = sj_grouped_df.fillna(0)
-
-	# Formatting output junction file
-	logger.info("Formatting output junction file ...")
-	output_df = formatting_output(sj_grouped_df)
-
-	# Write output junction file
-	logger.info("Writing output junction file ...")
-	output_df.to_csv(output_path, sep = "\t", index = False)
-
-	logger.info("All processes completed.")
-
-if __name__ == '__main__':
-
-	main()
+if __name__ == "__main__":
+    main()

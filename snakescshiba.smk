@@ -18,7 +18,12 @@ Usage:
 import os
 from pathlib import Path
 import sys
+import csv
 args = sys.argv
+
+with open(config["experiment_table"], newline="") as _handle:
+    _samples = {row["sample"]: row for row in csv.DictReader(_handle, delimiter="\t")}
+EVENT_TYPES = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]
 
 workdir: config["workdir"]
 container: config["container"]
@@ -46,14 +51,14 @@ command = command.replace(configfile_path, os.path.join(str(configfile_dir_path)
 
 rule all:
     input:
-        event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
-        PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
+        event_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES),
+        PSI = expand("results/PSI_{sample}.txt", sample = EVENT_TYPES),
         report = "report.json"
 
 rule generate_report:
     input:
-        event_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]),
-        PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
+        event_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES),
+        PSI = expand("results/PSI_{sample}.txt", sample = EVENT_TYPES)
     output:
         report = "report.json"
     params:
@@ -73,7 +78,7 @@ rule gtf2event:
         gtf = config["gtf"]
     output:
         events = directory("events"),
-        events_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
+        events_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES)
     threads:
         workflow.cores
     benchmark:
@@ -92,9 +97,53 @@ rule gtf2event:
         >& {log}
         """
 
+rule tosa_single:
+    wildcard_constraints:
+        sample = "|".join(_samples)
+    input:
+        alignment = lambda wildcards: _samples[wildcards.sample]["alignment"],
+        barcode = lambda wildcards: _samples[wildcards.sample]["barcode"],
+        gtf = config["gtf"]
+    output:
+        matrix = temp("junctions/{sample}_matrix.mtx.gz"),
+        barcodes = temp("junctions/{sample}_barcodes.tsv.gz"),
+        features = temp("junctions/{sample}_features.tsv.gz"),
+        junction_detail = temp("junctions/{sample}_junction_barcodes.tsv.gz"),
+        boundary_matrix = temp("junctions/{sample}_boundary_matrix.mtx.gz"),
+        boundary_barcodes = temp("junctions/{sample}_boundary_barcodes.tsv.gz"),
+        boundary_features = temp("junctions/{sample}_boundary_features.tsv.gz"),
+        boundary_detail = temp("junctions/{sample}_boundary_barcodes_detail.tsv.gz")
+    threads:
+        8
+    benchmark:
+        "benchmark/sc2junc/{sample}_tosa.txt"
+    log:
+        "log/sc2junc/{sample}_tosa.log"
+    params:
+        base_dir = base_dir,
+        anchor = config.get("minimum_anchor_length", 8),
+        boundary_anchor = config.get("boundary_anchor_length", 1),
+        min_intron = config.get("minimum_intron_length", 20),
+        max_intron = config.get("maximum_intron_length", 500000),
+        strand = config.get("strand", "unstranded")
+    shell:
+        """
+        python {params.base_dir}/src/sc2junc.py run \
+        --alignment {input.alignment} \
+        --barcode {input.barcode} \
+        --prefix junctions/{wildcards.sample} \
+        -g {input.gtf} -p {threads} \
+        -a {params.anchor} -b {params.boundary_anchor} \
+        -m {params.min_intron} -M {params.max_intron} \
+        -s {params.strand} -v >& {log}
+        """
+
 rule sc2junc:
     input:
-        config["experiment_table"]
+        experiment = config["experiment_table"],
+        junctions = expand("junctions/{sample}_junction_barcodes.tsv.gz", sample = _samples),
+        boundaries = expand("junctions/{sample}_boundary_barcodes_detail.tsv.gz", sample = _samples),
+        RI = "events/EVENT_RI.txt"
     output:
         "junctions/junctions.bed"
     benchmark:
@@ -102,23 +151,23 @@ rule sc2junc:
     log:
         "log/sc2junc.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        boundary_anchor = config.get("boundary_anchor_length", 1)
     shell:
         """
-        python {params.base_dir}/src/sc2junc.py \
-        -i {input} \
+        python {params.base_dir}/src/sc2junc.py merge \
+        -i {input.experiment} -d junctions -r {input.RI} \
         -o {output} \
-        -v \
-        >& {log}
+        -b {params.boundary_anchor} -v >& {log}
         """
 
 rule scpsi:
     input:
         junc = "junctions/junctions.bed",
-        events_all = expand("events/EVENT_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
+        events_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES)
     output:
         results = directory("results"),
-        PSI = expand("results/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"])
+        PSI = expand("results/PSI_{sample}.txt", sample = EVENT_TYPES)
     threads:
         1
     benchmark:

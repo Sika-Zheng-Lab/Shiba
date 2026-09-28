@@ -12,7 +12,7 @@ conda install -c conda-forge rust # supplies Cargo until Tosa is available on Bi
 cargo install tosa --version 1.0.0 --locked
 ```
 
-The Tosa executable must be available on `PATH` for bulk Shiba and SnakeShiba. Until the Bioconda package is released, install it from crates.io with Cargo. The published Shiba v0.8.2 package and Docker image still use the previous counting pipeline; use this repository's development version for Tosa-based counting.
+The Tosa executable must be available on `PATH` for Shiba, SnakeShiba, scShiba, and SnakeScShiba. Until the Bioconda package is released, install it from crates.io with Cargo. The published Shiba v0.8.2 package and Docker image still use the previous counting pipeline; use this repository's development version for Tosa-based counting.
 
 You can also install minimal dependencies for **MameShiba**, a lightweight version of **Shiba** . If you want to perform only splicing analysis, this could be a good option. The following command will create a conda environment named `mameshiba` with minimal dependencies installed.
 

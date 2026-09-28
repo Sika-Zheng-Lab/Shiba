@@ -17,6 +17,8 @@
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
+The development version of scShiba and SnakeScShiba counts junction and intron-retention boundary reads directly from tagged BAM/CRAM files with Tosa. See the [single-cell input guide](docs/quickstart/diff_splicing_sc.md) for the new experiment table.
+
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
 > [!IMPORTANT]

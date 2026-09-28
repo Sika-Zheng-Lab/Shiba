@@ -7,6 +7,7 @@ import yaml
 import json
 import logging
 import datetime
+import csv
 logger = logging.getLogger(__name__)
 
 
@@ -287,13 +288,10 @@ def validate_groups_sc(experiment_table, reference_group, alternative_group):
     # Read barcode file paths from experiment table
     try:
         barcode_files = []
-        with open(experiment_table, "r") as f:
-            for i, line in enumerate(f):
-                if i == 0:
-                    continue
-                columns = line.strip().split("\t")
-                if len(columns) >= 1 and columns[0]:
-                    barcode_files.append(columns[0])
+        with open(experiment_table, newline="") as f:
+            for row in csv.DictReader(f, delimiter="\t"):
+                if row.get("barcode"):
+                    barcode_files.append(row["barcode"])
         # Read groups from each barcode file
         available_groups = set()
         for barcode_file in barcode_files:
@@ -392,8 +390,8 @@ def validate_config_types(config, mode="bulk"):
         except (TypeError, ValueError):
             errors.append(f'minimum_reads must be an integer, got "{config["minimum_reads"]}"')
 
-    # Bulk-specific validations
-    if mode == "bulk":
+    # Tosa read-filtering settings for bulk and single-cell counting.
+    if mode in {"bulk", "sc"}:
         if 'boundary_anchor_length' in config:
             try:
                 value = int(config['boundary_anchor_length'])
@@ -494,9 +492,21 @@ def validate_config(config, mode="bulk"):
         elif mode == "sc":
             errors.extend(
                 validate_experiment_table_columns(
-                    config['experiment_table'], ["barcode", "SJ"]
+                    config['experiment_table'], ["sample", "alignment", "barcode"]
                 )
             )
+            with open(config['experiment_table'], newline="") as handle:
+                samples = set()
+                for row in csv.DictReader(handle, delimiter="\t"):
+                    if not all(key in row for key in ("sample", "alignment", "barcode")):
+                        break
+                    sample = row["sample"]
+                    if not sample or sample in samples:
+                        errors.append(f'Duplicate or empty sample in experiment table: {sample!r}')
+                    samples.add(sample)
+                    for column in ("alignment", "barcode"):
+                        if not row[column] or not os.path.isfile(row[column]):
+                            errors.append(f'{column} file not found for {sample}: {row[column]}')
 
     # 3. Validate reference_group and alternative_group
     only_psi = config.get('only_psi', False)

@@ -167,9 +167,9 @@ class TestValidateGroupsSc(unittest.TestCase):
 
     def _write_sc_experiment(self, barcode_paths):
         f = tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False)
-        f.write("barcode\tSJ\n")
-        for bp in barcode_paths:
-            f.write(f"{bp}\t/path/to/SJ\n")
+        f.write("sample\talignment\tbarcode\n")
+        for i, bp in enumerate(barcode_paths):
+            f.write(f"s{i}\t/path/to/alignment.bam\t{bp}\n")
         f.close()
         return f.name
 
@@ -295,13 +295,15 @@ class TestValidateConfigTypes(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("minimum_anchor_length", errors[0])
 
-    def test_sc_mode_ignores_bulk_params(self):
+    def test_sc_mode_validates_tosa_params(self):
         config = {
             "minimum_anchor_length": -999,
             "strand": "INVALID",
         }
         errors = validate_config_types(config, mode="sc")
-        self.assertEqual(errors, [])
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("minimum_anchor_length" in error for error in errors))
+        self.assertTrue(any("strand" in error for error in errors))
 
 
 class TestValidateConfig(unittest.TestCase):
@@ -432,8 +434,10 @@ class TestValidateConfig(unittest.TestCase):
             "ACGT\tCluster-1",
             "TGCA\tCluster-2",
         ])
-        exp = self._write_tsv("barcode\tSJ", [
-            f"{bc}\t/path/to/SJ",
+        alignment = tempfile.NamedTemporaryFile(suffix=".bam", delete=False)
+        alignment.close()
+        exp = self._write_tsv("sample\talignment\tbarcode", [
+            f"s1\t{alignment.name}\t{bc}",
         ])
         config = {
             "workdir": "/tmp/test_workdir",
@@ -451,6 +455,7 @@ class TestValidateConfig(unittest.TestCase):
         finally:
             os.unlink(gtf.name)
             os.unlink(bc)
+            os.unlink(alignment.name)
             os.unlink(exp)
 
 

@@ -50,10 +50,10 @@ class TestReadEvents(unittest.TestCase):
         d = shibalib.read_events(DATA_DIR)
         self.assertEqual(len(d["SE"]), 3)
 
-    def test_read_events_sc_excludes_ri(self):
+    def test_read_events_sc_includes_ri(self):
         d = shibalib.read_events_sc(DATA_DIR)
-        self.assertNotIn("RI", d)
-        self.assertEqual(len(d), 7)
+        self.assertIn("RI", d)
+        self.assertEqual(len(d), 8)
 
 
 class TestReadJunctions(unittest.TestCase):

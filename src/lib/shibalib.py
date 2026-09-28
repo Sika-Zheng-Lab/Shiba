@@ -168,7 +168,7 @@ def read_events_sc(event_path) -> dict:
     - event_df_dict (dict): A dictionary of dataframes containing alternative splicing events.
     """
 
-    event_types = ["SE", "FIVE", "THREE", "MXE", "MSE", "AFE", "ALE"]
+    event_types = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]
     event_df_dict = {}
     for event in event_types:
         event_df_dict[event] = pd.read_csv(
@@ -2623,7 +2623,7 @@ def save_excel(output_path, SE_df, FIVE_df, THREE_df, MXE_df, RI_df, MSE_df, AFE
         except:
             pass
 
-def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df, ALE_df):
+def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, RI_df, MSE_df, AFE_df, ALE_df):
     """
     Save excel file.
 
@@ -2633,6 +2633,7 @@ def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df,
     - FIVE_df (pd.DataFrame): DataFrame containing the differential splicing analysis results for FIVE events.
     - THREE_df (pd.DataFrame): DataFrame containing the differential splicing analysis results for THREE events.
     - MXE_df (pd.DataFrame): DataFrame containing the differential splicing analysis results for MXE events.
+    - RI_df (pd.DataFrame): DataFrame containing the differential splicing analysis results for RI events.
     - MSE_df (pd.DataFrame): DataFrame containing the differential splicing events for MSE events.
     - AFE_df (pd.DataFrame): DataFrame containing the differential splicing events for AFE events.
     - ALE_df (pd.DataFrame): DataFrame containing the differential splicing events for ALE events.
@@ -2674,6 +2675,14 @@ def save_excel_sc(output_path, SE_df, FIVE_df, THREE_df, MXE_df, MSE_df, AFE_df,
         MXE_sf.apply_column_style(cols_to_style = MXE_df.columns, styler_obj = style, style_header = True)
         try:
             MXE_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "MXE")
+        except:
+            pass
+        # RI
+        RI_sf = StyleFrame(RI_df)
+        RI_sf.set_column_width(columns = RI_df.columns, width = 20)
+        RI_sf.apply_column_style(cols_to_style = RI_df.columns, styler_obj = style, style_header = True)
+        try:
+            RI_sf.to_excel(writer, index = False, columns_and_rows_to_freeze = "B2", sheet_name = "RI")
         except:
             pass
         # MSE

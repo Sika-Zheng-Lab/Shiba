@@ -5,6 +5,8 @@ All notable changes to this Shiba project will be documented in this file.
 ## [v1.0.0] - 2026-XX-XX
 
 > [!IMPORTANT]
+> **Splicing results can differ from previous versions.** Starting with v1.0.0, Shiba and SnakeShiba use Tosa instead of regtools and featureCounts for junction and exon–intron boundary counting, and scShiba and SnakeScShiba use Tosa instead of STARsolo SJ matrices. Tosa uses different counting rules, so the same input data can produce different read counts, PSI values, delta PSI values, and differential splicing results. These differences are expected consequences of the counting-method change. For consistent comparisons, re-run all samples with v1.0.0 using the same Tosa version and counting settings, starting from BAM/CRAM files rather than reusing counts from previous versions.
+>
 > This version includes a **breaking change** in the MXE (Mutually Exclusive Exons) coordinate definition. `exon_a`/`exon_b` and their associated introns are now assigned based on gene strand direction (upstream/downstream) instead of genomic position (left/right). This affects all MXE output files (`EVENT_MXE.txt`, `PSI_MXE.txt`) for minus-strand genes. Results from previous versions are **not directly comparable** for MXE events on the minus strand. Please re-run the analysis with this version if you need consistent strand-aware MXE annotations.
 
 ### Added
@@ -20,7 +22,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
-- Replaced STARsolo SJ matrix input for scShiba and SnakeScShiba with Tosa single-cell BAM/CRAM counting. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
+- **Changed the input format for scShiba and SnakeScShiba from STARsolo SJ matrices to BAM/CRAM files, matching Shiba and SnakeShiba.** Junction and exon–intron boundary counts are now extracted directly from these alignment files using Tosa. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
 - Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
 - Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. Until Tosa is available from Bioconda, install it from crates.io with Cargo.
 - Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.

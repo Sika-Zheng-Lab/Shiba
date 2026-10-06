@@ -36,29 +36,73 @@ Shiba comprises four main steps:
 
 ## Installation
 
+The event-centric factorial beta-binomial mode requires **R, glmmTMB, and
+jsonlite**, in addition to Shiba's existing dependencies. Use a source checkout
+that contains `src/beta_binomial_glm.R`; installing these R packages alone does
+not add the new mode to an older Shiba executable. The v0.8.2 package/image uses
+the earlier counting pipeline and does not contain this regression backend.
+
 ### Conda
 
+Create an environment for the current source checkout:
+
 ```bash
-conda create -n shiba -c conda-forge -c bioconda shiba
+conda create -n shiba -c conda-forge -c bioconda \
+  python=3.12 shiba r-glmmtmb r-jsonlite rust
 conda activate shiba
-conda install -c conda-forge rust
 cargo install tosa --version 1.0.0 --locked
-pip install styleframe==4.2 # optional, for generating outputs in Excel format.
+export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+python -m pip install styleframe==4.2 openpyxl # optional Excel output
 ```
 
-Tosa-based counting is in this repository's development code. The published Shiba v0.8.2 Conda package and Docker image still contain the earlier counting pipeline.
-
-If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
+For an existing Shiba environment, add the regression backend with:
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda mameshiba
+conda activate shiba
+conda install -c conda-forge r-glmmtmb r-jsonlite
 ```
+
+From the source checkout, verify the backend and use the checked-out scripts:
+
+```bash
+Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE)); print(packageVersion("glmmTMB"))'
+python ./src/psi.py --help
+python ./shiba.py -p 4 config.yaml
+```
+
+The Conda package supplies the base dependencies; `python ./shiba.py` selects
+this checkout instead of an older `shiba.py` installed on `PATH`. The new R
+packages are optional for legacy splicing analysis. Existing gene-expression
+analysis still has its own R dependencies.
+
+For **MameShiba** (splicing only), use `mameshiba` in place of `shiba` in the
+`conda create` command, then run `python ./shiba.py --mame -p 4 config.yaml` from
+this checkout. MameShiba also needs glmmTMB/jsonlite when using the new mode.
 
 ### Docker
 
+Build an image containing this checkout and its regression dependencies:
+
 ```bash
-docker pull naotokubota/shiba:v0.8.2
+docker build -f docker/Dockerfile -t shiba:factorial .
+docker run --rm shiba:factorial Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE))'
+docker run --rm -it -v "$PWD:/work" -w /work shiba:factorial bash
 ```
+
+Inside the container, run `shiba.py -p 4 config.yaml`. Configure input and output
+paths as they appear inside the container. `shiba:factorial` is a local image tag,
+not a published Docker Hub release.
+
+See the [installation guide](docs/installation.md) for CRAN/user-library
+installation, verification, and SnakeShiba with Conda or Apptainer. See the
+[regression guide](docs/usage/beta_binomial_regression.md) for formula, coefficient,
+and contrast settings.
+
+In the new regression mode, an event is tested only when every component has
+at least 10 total reads in the same half (rounded up) of samples in **every
+categorical design cell**. Only passing events enter FDR correction. Configure
+this with `minimum_reads` (default 10), `min_sample_fraction` (default 0.5), and
+optional `filter_group` columns; per-group counts are saved in `event_filter.tsv`.
 
 ## Usage
 
@@ -67,13 +111,13 @@ Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https
 ***Shiba***
 
 ```bash
-shiba.py -p 4 config.yaml
+python ./shiba.py -p 4 config.yaml
 ```
 
 ***MameShiba***, a lightweight version of Shiba
 
 ```bash
-shiba.py --mame -p 4 config.yaml
+python ./shiba.py --mame -p 4 config.yaml
 ```
 
 ***SnakeShiba***, Snakemake-based workflow of Shiba
@@ -85,7 +129,7 @@ snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
 ***scShiba***, a single-cell RNA-seq version of Shiba
 
 ```bash
-scshiba.py -p 4 config.yaml
+python ./scshiba.py -p 4 config.yaml
 ```
 
 ***SnakeScShiba***, Snakemake-based workflow of scShiba

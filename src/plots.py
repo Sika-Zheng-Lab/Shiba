@@ -540,6 +540,15 @@ def main():
 		level = logging.DEBUG if args.verbose else logging.INFO
 	)
 	logger.info("Starting making plots....")
+	manifest_path = os.path.join(args.input, "splicing", "analysis.json")
+	if os.path.isfile(manifest_path):
+		import json
+		with open(manifest_path) as handle:
+			regression = json.load(handle).get("stat_method") == "beta-binomial"
+		if regression:
+			from lib.factorial_report import write_report
+			write_report(args.input, args.output)
+			return
 
 	# Set variables
 	input_dir = args.input

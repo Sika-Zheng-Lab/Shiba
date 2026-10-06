@@ -37,3 +37,20 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
+
+  factorial-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install R regression backend and Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y r-base r-cran-glmmtmb r-cran-jsonlite
+          python -m pip install numpy pandas scipy statsmodels plotly matplotlib openpyxl
+      - name: Require real backend and run regression tests
+        run: |
+          Rscript -e 'stopifnot(requireNamespace("glmmTMB"), requireNamespace("jsonlite"))'
+          python -m unittest discover -s test -p 'test_factorial.py' -v

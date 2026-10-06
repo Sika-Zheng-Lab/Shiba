@@ -78,6 +78,7 @@ def main():
     logger.info("Loading configuration...")
     config_path = args.config
     config = general.load_config(config_path)
+    regression = config.get('stat_method', 'legacy') == 'beta-binomial'
     if config['excel'] and args.mame:
         logger.warning("Excel output is not available in MameShiba mode. Disabling excel option.")
         config['excel'] = False
@@ -103,7 +104,7 @@ def main():
     if sample_count <= 0:
         logger.error("No samples found in experiment table. Exiting...")
         sys.exit(1)
-    elif sample_count == 1:
+    elif sample_count == 1 and not regression:
         logger.info("Only one sample found in experiment table.")
         only_psi = True
         logger.info("Differential analysis mode disabled. Set only_psi to True.")
@@ -111,7 +112,7 @@ def main():
     if group_count <= 0:
         logger.error("No groups found in experiment table. Exiting...")
         sys.exit(1)
-    elif group_count == 1:
+    elif group_count == 1 and not regression:
         logger.info("Only one group found in experiment table.")
         if not (only_psi or only_psi_group):
             logger.info("Differential analysis mode disabled.")
@@ -191,14 +192,14 @@ def main():
                 "python", os.path.join(script_dir, "src", "psi.py"),
                 "-g", experiment_table,
                 "-p", processors,
-                "-r", config['reference_group'],
-                "-a", config['alternative_group'],
+                "-r", config.get('reference_group', 'NA'),
+                "-a", config.get('alternative_group', 'NA'),
                 "-f", str(config['fdr']),
                 "-d", str(config['delta_psi']),
                 "-m", str(config['minimum_reads']),
                 "-i", str(config['individual_psi']),
-                "-t", str(config['ttest']),
-                "-b", str(config.get('beta_binomial', False)),
+                "-t", str(False if regression else config['ttest']),
+                "-b", str(False if regression else config.get('beta_binomial', False)),
                 "--excel", str(config['excel']),
                 "--onlypsi", str(only_psi),
                 "--onlypsi-group", str(only_psi_group),
@@ -215,9 +216,9 @@ def main():
                 "-g", gtf,
                 "-o", os.path.join(output_dir, "results", "expression"),
                 "" if only_psi or only_psi_group else "-r",
-                "" if only_psi or only_psi_group else config['reference_group'],
+                "" if only_psi or only_psi_group else (config.get('expression_reference_group', 'NA') if regression else config['reference_group']),
                 "" if only_psi or only_psi_group else "-a",
-                "" if only_psi or only_psi_group else config['alternative_group'],
+                "" if only_psi or only_psi_group else (config.get('expression_alternative_group', 'NA') if regression else config['alternative_group']),
                 "--excel", str(config['excel']),
                 "-p", processors
             ]
@@ -243,6 +244,10 @@ def main():
             ]
         }
     ]
+
+    if regression:
+        from src.lib.factorial_config import config_arguments
+        steps[3]['command'].extend(config_arguments(config))
 
     logger.info("Starting pipeline execution...")
 

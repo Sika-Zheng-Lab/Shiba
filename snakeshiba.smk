@@ -1,6 +1,7 @@
 
 import os
 import datetime
+import shlex
 _version_path = os.path.join(os.path.dirname(workflow.snakefile), "VERSION")
 with open(_version_path, "r") as _vf:
     VERSION = _vf.read().strip()
@@ -50,6 +51,17 @@ if _validation_errors:
     print(f"ERROR: {len(_validation_errors)} configuration error(s) found. Aborting.", file=sys.stderr)
     sys.exit(1)
 
+sys.path.insert(0, os.path.join(base_dir, "src"))
+from lib.factorial_config import config_arguments
+regression = config.get("stat_method", "legacy") == "beta-binomial"
+expression_ref = config.get("expression_reference_group", "NA") if regression else config["reference_group"]
+expression_alt = config.get("expression_alternative_group", "NA") if regression else config["alternative_group"]
+deg_targets = ["results/expression/DEG.txt"] if not regression or expression_ref != "NA" else []
+statistics_args = config_arguments(config) if regression else [
+    "-r", str(config["reference_group"]), "-a", str(config["alternative_group"]),
+    "-t", str(config["ttest"]), "-b", str(config["beta_binomial"])]
+statistics_options = shlex.join(statistics_args)
+
 command = " ".join(args)
 # Replace snakefile path with the absolute path
 command = command.replace(workflow.snakefile, os.path.join(base_dir, workflow.snakefile))
@@ -71,7 +83,7 @@ rule all:
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
         counts = "results/expression/counts.txt",
-        deg = "results/expression/DEG.txt",
+        deg = deg_targets,
         tpm_pca = "results/pca/tpm_pca.tsv",
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
@@ -87,7 +99,7 @@ rule generate_report:
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
         counts = "results/expression/counts.txt",
-        deg = "results/expression/DEG.txt",
+        deg = deg_targets,
         tpm_pca = "results/pca/tpm_pca.tsv",
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
@@ -254,7 +266,8 @@ rule psi:
     log:
         "log/psi.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        statistics = statistics_options
     shell:
         """
         python {params.base_dir}/src/psi.py \
@@ -263,11 +276,8 @@ rule psi:
         -f {config[fdr]} \
         -d {config[delta_psi]} \
         -m {config[minimum_reads]} \
-        -r {config[reference_group]} \
-        -a {config[alternative_group]} \
         -i {config[individual_psi]} \
-        -t {config[ttest]} \
-        -b {config[beta_binomial]} \
+        {params.statistics} \
         --onlypsi False \
         --onlypsi-group False \
         --excel {config[excel]} \
@@ -348,8 +358,8 @@ rule deseq2:
         python {params.base_dir}/src/expression.py deseq2 \
         --count {input.counts} \
         --experiment-table {config[experiment_table]} \
-        --reference {config[reference_group]} \
-        --alternative {config[alternative_group]} \
+        --reference {expression_ref:q} \
+        --alternative {expression_alt:q} \
         --output {output.deseq2} \
         -v \
         &> {log}

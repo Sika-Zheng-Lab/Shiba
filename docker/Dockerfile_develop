@@ -30,7 +30,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal && \
 USER $MAMBA_USER
 
 # Install shiba with micromamba
-RUN micromamba install -y -n base -c conda-forge -c bioconda -c defaults shiba
+RUN micromamba install -y -n base -c conda-forge -c bioconda -c defaults shiba r-glmmtmb r-jsonlite
 
 # Install styleframe
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

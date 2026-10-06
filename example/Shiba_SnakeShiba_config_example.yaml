@@ -1,5 +1,7 @@
 workdir:
   /path/to/workdir/output
+# For factorial regression, use an image containing the checked-out backend
+# and R/glmmTMB + jsonlite; see docs/installation.md for local Docker/SIF builds.
 container:
   docker://naotokubota/shiba:v1.0.0
 gtf:
@@ -44,3 +46,24 @@ beta_binomial:
   False
 excel:
   True
+
+# Optional event-centric factorial regression (requires R/glmmTMB and jsonlite).
+# stat_method: beta-binomial
+# sample_metadata: /path/to/samples.tsv
+# formula: genotype * treatment + batch
+# coef: ["genotypeKO:treatmentDrug"]
+# reference_levels: {genotype: WT, treatment: Control}
+# categorical: [batch]
+# Coverage: minimum_reads (10 above) in at least half of EVERY group before testing/FDR.
+# Default groups are combinations of all categorical formula factors, including batch.
+# min_sample_fraction: 0.5
+# Optional override of grouping columns:
+# filter_group: [genotype, treatment]
+# contrast_file: /path/to/contrasts.json
+# prediction_grid: /path/to/predictions.json
+# p_adjust: BH
+# rscript: Rscript
+# event_batch_size: 200
+# Optional separate pairwise expression test in factorial mode:
+# expression_reference_group: Ref
+# expression_alternative_group: Alt

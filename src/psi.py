@@ -8,6 +8,7 @@ import os
 import pandas as pd
 from lib import shibalib
 from lib.general import str2bool
+from lib import factorial
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -38,7 +39,10 @@ def get_args():
     parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
+    factorial.add_arguments(parser)
     args = parser.parse_args()
+    if args.stat_method == "legacy" and (args.formula or args.coef or args.contrast_file or args.design_only):
+        parser.error("Formula/contrast options require --stat-method beta-binomial")
     return(args)
 
 def main():
@@ -52,6 +56,14 @@ def main():
     )
     logger.info("Starting PSI calculation")
     logger.debug(args)
+
+    if args.stat_method == "beta-binomial":
+        try:
+            factorial.run(args)
+        except (ValueError, RuntimeError, OSError) as error:
+            logger.error("%s", error)
+            sys.exit(1)
+        return
 
     # Parse arguments
     paths = {
@@ -241,6 +253,10 @@ def main():
         except Exception as e:
             logger.warning(f"Error cleaning up shared memory: {e}")
 
+    # Reports must not mistake a reused legacy output directory for regression.
+    import json
+    with open(os.path.join(paths["output"], "analysis.json"), "w") as handle:
+        json.dump({"stat_method": "legacy"}, handle)
     logger.info("All processes completed.")
 
 if __name__ == '__main__':

@@ -47,10 +47,8 @@ checked-out source:
 
 ```bash
 conda create -n shiba -c conda-forge -c bioconda \
-  python=3.12 shiba r-glmmtmb r-jsonlite rust
+  python=3.12 shiba tosa=1.0.0 r-glmmtmb r-jsonlite
 conda activate shiba
-cargo install tosa --version 1.0.0 --locked
-export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 ```
 
 The regression packages are available as
@@ -61,9 +59,9 @@ Python 3.12 was used for the regression integration tests; this is a tested
 configuration, not a claim that other Python versions cannot work.
 
 Tosa 1.0.0 is used by this checkout for junction and intron-retention boundary
-counting in the bulk and single-cell pipelines. The command above installs it
-with Cargo and adds Cargo's executable directory to `PATH`; retain that PATH
-setting in future sessions. Tosa is not needed when running `src/psi.py` directly
+counting in the bulk and single-cell pipelines. The commands above install it
+from [Bioconda](https://anaconda.org/bioconda/tosa), making it available on `PATH`
+when the Conda environment is active. Tosa is not needed when running `src/psi.py` directly
 on existing compatible junction counts and event files.
 
 For optional Excel output:
@@ -97,10 +95,8 @@ For splicing-only analysis, use the MameShiba package for the base dependencies:
 
 ```bash
 conda create -n mameshiba -c conda-forge -c bioconda \
-  python=3.12 mameshiba r-glmmtmb r-jsonlite rust
+  python=3.12 mameshiba tosa=1.0.0 r-glmmtmb r-jsonlite
 conda activate mameshiba
-cargo install tosa --version 1.0.0 --locked
-export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 python ./shiba.py --mame -p 4 config.yaml
 ```
 
@@ -183,12 +179,13 @@ Build from the source checkout so that the image contains the new scripts:
 
 ```bash
 docker build -f docker/Dockerfile -t shiba:factorial .
+docker run --rm shiba:factorial tosa --version
 docker run --rm shiba:factorial Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE))'
 docker run --rm shiba:factorial python /opt/Shiba/src/psi.py --help
 ```
 
 Both `docker/Dockerfile` and `docker/Dockerfile_develop` install glmmTMB/jsonlite,
-install Tosa 1.0.0, and copy the checked-out Shiba source into `/opt/Shiba`.
+install Tosa 1.0.0 from Bioconda with micromamba, and copy the checked-out Shiba source into `/opt/Shiba`.
 `shiba:factorial` above is a local tag, not a published Docker Hub image.
 
 Mount your working directory and start a shell:

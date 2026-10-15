@@ -21,16 +21,11 @@ RUN apt-get -qq update && \
     libboost-dev libcurl4-openssl-dev libboost-all-dev libbz2-dev liblzma-dev \
     libpcre2-dev
 
-# Tosa is installed from crates.io until its Bioconda package is available.
-RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal && \
-    /root/.cargo/bin/cargo install tosa --version 1.0.0 --locked && \
-    install /root/.cargo/bin/tosa /opt/conda/bin/tosa && \
-    rm -rf /root/.cargo /root/.rustup
-
 USER $MAMBA_USER
 
-# Install shiba with micromamba
-RUN micromamba install -y -n base -c conda-forge -c bioconda -c defaults shiba r-glmmtmb r-jsonlite
+# Install Shiba, Tosa, and the beta-binomial regression backend with micromamba
+RUN micromamba install -y -n base -c conda-forge -c bioconda -c defaults \
+    shiba tosa=1.0.0 r-glmmtmb r-jsonlite
 
 # Install styleframe
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

@@ -13,13 +13,11 @@
 
 ``` bash
 # Install Shiba with conda
-conda create -n shiba -c conda-forge -c bioconda shiba
+conda create -n shiba -c conda-forge -c bioconda shiba tosa=1.0.0
 # Activate the conda environment
 conda activate shiba
 # Install styleframe for generating outputs in Excel format (optional)
 pip install styleframe==4.2
-conda install -c conda-forge rust
-cargo install tosa --version 1.0.0 --locked
 ```
 
 ---

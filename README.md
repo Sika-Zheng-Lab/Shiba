@@ -30,7 +30,17 @@ Shiba comprises four main steps:
 1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie](https://github.com/gpertea/stringtie)
 2. **Splicing event identification**: Identify alternative mRNA splicing events from assembled transcripts
 3. **Read counting**: Count splice junction and intron retention boundary reads using [Tosa](https://github.com/Sika-Zheng-Lab/Tosa)
-4. **Statistical analysis**: Identify DSEs based on Fisher's exact test
+4. **Statistical analysis**: Identify DSEs using Fisher's exact test or beta-binomial regression
+
+**Beta-binomial analysis**: Shiba and SnakeShiba support optional event-centric
+beta-binomial regression (`stat_method: beta-binomial`) for factorial experimental
+designs. This mode models junction counts across biological replicates with
+R/glmmTMB, accounting for overdispersion and supporting covariates, interaction
+terms (for example, genotype × treatment), and user-defined contrasts. It reports
+FDR-adjusted event-level results and model-based PSI predictions and effect sizes.
+See the [beta-binomial regression guide](docs/usage/beta_binomial_regression.md)
+for configuration and examples. This mode is separate from the legacy
+`beta_binomial: True` supplementary two-group test.
 
 <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
 
@@ -44,22 +54,21 @@ the earlier counting pipeline and does not contain this regression backend.
 
 ### Conda
 
-Create an environment for the current source checkout:
+Create an environment for the current source checkout, including
+[Tosa from Bioconda](https://anaconda.org/bioconda/tosa):
 
 ```bash
 conda create -n shiba -c conda-forge -c bioconda \
-  python=3.12 shiba r-glmmtmb r-jsonlite rust
+  python=3.12 shiba tosa=1.0.0 r-glmmtmb r-jsonlite
 conda activate shiba
-cargo install tosa --version 1.0.0 --locked
-export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 python -m pip install styleframe==4.2 openpyxl # optional Excel output
 ```
 
-For an existing Shiba environment, add the regression backend with:
+For an existing Shiba environment, add Tosa and the regression backend with:
 
 ```bash
 conda activate shiba
-conda install -c conda-forge r-glmmtmb r-jsonlite
+conda install -c conda-forge -c bioconda tosa=1.0.0 r-glmmtmb r-jsonlite
 ```
 
 From the source checkout, verify the backend and use the checked-out scripts:
@@ -81,10 +90,12 @@ this checkout. MameShiba also needs glmmTMB/jsonlite when using the new mode.
 
 ### Docker
 
-Build an image containing this checkout and its regression dependencies:
+Build an image containing this checkout, Tosa 1.0.0 from Bioconda, and the
+R/glmmTMB and jsonlite regression dependencies:
 
 ```bash
 docker build -f docker/Dockerfile -t shiba:factorial .
+docker run --rm shiba:factorial tosa --version
 docker run --rm shiba:factorial Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE))'
 docker run --rm -it -v "$PWD:/work" -w /work shiba:factorial bash
 ```
@@ -170,5 +181,3 @@ Kubota N, Chen L, Zheng S. [Shiba: a versatile computational method for systemat
 - Naoto Kubota ([0000-0003-0612-2300](https://orcid.org/0000-0003-0612-2300))
 - Liang Chen ([0000-0001-6164-4553](https://orcid.org/0000-0001-6164-4553))
 - Sika Zheng ([0000-0002-0573-4981](https://orcid.org/0000-0002-0573-4981))
-
-See the [parallel performance and real-data memory validation report](docs/validation/parallel_performance_20261015.md) for benchmark conditions, statistical equivalence checks, memory measurements, and computational next steps.

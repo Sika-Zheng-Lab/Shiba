@@ -1,5 +1,6 @@
 """Event-centric beta-binomial orchestration; regression is owned by glmmTMB."""
 import csv
+from concurrent.futures import ProcessPoolExecutor
 import json
 import logging
 import os
@@ -248,18 +249,37 @@ def aggregate_predictions(predictions, definitions):
     return result[columns]
 
 
-def observed_psi(events, junctions, samples, minimum_reads):
+def observed_psi(events, junctions, samples, minimum_reads, num_process=1):
     functions = {"SE": (shibalib.se, shibalib.col_se), "MSE": (shibalib.mse, shibalib.col_mse),
                  "MXE": (shibalib.mxe, shibalib.col_mxe), "RI": (shibalib.ri, shibalib.col_ri)}
     matrices, tables = [], {}
-    for kind in EVENT_TYPES:
-        function, cols = functions.get(kind, (shibalib.afe_ale if kind in ("AFE", "ALE") else shibalib.five_three,
-                                             shibalib.col_five_three_afe_ale))
-        table = shibalib.make_psi_table_sample(samples, events[kind], junctions, function, cols, 1, minimum_reads)
-        tables[kind] = table
-        matrix = table[["event_id", "pos_id"] + [s + "_PSI" for s in samples]].copy()
-        matrix.columns = ["event_id", "pos_id"] + samples
-        matrices.append(matrix)
+    shm, shm_info = None, None
+    executor = None
+    try:
+        if num_process > 1 and isinstance(junctions, shibalib.JunctionData) and junctions.array.nbytes:
+            shm, shm_info = junctions.to_shared_memory()
+            workers = min(num_process, max(len(frame) for frame in events.values()))
+            if workers > 1:
+                executor = ProcessPoolExecutor(
+                    max_workers=workers, initializer=shibalib._init_junc_worker,
+                    initargs=(shm_info["shm_name"], shm_info["shape"],
+                              shm_info["junction_ids"], shm_info["sample_ids"]))
+        for kind in EVENT_TYPES:
+            function, cols = functions.get(kind, (shibalib.afe_ale if kind in ("AFE", "ALE") else shibalib.five_three,
+                                                 shibalib.col_five_three_afe_ale))
+            table = shibalib.make_psi_table_sample(samples, events[kind], junctions, function, cols, num_process, minimum_reads, shm_info=shm_info, executor=executor)
+            tables[kind] = table
+            matrix = table[["event_id", "pos_id"] + [s + "_PSI" for s in samples]].copy()
+            matrix.columns = ["event_id", "pos_id"] + samples
+            matrices.append(matrix)
+    finally:
+        try:
+            if executor is not None:
+                executor.shutdown(wait=True)
+        finally:
+            if shm is not None:
+                shm.close()
+                shm.unlink()
     return pd.concat(matrices, ignore_index=True), tables
 
 
@@ -380,7 +400,7 @@ def run(args):
             effect = fitted[(fitted.kind == "effect") & (fitted.name == args.effect_name)][KEYS + ["value"]]
             result = result.merge(effect.rename(columns={"value": "selected_PSI_effect"}), on=KEYS, how="left")
             result.loc[~result.selected_PSI_effect.abs().ge(args.min_effect), "Diff events"] = "No"
-        matrix, observed = observed_psi(events, junctions, samples, args.minimum_reads)
+        matrix, observed = observed_psi(events, junctions, samples, args.minimum_reads, args.num_process)
         matrix.to_csv(stage / "PSI_matrix_sample.txt", sep="\t", index=False)
         timer.mark("observed_psi_and_matrix")
         annotated = []

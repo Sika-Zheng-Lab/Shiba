@@ -347,6 +347,13 @@ event does not occupy just one worker. Unix uses a fork cluster; Windows uses
 a PSOCK cluster. Each component's full model and null models run sequentially
 within one worker, with one internal fitting thread.
 
+Observed PSI calculation also uses `-p N`, reusing one Python worker pool
+across event types and sending each worker only its event slice. Junction counts are shared between
+Python workers through shared memory, which is released when the calculation
+finishes or fails. Event output order is preserved; empty event types do not
+start a worker pool. R fitting and observed PSI run in separate stages, so their
+worker pools do not run concurrently.
+
 The event-wide eligible sample mask is established **before** components are
 scheduled. Parallel scheduling does not change that mask, the likelihood,
 component consistency checks, or the FDR family. Passing events are packed
@@ -705,3 +712,5 @@ For each event type:
 2. For candidate events, compute sample-level PSI and count columns (`_success`, `_total_reads`).
 3. Run beta-binomial LRT to get `p_beta`.
 4. Apply BH correction to get `q_beta`.
+
+See the [parallel performance and real-data memory validation report](../validation/parallel_performance_20261015.md) for benchmark conditions, statistical equivalence checks, memory measurements, and computational next steps.

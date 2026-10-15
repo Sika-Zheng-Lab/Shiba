@@ -11,6 +11,11 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
+- Documented real-data Fisher/observed-PSI memory measurements and a complete 32-CPU beta-binomial validation, with compact metrics and a process-tree memory monitor.
+
+- Parallelized pairwise Fisher event tests using `-p`, retaining event-type-wide BH correction and existing significance rules. Added bounded reuse of identical 2×2 tests and vectorized MSE/AFE/ALE significance assignment.
+- Enabled `-p` for factorial observed PSI with shared junction memory and exception-safe cleanup; made PSI event partitioning deterministic across worker processes.
+
 - Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta-binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts.
 - Preserved integer junction components for all eight event types, with common coverage masks, component direction consistency, conservative event-level tests, and BH/BY adjustment across event types per contrast.
 - Added default pre-test coverage filtering for factorial regression: every component must have at least 10 total reads in the same half (rounded up) of samples in every categorical design cell. Only passing events enter fitting and FDR correction. Supports configurable sample fractions/grouping columns and exports per-group counts in `event_filter.tsv`.

@@ -107,11 +107,19 @@ optional `filter_group` columns; per-group counts are saved in `event_filter.tsv
 Use `-p 8` to fit components with eight persistent workers. Passing events are
 rebatched after filtering, and exact component results are cached within a run
 (`component_cache_size: 10000`; set to `0` to disable). Stage, batch, and component
-timing files report runtime, optimizer retries, and cache usage.
+timing files report runtime, optimizer retries, and cache usage. Observed PSI
+calculation also uses `-p`, with junction counts held in shared memory.
 
 ## Usage
 
 Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https://sika-zheng-lab.github.io/Shiba/).
+
+Fisher analysis also uses `-p N` to distribute event tests across processes.
+BH correction is applied after joining results, across the same event-type
+family as before. Small workloads (fewer than 256 input events per type) run
+serially; larger workloads use up to `N` workers. Each process caches up to
+10,000 identical 2×2 tables. This cache is separate from the factorial
+`component_cache_size` setting.
 
 ***Shiba***
 
@@ -162,3 +170,5 @@ Kubota N, Chen L, Zheng S. [Shiba: a versatile computational method for systemat
 - Naoto Kubota ([0000-0003-0612-2300](https://orcid.org/0000-0003-0612-2300))
 - Liang Chen ([0000-0001-6164-4553](https://orcid.org/0000-0001-6164-4553))
 - Sika Zheng ([0000-0002-0573-4981](https://orcid.org/0000-0002-0573-4981))
+
+See the [parallel performance and real-data memory validation report](docs/validation/parallel_performance_20261015.md) for benchmark conditions, statistical equivalence checks, memory measurements, and computational next steps.

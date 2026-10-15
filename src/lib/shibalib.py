@@ -3,6 +3,7 @@
 import warnings
 # warnings.simplefilter('ignore')
 import gc
+from functools import lru_cache
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
@@ -636,7 +637,7 @@ def se_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -717,7 +718,7 @@ def mse(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> li
     # Sample ID
     sample_size = len(sample_id)
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -779,7 +780,7 @@ def mse_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -859,7 +860,7 @@ def five_three(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k
     # Sample ID
     sample_size = len(sample_id)
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -918,7 +919,7 @@ def five_three_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -975,7 +976,7 @@ def afe_ale(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -
     # Sample ID
     sample_size = len(sample_id)
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1046,7 +1047,7 @@ def afe_ale_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1131,7 +1132,7 @@ def mxe(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> li
     # Sample ID
     sample_size = len(sample_id)
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1200,7 +1201,7 @@ def mxe_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1284,7 +1285,7 @@ def ri(junc_dict_all, sample_id, event_df, num_process, minimum_reads, k) -> lis
     event_l = []
     sample_size = len(sample_id)
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1352,7 +1353,7 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         junc_dict_all = _get_junc_data()
     event_l = []
     # event list
-    AS_event_l = list(set(event_df["event_id"]))
+    AS_event_l = event_df["event_id"].drop_duplicates().tolist()
     # split
     event_num_split = np.array_split(AS_event_l, num_process)
     event_split_df = event_df[event_df["event_id"].isin(event_num_split[k])]
@@ -1396,7 +1397,21 @@ def ri_ind(junc_dict_all, event_df, sample_id, num_process, k) -> list:
         event_l += [psi_list + success_reads_list + total_reads_list]
     return(event_l)
 
+@lru_cache(maxsize=10000)
+def _cached_fisher_exact(a, b, c, d):
+    """Bounded, process-local reuse of exactly equal 2x2 count tables."""
+    return tuple(stats.fisher_exact([[a, b], [c, d]], alternative="two-sided"))
+
+
+def _fisher_exact(table):
+    return _cached_fisher_exact(table[0][0], table[0][1], table[1][0], table[1][1])
+
+
 def diff_se(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_se_finish(_diff_se_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_se_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for SE.
 
@@ -1459,8 +1474,8 @@ def diff_se(df, group_list, FDR, dPSI) -> pd.DataFrame:
                 [group2_junction_b_values[index], group2_junction_c_values[index]]
             ]
             # Fisher's exact test
-            oddsr_junction_a, p_junction_a = stats.fisher_exact(table_2x2_junction_a, alternative = 'two-sided')
-            oddsr_junction_b, p_junction_b = stats.fisher_exact(table_2x2_junction_b, alternative = 'two-sided')
+            oddsr_junction_a, p_junction_a = _fisher_exact(table_2x2_junction_a)
+            oddsr_junction_b, p_junction_b = _fisher_exact(table_2x2_junction_b)
             p_maximum = max([p_junction_a, p_junction_b])
             oddsr_junction_a_col.append(oddsr_junction_a)
             p_junction_a_col.append(p_junction_a)
@@ -1472,6 +1487,11 @@ def diff_se(df, group_list, FDR, dPSI) -> pd.DataFrame:
         result_df["OR_junction_b"] = oddsr_junction_b_col
         result_df["p_junction_b"] = p_junction_b_col
         result_df["p_maximum"] = p_maximum_col
+    return result_df
+
+def _diff_se_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
         result_df.loc[
@@ -1503,6 +1523,10 @@ def diff_se(df, group_list, FDR, dPSI) -> pd.DataFrame:
     return(result_df)
 
 def diff_mse(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_mse_finish(_diff_mse_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_mse_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for MSE events.
 
@@ -1564,7 +1588,7 @@ def diff_mse(df, group_list, FDR, dPSI) -> pd.DataFrame:
                     [group2_inclusion_junction_count, group2_exclusion_junction_count]
                 ]
                 # Fisher's exact test
-                oddsr, p = stats.fisher_exact(table_2x2_junction, alternative = 'two-sided')
+                oddsr, p = _fisher_exact(table_2x2_junction)
                 oddsr_diff_up_list.append(oddsr >= 3/2)
                 oddsr_diff_down_list.append(oddsr <= 2/3)
                 oddsr_junction_list.append(oddsr)
@@ -1583,13 +1607,17 @@ def diff_mse(df, group_list, FDR, dPSI) -> pd.DataFrame:
         result_df["OR_diff_down"] = oddsr_diff_down_col
         result_df["p_junction"] = p_junction_col
         result_df["p_maximum"] = p_maximum_col
+    return result_df
+
+def _diff_mse_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
-        result_df["Diff events"] = result_df.apply(
-            lambda x: "Yes" if (x["OR_diff_up"] or x["OR_diff_down"]) and (x["q"] < FDR) and (abs(x["dPSI"]) >= dPSI) else "No",
-            axis = 1
-        )
-        result_df["q"] = result_df["q"].apply(lambda x: 1e-323 if x == 0 else x)
+        significant = ((result_df["OR_diff_up"] | result_df["OR_diff_down"])
+                       & (result_df["q"] < FDR) & (result_df["dPSI"].abs() >= dPSI))
+        result_df["Diff events"] = np.where(significant, "Yes", "No")
+        result_df.loc[result_df["q"] == 0, "q"] = 1e-323
         # Drop columns
         result_df = result_df.drop(columns = ["OR_diff_up", "OR_diff_down"])
     # Rename columns
@@ -1602,6 +1630,10 @@ def diff_mse(df, group_list, FDR, dPSI) -> pd.DataFrame:
     return(result_df)
 
 def diff_five_three(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_five_three_finish(_diff_five_three_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_five_three_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for FIVE, THREE, AFE, and ALE events.
 
@@ -1651,11 +1683,16 @@ def diff_five_three(df, group_list, FDR, dPSI) -> pd.DataFrame:
                 [group2_junction_a_values[index], group2_junction_b_values[index]]
             ]
             # Fisher's exact test
-            oddsr, p = stats.fisher_exact(table_2x2_intron, alternative = 'two-sided')
+            oddsr, p = _fisher_exact(table_2x2_intron)
             oddsr_col.append(oddsr)
             p_col.append(p)
         result_df["OR"] = oddsr_col
         result_df["p"] = p_col
+    return result_df
+
+def _diff_five_three_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p"], method = "fdr_bh")[1]
         result_df.loc[
@@ -1685,6 +1722,10 @@ def diff_five_three(df, group_list, FDR, dPSI) -> pd.DataFrame:
     return(result_df)
 
 def diff_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_afe_ale_finish(_diff_afe_ale_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_afe_ale_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for AFE and ALE events.
 
@@ -1751,7 +1792,7 @@ def diff_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
                         [group2_junction_a_count, group2_junction_b_count]
                     ]
                     # Fisher's exact test
-                    oddsr, p = stats.fisher_exact(table_2x2_intron, alternative = 'two-sided')
+                    oddsr, p = _fisher_exact(table_2x2_intron)
                     oddsr_diff_up_list.append(oddsr >= 3/2)
                     oddsr_diff_down_list.append(oddsr <= 2/3)
                     oddsr_junction_list.append(oddsr)
@@ -1770,13 +1811,17 @@ def diff_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
         result_df["OR_diff_down"] = oddsr_diff_down_col
         result_df["p_junction"] = p_junction_col
         result_df["p_maximum"] = p_maximum_col
+    return result_df
+
+def _diff_afe_ale_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
-        result_df["Diff events"] = result_df.apply(
-            lambda x: "Yes" if (x["OR_diff_up"] or x["OR_diff_down"]) and (x["q"] < FDR) and (abs(x["dPSI"]) >= dPSI) else "No",
-            axis = 1
-        )
-        result_df["q"] = result_df["q"].apply(lambda x: 1e-323 if x == 0 else x)
+        significant = ((result_df["OR_diff_up"] | result_df["OR_diff_down"])
+                       & (result_df["q"] < FDR) & (result_df["dPSI"].abs() >= dPSI))
+        result_df["Diff events"] = np.where(significant, "Yes", "No")
+        result_df.loc[result_df["q"] == 0, "q"] = 1e-323
         # Drop columns
         result_df = result_df.drop(columns = ["OR_diff_up", "OR_diff_down"])
     # Rename columns
@@ -1791,6 +1836,10 @@ def diff_afe_ale(df, group_list, FDR, dPSI) -> pd.DataFrame:
     return(result_df)
 
 def diff_mxe(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_mxe_finish(_diff_mxe_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_mxe_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for MXE.
 
@@ -1867,10 +1916,10 @@ def diff_mxe(df, group_list, FDR, dPSI) -> pd.DataFrame:
                 [group2_junction_a2_values[index], group2_junction_b2_values[index]]
             ]
             # Fisher's exact test
-            oddsr_junction_a1b1, p_junction_a1b1 = stats.fisher_exact(table_2x2_junction_a1b1, alternative = 'two-sided')
-            oddsr_junction_a1b2, p_junction_a1b2 = stats.fisher_exact(table_2x2_junction_a1b2, alternative = 'two-sided')
-            oddsr_junction_a2b1, p_junction_a2b1 = stats.fisher_exact(table_2x2_junction_a2b1, alternative = 'two-sided')
-            oddsr_junction_a2b2, p_junction_a2b2 = stats.fisher_exact(table_2x2_junction_a2b2, alternative = 'two-sided')
+            oddsr_junction_a1b1, p_junction_a1b1 = _fisher_exact(table_2x2_junction_a1b1)
+            oddsr_junction_a1b2, p_junction_a1b2 = _fisher_exact(table_2x2_junction_a1b2)
+            oddsr_junction_a2b1, p_junction_a2b1 = _fisher_exact(table_2x2_junction_a2b1)
+            oddsr_junction_a2b2, p_junction_a2b2 = _fisher_exact(table_2x2_junction_a2b2)
             p_maximum = max([p_junction_a1b1, p_junction_a1b2, p_junction_a2b1, p_junction_a2b2])
             oddsr_junction_a1b1_col.append(oddsr_junction_a1b1)
             p_junction_a1b1_col.append(p_junction_a1b1)
@@ -1890,6 +1939,11 @@ def diff_mxe(df, group_list, FDR, dPSI) -> pd.DataFrame:
         result_df["OR_junction_a2b2"] = oddsr_junction_a2b2_col
         result_df["p_junction_a2b2"] = p_junction_a2b2_col
         result_df["p_maximum"] = p_maximum_col
+    return result_df
+
+def _diff_mxe_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
         result_df.loc[
@@ -1923,6 +1977,10 @@ def diff_mxe(df, group_list, FDR, dPSI) -> pd.DataFrame:
     return(result_df)
 
 def diff_ri(df, group_list, FDR, dPSI) -> pd.DataFrame:
+    """Calculate Fisher tests and adjust across all valid events of this type."""
+    return _diff_ri_finish(_diff_ri_raw(df, group_list, FDR, dPSI), group_list, FDR, dPSI)
+
+def _diff_ri_raw(df, group_list, FDR, dPSI) -> pd.DataFrame:
     """
     Differential splicing analysis for RI.
 
@@ -1985,8 +2043,8 @@ def diff_ri(df, group_list, FDR, dPSI) -> pd.DataFrame:
                 [group2_junction_a_values[index], group2_junction_a_end_values[index]]
             ]
             # Fisher's exact test
-            oddsr_junction_a_start, p_junction_a_start = stats.fisher_exact(table_2x2_junction_a_start, alternative = 'two-sided')
-            oddsr_junction_a_end, p_junction_a_end = stats.fisher_exact(table_2x2_junction_a_end, alternative = 'two-sided')
+            oddsr_junction_a_start, p_junction_a_start = _fisher_exact(table_2x2_junction_a_start)
+            oddsr_junction_a_end, p_junction_a_end = _fisher_exact(table_2x2_junction_a_end)
             p_maximum = max([p_junction_a_start, p_junction_a_end])
             oddsr_junction_a_start_col.append(oddsr_junction_a_start)
             p_junction_a_start_col.append(p_junction_a_start)
@@ -1998,6 +2056,11 @@ def diff_ri(df, group_list, FDR, dPSI) -> pd.DataFrame:
         result_df["OR_junction_a_end"] = oddsr_junction_a_end_col
         result_df["p_junction_a_end"] = p_junction_a_end_col
         result_df["p_maximum"] = p_maximum_col
+    return result_df
+
+def _diff_ri_finish(result_df, group_list, FDR, dPSI):
+    group1, group2 = group_list[:2]
+    if not result_df.empty:
         # FDR correction
         result_df.loc[:, "q"] = multitest.multipletests(result_df.loc[:, "p_maximum"], method = "fdr_bh")[1]
         result_df.loc[
@@ -2314,7 +2377,7 @@ def beta_binomial(output_ind_df, group_df, group_list, num_process=1) -> pd.Data
     output_ind_df["p_beta"] = p_col
     return(output_ind_df)
 
-def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads, shm_info=None) -> pd.DataFrame:
+def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads, shm_info=None, executor=None) -> pd.DataFrame:
     """
     Make PSI table for each sample.
 
@@ -2327,16 +2390,26 @@ def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, fun
     - num_process (int): Number of processes to use.
     - minimum_reads (int): Minimum number of reads to be considered.
     - shm_info (dict, optional): Shared memory info for multi-process mode.
+    - executor: Optional shared-memory-initialized pool, owned by the caller.
 
     Returns:
     - pd.DataFrame: DataFrame containing the PSI values for each sample and each event.
 
     """
 
+    num_process = min(num_process, max(1, len(event_for_analysis_df)))
     columns = func_col(sample_list, False)
     if num_process <= 1:
         # Direct call — no multiprocessing overhead
         output_l = func_psi(junc_dict_all, sample_list, event_for_analysis_df, 1, minimum_reads, 0)
+    elif executor is not None:
+        # Reuse a caller-owned pool; send only each worker's event slice.
+        chunk_size = (len(event_for_analysis_df) + num_process - 1) // num_process
+        futures = [executor.submit(func_psi, None, sample_list,
+                                   event_for_analysis_df.iloc[start:start + chunk_size],
+                                   1, minimum_reads, 0)
+                   for start in range(0, len(event_for_analysis_df), chunk_size)]
+        output_l = [row for future in futures for row in future.result()]
     elif shm_info is not None:
         # Multi-process with shared memory (avoids pickling large junction data)
         with concurrent.futures.ProcessPoolExecutor(
@@ -2349,7 +2422,7 @@ def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, fun
                        event_for_analysis_df, num_process, minimum_reads, i)
                        for i in range(num_process)]
         output_l = []
-        for future in concurrent.futures.as_completed(futures):
+        for future in futures:
             output_l += future.result()
     else:
         # Fallback: pickle junction data to workers
@@ -2358,7 +2431,7 @@ def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, fun
                        event_for_analysis_df, num_process, minimum_reads, i)
                        for i in range(num_process)]
         output_l = []
-        for future in concurrent.futures.as_completed(futures):
+        for future in futures:
             output_l += future.result()
     psi_table_df = pd.DataFrame(output_l, columns=columns)
     return(psi_table_df)
@@ -2396,6 +2469,37 @@ def make_psi_table_group(group_list, event_for_analysis_df, junc_dict_group, fun
     psi_table_df = pd.DataFrame(output_l, columns=columns)
     return(psi_table_df)
 
+def fisher_event_tests(psi_table_df, group_list, func_diff, num_process, FDR, dPSI):
+    """Parallel raw tests; apply BH and event classification once after joining.
+
+    Chunk boundaries never define the multiple-testing family. Ordered results
+    preserve the serial row order. Small workloads avoid process startup costs.
+    """
+    functions = {
+        diff_se: (_diff_se_raw, _diff_se_finish),
+        diff_mse: (_diff_mse_raw, _diff_mse_finish),
+        diff_five_three: (_diff_five_three_raw, _diff_five_three_finish),
+        diff_afe_ale: (_diff_afe_ale_raw, _diff_afe_ale_finish),
+        diff_mxe: (_diff_mxe_raw, _diff_mxe_finish),
+        diff_ri: (_diff_ri_raw, _diff_ri_finish),
+    }
+    if num_process <= 1 or len(psi_table_df) < 256 or func_diff not in functions:
+        return func_diff(psi_table_df, group_list, FDR, dPSI)
+    raw, finish = functions[func_diff]
+    # Bound submitted tasks and balance heterogeneous multi-component events.
+    workers = min(num_process, max(1, len(psi_table_df) // 128))
+    chunk_size = max(64, (len(psi_table_df) + 4 * workers - 1) // (4 * workers))
+    logger.info("Fisher tests: %d workers, up to %d events per task", workers, chunk_size)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(raw, psi_table_df.iloc[start:start + chunk_size],
+                                   group_list, FDR, dPSI)
+                   for start in range(0, len(psi_table_df), chunk_size)]
+        chunks = [future.result() for future in futures]
+    nonempty = [chunk for chunk in chunks if not chunk.empty]
+    result = pd.concat(nonempty, ignore_index=True) if nonempty else chunks[0]
+    return finish(result, group_list, FDR, dPSI)
+
+
 def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, beta_binomial_bool=False, shm_info=None) -> pd.DataFrame:
     """
     Differential splicing analysis for each splicing event.
@@ -2422,7 +2526,7 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
 
     """
 
-    output_df = func_diff(psi_table_df, group_list, FDR, dPSI)
+    output_df = fisher_event_tests(psi_table_df, group_list, func_diff, num_process, FDR, dPSI)
     if (output_df.shape[0]) != 0:
         run_sample_level_stats = individual_psi or ttest_bool or beta_binomial_bool
         if run_sample_level_stats:

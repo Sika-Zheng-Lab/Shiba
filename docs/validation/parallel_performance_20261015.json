@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-15",
+  "dataset": {
+    "samples": 65,
+    "junctions": 3742179,
+    "input_events": 159204,
+    "passing_events": 64266,
+    "components": 169768
+  },
+  "full_beta_binomial": {
+    "allocated_cpus": 32,
+    "allocated_memory_gib": 80,
+    "elapsed": "00:37:59",
+    "phase_peak_pss_gib": {
+      "overall": 24.18345069885254,
+      "input_and_preparation": 11.02944278717041,
+      "design": 7.230717658996582,
+      "fitting": 9.623101234436035,
+      "post_fit": 24.18345069885254
+    },
+    "backend": {
+      "processes": 32,
+      "scheduling": "dynamic components, persistent workers",
+      "component_cache_size": 10000,
+      "components": 169768,
+      "cache_hits": 27027,
+      "optimizer_attempts": 493355,
+      "retries": 29208,
+      "elapsed_seconds": 1917.458
+    },
+    "comparisons": [
+      {
+        "file": "event_statistics.tsv",
+        "rows": 477612,
+        "matched": true
+      },
+      {
+        "file": "model_predictions.tsv",
+        "rows": 387716,
+        "matched": true
+      },
+      {
+        "file": "event_filter.tsv",
+        "rows": 636816,
+        "matched": true
+      }
+    ],
+    "scope": "Full splicing analysis from existing real junction/event files, including input validation, filtering, R/glmmTMB fits, aggregation, observed PSI and TSV output. No BAM counting, plotting, or Excel export.",
+    "measurement": "Sampled PSS summed across Python, R master and all worker processes. Includes shared pages proportionally rather than counting them once per worker. Kernel and filesystem-cache charges are not included.",
+    "sample_count": 1685,
+    "memory_access_errors": 0
+  },
+  "subset_runs": {
+    "1": {
+      "fitting_peak_pss_gib": 0.4139108657836914,
+      "processes": 1,
+      "samples": 65,
+      "input_events": 32,
+      "passing_events": 24,
+      "components": 341,
+      "allocated_cpus": 4
+    },
+    "4": {
+      "fitting_peak_pss_gib": 0.9180383682250977,
+      "processes": 4,
+      "samples": 65,
+      "input_events": 32,
+      "passing_events": 24,
+      "components": 341,
+      "allocated_cpus": 4
+    },
+    "32": {
+      "fitting_peak_pss_gib": 3.9971837997436523,
+      "processes": 32,
+      "samples": 65,
+      "input_events": 32,
+      "passing_events": 24,
+      "components": 341,
+      "allocated_cpus": 4
+    }
+  },
+  "source_sha256": {
+    "src/lib/factorial.py": "f7aec64315a249447332657a0492ebeb1f35fda774d0bf9759bcbb93d1b2a634",
+    "src/lib/shibalib.py": "ad3b570f354f9f5fd81fa1b4b645629619204c34b4e19f87034f95bafdf646db",
+    "src/beta_binomial_glm.R": "5ca400505d9d109e639731e72f342eb3cbef9803d1d6b8f56c1ae1a699ef8c4d"
+  },
+  "stage_experiments": {
+    "allocated_cpus": 4,
+    "allocated_memory_gib": 80,
+    "workers": [
+      1,
+      4,
+      32
+    ],
+    "fisher_peak_pss_gib": [
+      8.287,
+      8.359,
+      8.379
+    ],
+    "observed_psi_peak_pss_gib": [
+      10.936,
+      12.777,
+      27.967
+    ],
+    "all_hashes_match_within_each_mode": true,
+    "scope": {
+      "observed": "All 159204 events, 65 samples, production factorial input validation and observed_psi; retains all per-event-type output tables and PSI matrix.",
+      "fisher": "All 159204 input events; 129984 valid group-PSI events tested. WT background fad=0, ptbp2ko=0 (9 samples) versus ptbp2ko=1 (10 samples). Uses legacy read_junctions and production Fisher functions. Group counts are summed with NumPy; does not execute the complete legacy psi.py pipeline or retain its per-sample PSI outputs."
+    },
+    "limitations": [
+      "32 worker processes shared four allocated CPUs; this is not a 32-CPU performance or full-concurrency memory benchmark.",
+      "No complete beta-binomial fitting, legacy pipeline, BAM counting, plotting or Excel export rerun. These are measurements of the newly optimized stages, not an end-to-end pipeline memory guarantee.",
+      "Polling reports observed peaks, not a hard upper bound. PSS avoids counting shared pages repeatedly; it excludes some job-level kernel and file-cache charges."
+    ]
+  },
+  "comparison_tolerances": {
+    "rtol": 1e-08,
+    "atol": 1e-10
+  }
+}

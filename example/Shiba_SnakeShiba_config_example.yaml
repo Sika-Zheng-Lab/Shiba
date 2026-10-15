@@ -23,6 +23,10 @@ maximum_intron_length:
 strand:
   XS
 
+# Statistical method: fisher (default) or beta_binomial (factorial regression).
+# To enable regression, change this value and fill in the options below.
+stat_method: fisher
+
 # PSI calculation
 only_psi:
   False
@@ -42,13 +46,13 @@ individual_psi:
   True
 ttest:
   True
-beta_binomial:
-  False
 excel:
   True
 
-# Optional event-centric factorial regression (requires R/glmmTMB and jsonlite).
-# stat_method: beta-binomial
+# Event-centric factorial regression (requires R/glmmTMB and jsonlite).
+# Set stat_method above to beta_binomial and uncomment/fill in these settings.
+# Run all steps: python shiba.py config.yaml -p 8
+# Run splicing only: add --mame; reuse counts/events: add --start-step 4.
 # sample_metadata: /path/to/samples.tsv
 # formula: genotype * treatment + batch
 # coef: ["genotypeKO:treatmentDrug"]

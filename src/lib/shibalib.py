@@ -7,8 +7,6 @@ from functools import lru_cache
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-from scipy.optimize import minimize
-from scipy.special import gammaln, betaln
 import statsmodels.stats.multitest as multitest
 import concurrent.futures
 from multiprocessing.shared_memory import SharedMemory
@@ -2144,239 +2142,6 @@ def ttest(output_ind_df, group_df, group_list) -> pd.DataFrame:
     output_ind_df["p_ttest"] = p_col
     return(output_ind_df)
 
-def _beta_binom_neg_ll_full(params, x, k, n):
-    """Full model negative log-likelihood for beta-binomial test.
-
-    Model:
-        k_i ~ BetaBinomial(n_i, alpha_i, beta_i)
-        logit(mu_i) = beta0 + beta1 * x_i
-        rho = sigmoid(theta)
-        alpha_i = mu_i * (1-rho)/rho
-        beta_i = (1-mu_i) * (1-rho)/rho
-    """
-    beta0, beta1, theta = params
-    with np.errstate(over='ignore'):
-        mu = 1.0 / (1.0 + np.exp(-(beta0 + beta1 * x)))
-        rho = 1.0 / (1.0 + np.exp(-theta))
-
-    mu = np.clip(mu, 1e-10, 1 - 1e-10)
-    rho = np.clip(rho, 1e-8, 1 - 1e-8)
-    phi = (1.0 - rho) / rho
-    alpha = np.clip(mu * phi, 1e-10, None)
-    beta = np.clip((1.0 - mu) * phi, 1e-10, None)
-
-    ll = (
-        gammaln(n + 1.0)
-        - gammaln(k + 1.0)
-        - gammaln(n - k + 1.0)
-        + betaln(k + alpha, n - k + beta)
-        - betaln(alpha, beta)
-    )
-    return -np.sum(ll)
-
-
-def _beta_binom_neg_ll_null(params, x, k, n):
-    """Null model negative log-likelihood for beta-binomial test (beta1=0)."""
-    beta0, theta = params
-    with np.errstate(over='ignore'):
-        mu = 1.0 / (1.0 + np.exp(-beta0))
-        rho = 1.0 / (1.0 + np.exp(-theta))
-
-    mu = float(np.clip(mu, 1e-10, 1 - 1e-10))
-    rho = float(np.clip(rho, 1e-8, 1 - 1e-8))
-    phi = (1.0 - rho) / rho
-    alpha = max(mu * phi, 1e-10)
-    beta = max((1.0 - mu) * phi, 1e-10)
-
-    ll = (
-        gammaln(n + 1.0)
-        - gammaln(k + 1.0)
-        - gammaln(n - k + 1.0)
-        + betaln(k + alpha, n - k + beta)
-        - betaln(alpha, beta)
-    )
-    return -np.sum(ll)
-
-
-def _beta_binomial_single_event(k, x, n):
-    """Run beta-binomial LRT for a single event.
-
-    Args:
-        k: numpy array of success read counts.
-        x: numpy array of group indicators (0=group1, 1=group2).
-        n: numpy array of total read counts.
-
-    Returns:
-        float: LR statistic (non-negative), or np.nan on failure/skip.
-    """
-    n_g1 = int(np.sum(x == 0))
-    n_g2 = int(np.sum(x == 1))
-    if n_g1 < 2 or n_g2 < 2:
-        return np.nan
-
-    with np.errstate(divide='ignore', invalid='ignore'):
-        p = np.divide(k, n, out=np.zeros_like(k, dtype=np.float64), where=n > 0)
-
-    if np.var(p) < 1e-10:
-        return 0.0
-
-    p_g1 = p[x == 0]
-    p_g2 = p[x == 1]
-    if abs(np.mean(p_g1) - np.mean(p_g2)) < 1e-8:
-        return 0.0
-
-    args = (x, k, n)
-    m_all = np.clip(np.mean(p), 0.01, 0.99)
-    m_g1 = np.clip(np.mean(p_g1), 0.01, 0.99)
-    m_g2 = np.clip(np.mean(p_g2), 0.01, 0.99)
-
-    beta0_init = np.log(m_all / (1 - m_all))
-    beta1_init = np.log(m_g2 / (1 - m_g2)) - np.log(m_g1 / (1 - m_g1))
-    theta_init = -2.0  # rho ~= 0.12
-
-    bounds_null = [(-20, 20), (-10, 10)]
-    bounds_full = [(-20, 20), (-20, 20), (-10, 10)]
-
-    try:
-        result_null = minimize(
-            _beta_binom_neg_ll_null,
-            np.array([beta0_init, theta_init]),
-            args=args,
-            method='L-BFGS-B',
-            bounds=bounds_null,
-            options={'maxiter': 300, 'ftol': 1e-9}
-        )
-        if not np.isfinite(result_null.fun):
-            return np.nan
-
-        result_full = minimize(
-            _beta_binom_neg_ll_full,
-            np.array([result_null.x[0], beta1_init, result_null.x[1]]),
-            args=args,
-            method='L-BFGS-B',
-            bounds=bounds_full,
-            options={'maxiter': 300, 'ftol': 1e-9}
-        )
-        if not np.isfinite(result_full.fun):
-            return np.nan
-
-        lr_stat = 2.0 * (result_null.fun - result_full.fun)
-        return float(max(lr_stat, 0.0))
-
-    except Exception:
-        return np.nan
-
-
-def _beta_binomial_chunk(chunk):
-    """Process a chunk of events for beta-binomial LRT."""
-    return [_beta_binomial_single_event(k, x, n) for k, x, n in chunk]
-
-
-def beta_binomial(output_ind_df, group_df, group_list, num_process=1) -> pd.DataFrame:
-    """Perform beta-binomial LRT on two groups using success and total read counts.
-
-    The resulting p-values are returned in column ``p_beta``.
-    """
-
-    output_ind_df = output_ind_df.reset_index()
-    output_ind_df = output_ind_df.drop(columns = "index")
-    group1 = group_list[0]
-    group2 = group_list[1]
-
-    # Get sample names for each group
-    sample_names_group1 = list(group_df[group_df['group'] == group1]["sample"])
-    sample_names_group2 = list(group_df[group_df['group'] == group2]["sample"])
-
-    # Prepare column name lists
-    success_cols_group1 = [s + "_success" for s in sample_names_group1]
-    success_cols_group2 = [s + "_success" for s in sample_names_group2]
-    total_cols_group1 = [s + "_total_reads" for s in sample_names_group1]
-    total_cols_group2 = [s + "_total_reads" for s in sample_names_group2]
-
-    # Validate columns exist
-    try:
-        for col in success_cols_group1 + success_cols_group2 + total_cols_group1 + total_cols_group2:
-            _ = output_ind_df[col].values
-    except KeyError:
-        logger.debug(f"Sample names do not match for beta-binomial test.")
-        logger.debug(f"Columns: {output_ind_df.columns}")
-        logger.debug(f"Expected success columns: {success_cols_group1 + success_cols_group2}")
-        logger.debug(f"Expected total_reads columns: {total_cols_group1 + total_cols_group2}")
-        raise ValueError("Error: Sample names do not match for beta-binomial test.")
-
-    n_events = output_ind_df.shape[0]
-    if n_events == 0:
-        output_ind_df["p_beta"] = []
-        return output_ind_df
-
-    # Pre-extract all arrays for efficiency
-    success_arrays_g1 = [output_ind_df[c].values for c in success_cols_group1]
-    success_arrays_g2 = [output_ind_df[c].values for c in success_cols_group2]
-    total_arrays_g1 = [output_ind_df[c].values for c in total_cols_group1]
-    total_arrays_g2 = [output_ind_df[c].values for c in total_cols_group2]
-
-    # Build per-event (k, x, n) tuples in bulk
-    event_data = []
-    for index in range(n_events):
-        k_vals = []
-        x_vals = []
-        n_vals = []
-
-        for j, arr in enumerate(success_arrays_g1):
-            success_val = arr[index]
-            total_val = total_arrays_g1[j][index]
-            if (
-                success_val is not None and not np.isnan(success_val)
-                and total_val is not None and not np.isnan(total_val)
-                and total_val > 0 and success_val >= 0 and success_val <= total_val
-            ):
-                k_vals.append(success_val)
-                x_vals.append(0)
-                n_vals.append(total_val)
-
-        for j, arr in enumerate(success_arrays_g2):
-            success_val = arr[index]
-            total_val = total_arrays_g2[j][index]
-            if (
-                success_val is not None and not np.isnan(success_val)
-                and total_val is not None and not np.isnan(total_val)
-                and total_val > 0 and success_val >= 0 and success_val <= total_val
-            ):
-                k_vals.append(success_val)
-                x_vals.append(1)
-                n_vals.append(total_val)
-
-        event_data.append((
-            np.array(k_vals, dtype=np.float64),
-            np.array(x_vals, dtype=np.float64),
-            np.array(n_vals, dtype=np.float64)
-        ))
-
-    # Run beta-binomial test: parallel or serial
-    if num_process <= 1 or n_events <= 4:
-        lr_stats = [_beta_binomial_single_event(k, x, n) for k, x, n in event_data]
-    else:
-        chunk_size = max(1, (n_events + num_process - 1) // num_process)
-        chunks = [event_data[i:i + chunk_size] for i in range(0, n_events, chunk_size)]
-        with concurrent.futures.ProcessPoolExecutor(max_workers=num_process) as executor:
-            futures = [executor.submit(_beta_binomial_chunk, chunk) for chunk in chunks]
-            lr_stats = []
-            for future in futures:
-                lr_stats.extend(future.result())
-
-    # Vectorized p-value computation from LR statistics
-    lr_stats = np.array(lr_stats, dtype=np.float64)
-    p_col = np.full(n_events, np.nan, dtype=np.float64)
-    valid_mask = np.isfinite(lr_stats)
-    if np.any(valid_mask):
-        p_col[valid_mask] = stats.chi2.sf(lr_stats[valid_mask], df=1)
-        # Clamp underflow to smallest representable float
-        underflow_mask = valid_mask & (p_col == 0)
-        p_col[underflow_mask] = np.finfo(float).tiny  # ~2.2e-308
-
-    output_ind_df["p_beta"] = p_col
-    return(output_ind_df)
-
 def make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func_psi, func_col, num_process, minimum_reads, shm_info=None, executor=None) -> pd.DataFrame:
     """
     Make PSI table for each sample.
@@ -2500,7 +2265,7 @@ def fisher_event_tests(psi_table_df, group_list, func_diff, num_process, FDR, dP
     return finish(result, group_list, FDR, dPSI)
 
 
-def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, beta_binomial_bool=False, shm_info=None) -> pd.DataFrame:
+def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, group_list, sample_list, func_diff, func_ind, num_process, FDR, dPSI, individual_psi, ttest_bool, shm_info=None) -> pd.DataFrame:
     """
     Differential splicing analysis for each splicing event.
 
@@ -2518,7 +2283,6 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
     - dPSI (float): Minimum delta PSI.
     - individual_psi (bool): Whether to perform individual PSI analysis.
     - ttest_bool (bool): Whether to perform t-test.
-    - beta_binomial_bool (bool): Whether to perform beta-binomial test.
     - shm_info (dict, optional): Shared memory info for multi-process mode.
 
     Returns:
@@ -2528,7 +2292,7 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
 
     output_df = fisher_event_tests(psi_table_df, group_list, func_diff, num_process, FDR, dPSI)
     if (output_df.shape[0]) != 0:
-        run_sample_level_stats = individual_psi or ttest_bool or beta_binomial_bool
+        run_sample_level_stats = individual_psi or ttest_bool
         if run_sample_level_stats:
             event_for_analysis_df = event_for_analysis_df[event_for_analysis_df["event_id"].isin(output_df["event_id"])]
             if num_process <= 1:
@@ -2564,8 +2328,6 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
             )
             if ttest_bool:
                 output_ind_df = ttest(output_ind_df, group_df, group_list)
-            if beta_binomial_bool:
-                output_ind_df = beta_binomial(output_ind_df, group_df, group_list, num_process)
             success_cols = [c for c in output_ind_df.columns if c.endswith("_success")]
             output_ind_df = output_ind_df.drop(columns = success_cols)
             # Drop total_reads columns before merging (internal use only)
@@ -2579,13 +2341,6 @@ def diff_event(event_for_analysis_df, psi_table_df, junc_dict_all, group_df, gro
                 output_ind_df,
                 on = "event_id"
             )
-        if beta_binomial_bool and "p_beta" in output_df.columns:
-            valid_mask = output_df["p_beta"].notna()
-            output_df["q_beta"] = np.nan
-            if valid_mask.any():
-                output_df.loc[valid_mask, "q_beta"] = multitest.multipletests(
-                    output_df.loc[valid_mask, "p_beta"], method="fdr_bh"
-                )[1]
         if "q" in output_df.columns:
             output_df = output_df.sort_values(["Diff events", "q"], ascending = [False, True])
     return(output_df)

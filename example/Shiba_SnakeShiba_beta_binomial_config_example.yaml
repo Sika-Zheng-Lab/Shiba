@@ -1,0 +1,60 @@
+# Full bulk pipeline: python shiba.py config.yaml -p 8
+# Splicing only from existing events/counts: add --start-step 4 --mame.
+# Requires R/glmmTMB and jsonlite; see docs/installation.md.
+# Matching templates: example/beta_binomial/{samples.tsv,Shiba_experiment.tsv,contrasts.json,predictions.json}
+# Replace all /path/to entries; paths must be accessible inside any container.
+workdir: /path/to/workdir/output
+container: docker://naotokubota/shiba:v1.0.0
+gtf: /path/to/workdir/annotation.gtf
+experiment_table: /path/to/workdir/Shiba_experiment.tsv
+unannotated: true
+
+# Junction read filtering
+minimum_anchor_length: 6
+boundary_anchor_length: 1
+minimum_intron_length: 70
+maximum_intron_length: 500000
+strand: XS
+
+# fisher (default when omitted) or beta_binomial
+stat_method: beta_binomial
+# Metadata: sample, genotype (WT/KO), treatment (Control/Drug), batch.
+# The supplied samples.tsv has 16 illustrative biological replicates, balanced
+# across genotype x treatment x batch (2 per cell); replace with your samples.
+# Sample IDs must match the experiment table's sample column.
+# The experiment table also requires bam and group columns.
+sample_metadata: /path/to/workdir/samples.tsv
+formula: genotype * treatment + batch
+categorical: [genotype, treatment, batch]
+reference_levels:
+  genotype: WT
+  treatment: Control
+coef: ["genotypeKO:treatmentDrug"]
+# For interaction + drug effects in WT/KO, comment out coef and use the supplied
+# example/beta_binomial/contrasts.json (copy it to your workdir):
+# contrast_file: /path/to/workdir/contrasts.json
+# Optional model-based PSI predictions and effects:
+# prediction_grid: /path/to/workdir/predictions.json
+
+# All components must meet minimum_reads in the same half (rounded up)
+# of samples in EVERY categorical design cell before testing and FDR.
+minimum_reads: 10
+min_sample_fraction: 0.5
+# Default groups include all categorical formula factors (including batch).
+# To use genotype x treatment coverage groups instead, uncomment:
+# filter_group: [genotype, treatment]
+fdr: 0.05
+p_adjust: BH
+rscript: Rscript
+event_batch_size: 200
+component_cache_size: 10000
+individual_psi: true
+excel: true
+only_psi: false
+only_psi_group: false
+
+# Optional separate pairwise expression testing; without these, expression
+# abundance and PCA are produced without DESeq2 testing. The splicing formula
+# is not applied to expression analysis.
+# expression_reference_group: Ref
+# expression_alternative_group: Alt

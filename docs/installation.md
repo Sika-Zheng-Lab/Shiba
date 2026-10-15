@@ -6,8 +6,8 @@ this requirement from the existing analysis modes.
 
 | Analysis | Additional requirements |
 | --- | --- |
-| Legacy splicing, including the older `beta_binomial: True` supplementary test | Existing Python dependencies; glmmTMB/jsonlite are not required |
-| `stat_method: beta-binomial` | R with glmmTMB and jsonlite |
+| Fisher splicing analysis (optional Welch t-test) | Existing Python dependencies; glmmTMB/jsonlite are not required |
+| `stat_method: beta_binomial` | R with glmmTMB and jsonlite |
 | Gene-expression differential analysis | Existing R/DESeq2 dependencies, independently of the splicing mode |
 | Excel output | `styleframe==4.2` for legacy output; `openpyxl` for the new regression workbook |
 
@@ -101,7 +101,7 @@ python ./shiba.py --mame -p 4 config.yaml
 ```
 
 The new regression backend is required even in MameShiba when
-`stat_method: beta-binomial` is selected. The full pipeline's expression, PCA,
+`stat_method: beta_binomial` is selected. The full pipeline's expression, PCA,
 and plotting steps are skipped by `--mame`; its existing Excel behavior is
 unchanged.
 

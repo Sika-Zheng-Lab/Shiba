@@ -53,13 +53,13 @@ if _validation_errors:
 
 sys.path.insert(0, os.path.join(base_dir, "src"))
 from lib.factorial_config import config_arguments
-regression = config.get("stat_method", "legacy") == "beta-binomial"
+regression = config.get("stat_method", "fisher") == "beta_binomial"
 expression_ref = config.get("expression_reference_group", "NA") if regression else config["reference_group"]
 expression_alt = config.get("expression_alternative_group", "NA") if regression else config["alternative_group"]
 deg_targets = ["results/expression/DEG.txt"] if not regression or expression_ref != "NA" else []
 statistics_args = config_arguments(config) if regression else [
     "-r", str(config["reference_group"]), "-a", str(config["alternative_group"]),
-    "-t", str(config["ttest"]), "-b", str(config["beta_binomial"])]
+    "-t", str(config["ttest"])]
 statistics_options = shlex.join(statistics_args)
 
 command = " ".join(args)

@@ -69,7 +69,7 @@ class PassingBatchWriter:
 
 
 def add_arguments(parser):
-    parser.add_argument("--stat-method", choices=["legacy", "beta-binomial"], default="legacy")
+    parser.add_argument("--stat-method", choices=["fisher", "beta_binomial"], default="fisher")
     parser.add_argument("--sample-metadata", help="TSV with sample and formula variables; defaults to --group")
     parser.add_argument("--formula", help="R fixed-effect formula, e.g. genotype * treatment + batch")
     parser.add_argument("--coef", action="append", default=[], help="R design coefficient name; repeat for multiple tests")
@@ -95,8 +95,8 @@ def add_arguments(parser):
 def validate_options(args):
     if not args.formula or not (args.sample_metadata or args.group):
         raise ValueError("beta-binomial requires --formula and --sample-metadata (or --group)")
-    if args.onlypsi or args.onlypsi_group or args.beta_binomial or args.ttest:
-        raise ValueError("beta-binomial regression cannot be combined with legacy -b/-t or PSI-only modes")
+    if args.onlypsi or args.onlypsi_group or args.ttest:
+        raise ValueError("beta-binomial regression cannot be combined with legacy -t or PSI-only modes")
     if not args.design_only and not (args.coef or args.contrast_file):
         raise ValueError("Specify --coef or --contrast-file, or use --design-only to list coefficients")
     if args.num_process < 1 or args.event_batch_size < 1 or args.minimum_reads < 1:
@@ -420,7 +420,7 @@ def run(args):
                 for kind, table in zip(EVENT_TYPES, annotated):
                     table.to_excel(writer, sheet_name=kind, index=False)
                 fitted.to_excel(writer, sheet_name="model_predictions", index=False)
-        manifest = {"stat_method": "beta-binomial", "backend": "glmmTMB", "formula": args.formula,
+        manifest = {"stat_method": "beta_binomial", "backend": "glmmTMB", "formula": args.formula,
                     "contrasts": tests, "p_adjust": args.p_adjust, "fdr": args.fdr,
                     "fdr_family": "coverage-passing events across event types, separately per contrast; post-filter failures counted as p=1",
                     "min_sample_fraction": args.min_sample_fraction, "filter_group_columns": filter_columns,

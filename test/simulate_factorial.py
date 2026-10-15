@@ -55,7 +55,7 @@ def main():
     pd.DataFrame(counts, columns=['chr','start','end','ID',*meta['sample']]).to_csv(args.output/'junctions.bed', sep='\t', index=False)
     start = time.monotonic()
     subprocess.run([sys.executable, str(ROOT/'src'/'psi.py'), str(args.output/'junctions.bed'),
-                    str(args.output/'events'), str(args.output/'results'), '--stat-method','beta-binomial',
+                    str(args.output/'events'), str(args.output/'results'), '--stat-method','beta_binomial',
                     '--sample-metadata',str(args.output/'samples.tsv'),'--formula','genotype * treatment',
                     '--reference-level','genotype=WT','--reference-level','treatment=Control',
                     '--coef','genotypeKO:treatmentDrug','-p',str(args.processes)], check=True)

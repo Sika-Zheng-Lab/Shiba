@@ -27,7 +27,6 @@ def get_args():
     parser.add_argument("-r", "--reference", type = str, help = "Reference group for detecting differential events")
     parser.add_argument("-a", "--alternative", type = str, help = "Alternative group for detecting differential events")
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
-    parser.add_argument("-b", "--beta-binomial", help = "Perform beta-binomial test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -59,7 +58,6 @@ def main():
         "reference": args.reference,
         "alternative": args.alternative,
         "minimum_reads": args.minimum_reads,
-        "beta_binomial": args.beta_binomial,
         "onlypsi": args.onlypsi,
         "excel": args.excel,
     }
@@ -119,7 +117,7 @@ def main():
             diff_df = shibalib.diff_event(
                 event_for_analysis_df, psi_table_group_df, junc_dict_all, group_data["group_df"],
                 [params["reference"], params["alternative"]], group_data["sample_list_diff"],
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], False, False, params["beta_binomial"]
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], False, False
             )
         else:
             # Generate PSI matrices

@@ -112,7 +112,6 @@ def build_fixture(output_dir):
             "reference_group: Ref\n"
             "alternative_group: Alt\n"
             "minimum_reads: 1\n"
-            "beta_binomial: false\n"
             "excel: false\n"
         )
     return directory

@@ -32,7 +32,7 @@ base_dir = os.path.dirname(workflow.snakefile)
 # Validate configuration before pipeline execution
 sys.path.insert(0, os.path.join(base_dir, "src", "lib"))
 from general import validate_config, apply_config_defaults
-apply_config_defaults(config)
+apply_config_defaults(config, mode="sc")
 _validation_errors = validate_config(config, mode="sc")
 if _validation_errors:
     for _err in _validation_errors:
@@ -183,7 +183,6 @@ rule scpsi:
         -f {config[fdr]} \
         -d {config[delta_psi]} \
         -m {config[minimum_reads]} \
-        -b {config[beta_binomial]} \
         -r {config[reference_group]} \
         -a {config[alternative_group]} \
         --onlypsi {config[only_psi]} \

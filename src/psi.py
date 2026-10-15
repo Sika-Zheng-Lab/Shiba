@@ -33,7 +33,6 @@ def get_args():
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
     parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
-    parser.add_argument("-b", "--beta-binomial", help = "Perform beta-binomial test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
@@ -41,8 +40,8 @@ def get_args():
 
     factorial.add_arguments(parser)
     args = parser.parse_args()
-    if args.stat_method == "legacy" and (args.formula or args.coef or args.contrast_file or args.design_only):
-        parser.error("Formula/contrast options require --stat-method beta-binomial")
+    if args.stat_method == "fisher" and (args.formula or args.coef or args.contrast_file or args.design_only):
+        parser.error("Formula/contrast options require --stat-method beta_binomial")
     return(args)
 
 def main():
@@ -57,7 +56,7 @@ def main():
     logger.info("Starting PSI calculation")
     logger.debug(args)
 
-    if args.stat_method == "beta-binomial":
+    if args.stat_method == "beta_binomial":
         try:
             factorial.run(args)
         except (ValueError, RuntimeError, OSError) as error:
@@ -81,7 +80,6 @@ def main():
         "minimum_reads": args.minimum_reads,
         "individual_psi": args.individual_psi,
         "ttest": args.ttest,
-        "beta_binomial": args.beta_binomial,
         "onlypsi": args.onlypsi,
         "onlypsi_group": args.onlypsi_group,
         "excel": args.excel,
@@ -151,7 +149,7 @@ def main():
             diff_df = shibalib.diff_event(
                 event_for_analysis_df, psi_table_diff_df, junc_data, group_data["group_df"],
                 diff_group_list, group_data["sample_list_diff"],
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"], params["beta_binomial"],
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"],
                 shm_info=shm_info
             )
 
@@ -256,7 +254,7 @@ def main():
     # Reports must not mistake a reused legacy output directory for regression.
     import json
     with open(os.path.join(paths["output"], "analysis.json"), "w") as handle:
-        json.dump({"stat_method": "legacy"}, handle)
+        json.dump({"stat_method": "fisher"}, handle)
     logger.info("All processes completed.")
 
 if __name__ == '__main__':

@@ -33,14 +33,17 @@ Shiba comprises four main steps:
 4. **Statistical analysis**: Identify DSEs using Fisher's exact test or beta-binomial regression
 
 **Beta-binomial analysis**: Shiba and SnakeShiba support optional event-centric
-beta-binomial regression (`stat_method: beta-binomial`) for factorial experimental
+beta-binomial regression (`stat_method: beta_binomial`) for factorial experimental
 designs. This mode models junction counts across biological replicates with
 R/glmmTMB, accounting for overdispersion and supporting covariates, interaction
 terms (for example, genotype × treatment), and user-defined contrasts. It reports
 FDR-adjusted event-level results and model-based PSI predictions and effect sizes.
 See the [beta-binomial regression guide](docs/usage/beta_binomial_regression.md)
-for configuration and examples. This mode is separate from the legacy
-`beta_binomial: True` supplementary two-group test.
+for configuration and examples. Set `stat_method: beta_binomial` plus
+`formula`, metadata, and `coef` or `contrast_file` in the configuration.
+Set `stat_method: fisher` to use Fisher testing instead. The old supplementary
+`beta_binomial` key and `psi.py -b/--beta-binomial` have been removed; delete
+that key from existing configurations.
 
 <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
 
@@ -90,77 +93,16 @@ this checkout. MameShiba also needs glmmTMB/jsonlite when using the new mode.
 
 ### Docker
 
-Build an image containing this checkout, Tosa 1.0.0 from Bioconda, and the
-R/glmmTMB and jsonlite regression dependencies:
-
 ```bash
-docker build -f docker/Dockerfile -t shiba:factorial .
-docker run --rm shiba:factorial tosa --version
-docker run --rm shiba:factorial Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE))'
-docker run --rm -it -v "$PWD:/work" -w /work shiba:factorial bash
+docker pull shiba:v0.8.2
 ```
-
-Inside the container, run `shiba.py -p 4 config.yaml`. Configure input and output
-paths as they appear inside the container. `shiba:factorial` is a local image tag,
-not a published Docker Hub release.
-
-See the [installation guide](docs/installation.md) for CRAN/user-library
-installation, verification, and SnakeShiba with Conda or Apptainer. See the
-[regression guide](docs/usage/beta_binomial_regression.md) for formula, coefficient,
-and contrast settings.
-
-In the new regression mode, an event is tested only when every component has
-at least 10 total reads in the same half (rounded up) of samples in **every
-categorical design cell**. Only passing events enter FDR correction. Configure
-this with `minimum_reads` (default 10), `min_sample_fraction` (default 0.5), and
-optional `filter_group` columns; per-group counts are saved in `event_filter.tsv`.
-
-Use `-p 8` to fit components with eight persistent workers. Passing events are
-rebatched after filtering, and exact component results are cached within a run
-(`component_cache_size: 10000`; set to `0` to disable). Stage, batch, and component
-timing files report runtime, optimizer retries, and cache usage. Observed PSI
-calculation also uses `-p`, with junction counts held in shared memory.
 
 ## Usage
 
-Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https://sika-zheng-lab.github.io/Shiba/).
-
-Fisher analysis also uses `-p N` to distribute event tests across processes.
-BH correction is applied after joining results, across the same event-type
-family as before. Small workloads (fewer than 256 input events per type) run
-serially; larger workloads use up to `N` workers. Each process caches up to
-10,000 identical 2×2 tables. This cache is separate from the factorial
-`component_cache_size` setting.
-
-***Shiba***
-
-```bash
-python ./shiba.py -p 4 config.yaml
-```
-
-***MameShiba***, a lightweight version of Shiba
-
-```bash
-python ./shiba.py --mame -p 4 config.yaml
-```
-
-***SnakeShiba***, Snakemake-based workflow of Shiba
-
-```bash
-snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
-
-***scShiba***, a single-cell RNA-seq version of Shiba
-
-```bash
-python ./scshiba.py -p 4 config.yaml
-```
-
-***SnakeScShiba***, Snakemake-based workflow of scShiba
-
-```bash
-snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
+See the documentation for [pipeline commands](docs/quickstart/running.md),
+[bulk RNA-seq](docs/quickstart/diff_splicing_bulk.md),
+[single-cell RNA-seq](docs/quickstart/diff_splicing_sc.md), and
+[factorial beta-binomial analysis with example inputs](docs/quickstart/beta_binomial.md).
 
 ## Visualization
 

@@ -544,7 +544,7 @@ def main():
 	if os.path.isfile(manifest_path):
 		import json
 		with open(manifest_path) as handle:
-			regression = json.load(handle).get("stat_method") == "beta-binomial"
+			regression = json.load(handle).get("stat_method") in ("beta_binomial", "beta-binomial")
 		if regression:
 			from lib.factorial_report import write_report
 			write_report(args.input, args.output)

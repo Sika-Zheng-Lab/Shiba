@@ -86,6 +86,8 @@ nav:
 - Home: index.md
 - Installation: installation.md
 - Quick start:
+  - Running the pipelines: quickstart/running.md
+  - Factorial beta-binomial analysis: quickstart/beta_binomial.md
   - With bulk RNA-seq data: quickstart/diff_splicing_bulk.md
   - With single-cell RNA-seq data: quickstart/diff_splicing_sc.md
 - Output:
@@ -97,3 +99,4 @@ nav:
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
   - Beta-binomial regression: usage/beta_binomial_regression.md
+  - Factorial workflow implementation and validation: usage/factorial_workflow_summary.md

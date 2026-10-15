@@ -1,0 +1,36 @@
+{
+  "profiles": {
+    "WT_Control": {
+      "genotype": "WT",
+      "treatment": "Control"
+    },
+    "WT_Drug": {
+      "genotype": "WT",
+      "treatment": "Drug"
+    },
+    "KO_Control": {
+      "genotype": "KO",
+      "treatment": "Control"
+    },
+    "KO_Drug": {
+      "genotype": "KO",
+      "treatment": "Drug"
+    }
+  },
+  "effects": {
+    "delta_WT": {
+      "WT_Drug": 1,
+      "WT_Control": -1
+    },
+    "delta_KO": {
+      "KO_Drug": 1,
+      "KO_Control": -1
+    },
+    "delta_delta": {
+      "KO_Drug": 1,
+      "KO_Control": -1,
+      "WT_Drug": -1,
+      "WT_Control": 1
+    }
+  }
+}

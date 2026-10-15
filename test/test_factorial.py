@@ -166,21 +166,22 @@ class TestCoverageFilter(unittest.TestCase):
         factorial.add_arguments(parser)
         args = parser.parse_args([])
         self.assertEqual(args.min_sample_fraction, .5)
+        self.assertEqual(args.stat_method, "fisher")
         args.formula = "group"; args.sample_metadata = "samples.tsv"
-        args.onlypsi = args.onlypsi_group = args.beta_binomial = args.ttest = False
+        args.onlypsi = args.onlypsi_group = args.ttest = False
         args.coef = ["groupB"]; args.num_process = 1; args.minimum_reads = 10; args.fdr = .05
         for fraction in [0, -0.1, 1.01, float("nan"), float("inf")]:
             args.min_sample_fraction = fraction
             with self.assertRaisesRegex(ValueError, "min-sample-fraction"):
                 factorial.validate_options(args)
-            self.assertTrue(validate_config_types(dict(stat_method="beta-binomial", min_sample_fraction=fraction)))
+            self.assertTrue(validate_config_types(dict(stat_method="beta_binomial", min_sample_fraction=fraction)))
         args.min_sample_fraction = .5
         factorial.validate_options(args)
         args.component_cache_size = -1
         with self.assertRaisesRegex(ValueError, "component-cache-size"):
             factorial.validate_options(args)
         for value in [-1, .5, 1.0, float("nan"), float("inf"), True]:
-            self.assertTrue(validate_config_types(dict(stat_method="beta-binomial", component_cache_size=value)))
+            self.assertTrue(validate_config_types(dict(stat_method="beta_binomial", component_cache_size=value)))
 
 
 class TestAggregation(unittest.TestCase):
@@ -217,7 +218,7 @@ class TestAggregation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             (tmp / "experiment.tsv").write_text("sample\tbam\tgroup\na\t/path/a.bam\tall\n")
-            cfg = dict(stat_method="beta-binomial", formula="genotype * treatment",
+            cfg = dict(stat_method="beta_binomial", formula="genotype * treatment",
                        coef=["genotypeKO:treatmentDrug"], experiment_table=str(tmp / "experiment.tsv"))
             self.assertEqual(validate_config(cfg), [])
             cfg["filter_group"] = [123]
@@ -285,7 +286,7 @@ class TestAggregation(unittest.TestCase):
                 factorial.read_metadata(path, ["a"])
 
     def test_config_arguments(self):
-        args = factorial.config_arguments(dict(stat_method="beta-binomial", formula="a * b", coef="aKO:bDrug",
+        args = factorial.config_arguments(dict(stat_method="beta_binomial", formula="a * b", coef="aKO:bDrug",
                                                reference_levels={"a": "WT"}, filter_group=["a", "b"], min_sample_fraction=.75,
                                                component_cache_size=0))
         self.assertIn("a * b", args)
@@ -304,7 +305,7 @@ class TestGlmmTMB(unittest.TestCase):
         cls.root = Path(cls.temp.name)
         cls.metadata = make_fixture(cls.root)
         cls.base = [sys.executable, str(ROOT / "src" / "psi.py"), str(cls.root / "junctions.bed"),
-                    str(cls.root / "events"), str(cls.root / "out"), "--stat-method", "beta-binomial",
+                    str(cls.root / "events"), str(cls.root / "out"), "--stat-method", "beta_binomial",
                     "--sample-metadata", str(cls.root / "samples.tsv"), "--formula", "genotype * treatment + batch",
                     "--reference-level", "genotype=WT", "--reference-level", "treatment=Control",
                     "--coef", "genotypeKO:treatmentDrug"]

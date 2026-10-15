@@ -9,14 +9,20 @@ All notable changes to this Shiba project will be documented in this file.
 >
 > This version includes a **breaking change** in the MXE (Mutually Exclusive Exons) coordinate definition. `exon_a`/`exon_b` and their associated introns are now assigned based on gene strand direction (upstream/downstream) instead of genomic position (left/right). This affects all MXE output files (`EVENT_MXE.txt`, `PSI_MXE.txt`) for minus-strand genes. Results from previous versions are **not directly comparable** for MXE events on the minus strand. Please re-run the analysis with this version if you need consistent strand-aware MXE annotations.
 
+### Removed
+
+- Removed the supplementary two-group Python beta-binomial implementation, its bulk/single-cell `-b/--beta-binomial` flags, and the `beta_binomial` configuration key. Old keys now produce a migration error. Use `stat_method: beta_binomial` for bulk event-centric factorial regression or `stat_method: fisher` for Fisher testing.
+
 ### Added
+
+- Added matching factorial sample metadata, experiment-table, contrast, and PSI prediction templates, with a MkDocs quick-start walkthrough for the beta-binomial configuration.
 
 - Documented real-data Fisher/observed-PSI memory measurements and a complete 32-CPU beta-binomial validation, with compact metrics and a process-tree memory monitor.
 
 - Parallelized pairwise Fisher event tests using `-p`, retaining event-type-wide BH correction and existing significance rules. Added bounded reuse of identical 2×2 tests and vectorized MSE/AFE/ALE significance assignment.
 - Enabled `-p` for factorial observed PSI with shared junction memory and exception-safe cleanup; made PSI event partitioning deterministic across worker processes.
 
-- Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta-binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts.
+- Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta_binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts.
 - Preserved integer junction components for all eight event types, with common coverage masks, component direction consistency, conservative event-level tests, and BH/BY adjustment across event types per contrast.
 - Added default pre-test coverage filtering for factorial regression: every component must have at least 10 total reads in the same half (rounded up) of samples in every categorical design cell. Only passing events enter fitting and FDR correction. Supports configurable sample fractions/grouping columns and exports per-group counts in `event_filter.tsv`.
 - Added design inspection, covariate-standardized component PSI predictions and PSI contrasts, model diagnostics, contrast-aware reports, and regression output tables. Existing pairwise modes remain unchanged.
@@ -32,6 +38,10 @@ All notable changes to this Shiba project will be documented in this file.
 - Added unit tests for beta-binomial testing covering core functionality, edge cases, and parallel execution.
 
 ### Changed
+
+- Standardized `stat_method` to `fisher` (default when omitted) or `beta_binomial` in YAML and the PSI CLI; added a dedicated factorial configuration example.
+
+- Documented the complete factorial workflow through `python shiba.py config.yaml -p N`; added launcher coverage and optional configuration defaults, and use the launcher's Python interpreter for pipeline steps.
 
 - Accelerated factorial regression with vectorized event/prediction aggregation, post-filter batching, persistent workers dynamically scheduling component fits, and a bounded exact-result cache (`component_cache_size`, default 10000; 0 disables reuse). Added stage/component/batch timing and optimizer retry diagnostics without changing the tests or FDR family.
 - **Changed the input format for scShiba and SnakeScShiba from STARsolo SJ matrices to BAM/CRAM files, matching Shiba and SnakeShiba.** Junction and exon–intron boundary counts are now extracted directly from these alignment files using Tosa. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.

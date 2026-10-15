@@ -2,9 +2,9 @@
 
 def config_arguments(config):
     """Single option mapping shared by the Python and Snakemake launchers."""
-    if config.get("stat_method", "legacy") != "beta-binomial":
+    if config.get("stat_method", "fisher") != "beta_binomial":
         return []
-    args = ["--stat-method", "beta-binomial"]
+    args = ["--stat-method", "beta_binomial"]
     for key in ("sample_metadata", "formula", "contrast_file", "prediction_grid", "effect_name",
                 "min_effect", "p_adjust", "rscript", "event_batch_size", "min_sample_fraction", "component_cache_size"):
         if config.get(key) is not None:

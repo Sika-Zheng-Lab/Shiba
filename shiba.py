@@ -78,7 +78,8 @@ def main():
     logger.info("Loading configuration...")
     config_path = args.config
     config = general.load_config(config_path)
-    regression = config.get('stat_method', 'legacy') == 'beta-binomial'
+    general.apply_config_defaults(config)
+    regression = config.get('stat_method', 'fisher') == 'beta_binomial'
     if config['excel'] and args.mame:
         logger.warning("Excel output is not available in MameShiba mode. Disabling excel option.")
         config['excel'] = False
@@ -118,9 +119,6 @@ def main():
             logger.info("Differential analysis mode disabled.")
             only_psi = True
 
-    # Apply default values for optional config keys
-    general.apply_config_defaults(config)
-
     # Validate configuration before pipeline execution
     logger.info("Validating configuration...")
     validation_errors = general.validate_config(config, mode="bulk")
@@ -152,7 +150,7 @@ def main():
         {
             "name": "Step 1: bam2gtf.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "bam2gtf.py"),
+                sys.executable, os.path.join(script_dir, "src", "bam2gtf.py"),
                 "-i", experiment_table,
                 "-r", gtf,
                 "-o", os.path.join(output_dir, "annotation", "assembled_annotation.gtf"),
@@ -162,7 +160,7 @@ def main():
         {
             "name": "Step 2: gtf2event.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "gtf2event.py"),
+                sys.executable, os.path.join(script_dir, "src", "gtf2event.py"),
                 "-i", os.path.join(output_dir, "annotation", "assembled_annotation.gtf") if config['unannotated'] else gtf,
                 "-r" if config['unannotated'] else "",
                 gtf if config['unannotated'] else "",
@@ -173,7 +171,7 @@ def main():
         {
             "name": "Step 3: bam2junc.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "bam2junc.py"),
+                sys.executable, os.path.join(script_dir, "src", "bam2junc.py"),
                 "-i", experiment_table,
                 "-r", os.path.join(output_dir, "events", "EVENT_RI.txt"),
                 "-o", os.path.join(output_dir, "junctions", "junctions.bed"),
@@ -189,7 +187,7 @@ def main():
         {
             "name": "Step 4: psi.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "psi.py"),
+                sys.executable, os.path.join(script_dir, "src", "psi.py"),
                 "-g", experiment_table,
                 "-p", processors,
                 "-r", config.get('reference_group', 'NA'),
@@ -199,7 +197,6 @@ def main():
                 "-m", str(config['minimum_reads']),
                 "-i", str(config['individual_psi']),
                 "-t", str(False if regression else config['ttest']),
-                "-b", str(False if regression else config.get('beta_binomial', False)),
                 "--excel", str(config['excel']),
                 "--onlypsi", str(only_psi),
                 "--onlypsi-group", str(only_psi_group),
@@ -211,7 +208,7 @@ def main():
         {
             "name": "Step 5: expression.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "expression.py"),
+                sys.executable, os.path.join(script_dir, "src", "expression.py"),
                 "-i", experiment_table,
                 "-g", gtf,
                 "-o", os.path.join(output_dir, "results", "expression"),
@@ -226,7 +223,7 @@ def main():
         {
             "name": "Step 6: pca.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "pca.py"),
+                sys.executable, os.path.join(script_dir, "src", "pca.py"),
                 "--input-tpm", os.path.join(output_dir, "results", "expression", "TPM.txt"),
                 "--input-psi", os.path.join(output_dir, "results", "splicing", "PSI_matrix_group.txt" if only_psi_group else "PSI_matrix_sample.txt"),
                 "-g", "3000",
@@ -236,7 +233,7 @@ def main():
         {
             "name": "Step 7: plots.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "plots.py"),
+                sys.executable, os.path.join(script_dir, "src", "plots.py"),
                 "-i", os.path.join(output_dir, "results"),
                 "-e", experiment_table,
                 "-s", command_line,

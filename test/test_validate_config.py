@@ -463,46 +463,33 @@ class TestValidateConfig(unittest.TestCase):
 # apply_config_defaults
 # ============================================================================
 class TestApplyConfigDefaults(unittest.TestCase):
-    def test_beta_binomial_missing_defaults_to_false(self):
-        """When beta_binomial is absent, it should be set to False."""
-        config = {"fdr": 0.05}
+    def test_defaults_and_explicit_values(self):
+        config = {"fdr": 0.01, "stat_method": "beta_binomial"}
         apply_config_defaults(config)
-        self.assertIn("beta_binomial", config)
-        self.assertFalse(config["beta_binomial"])
+        self.assertEqual(config["fdr"], 0.01)
+        self.assertEqual(config["stat_method"], "beta_binomial")
+        self.assertEqual(config["minimum_reads"], 10)
+        self.assertNotIn("beta_binomial", config)
 
-    def test_beta_binomial_present_not_overwritten(self):
-        """When beta_binomial is already set (even False), it should not be changed."""
-        config = {"beta_binomial": False}
+    def test_method_default_and_allowed_values(self):
+        config = {}
         apply_config_defaults(config)
-        self.assertFalse(config["beta_binomial"])
+        self.assertEqual(config["stat_method"], "fisher")
+        for invalid in ("legacy", "beta-binomial", "typo"):
+            errors = validate_config({"stat_method": invalid})
+            self.assertTrue(any("stat_method must be fisher or beta_binomial" in e for e in errors))
 
-    def test_beta_binomial_true_not_overwritten(self):
-        """When beta_binomial is explicitly True, it should remain True."""
-        config = {"beta_binomial": True}
-        apply_config_defaults(config)
-        self.assertTrue(config["beta_binomial"])
+    def test_single_cell_defaults(self):
+        config = {}
+        apply_config_defaults(config, mode="sc")
+        self.assertEqual(config["minimum_anchor_length"], 8)
+        self.assertEqual(config["minimum_intron_length"], 20)
+        self.assertEqual(config["strand"], "unstranded")
 
-    def test_beta_binomial_missing_logs_warning(self):
-        """A warning should be logged when beta_binomial is missing."""
-        config = {"fdr": 0.05}
-        with self.assertLogs("lib.general", level="WARNING") as cm:
-            apply_config_defaults(config)
-        self.assertTrue(any("beta_binomial" in msg for msg in cm.output))
-
-    def test_beta_binomial_present_no_warning(self):
-        """No warning should be logged when beta_binomial is present."""
-        config = {"beta_binomial": False}
-        # assertNoLogs is Python 3.10+; use assertRaises instead
-        try:
-            with self.assertLogs("lib.general", level="WARNING"):
-                apply_config_defaults(config)
-            # If we get here, a warning WAS logged — fail
-            self.fail("Unexpected warning logged when beta_binomial is present")
-        except AssertionError as e:
-            if "no logs" in str(e).lower() or "Unexpected warning" not in str(e):
-                pass  # Expected: no warning logged
-            else:
-                raise
+    def test_removed_switch_rejected_even_when_false(self):
+        for value in (True, False):
+            errors = validate_config({"beta_binomial": value})
+            self.assertTrue(any("beta_binomial has been removed" in e for e in errors))
 
 
 if __name__ == "__main__":

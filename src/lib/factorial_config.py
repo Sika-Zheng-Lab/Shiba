@@ -6,7 +6,7 @@ def config_arguments(config):
         return []
     args = ["--stat-method", "beta-binomial"]
     for key in ("sample_metadata", "formula", "contrast_file", "prediction_grid", "effect_name",
-                "min_effect", "p_adjust", "rscript", "event_batch_size", "min_sample_fraction"):
+                "min_effect", "p_adjust", "rscript", "event_batch_size", "min_sample_fraction", "component_cache_size"):
         if config.get(key) is not None:
             args.extend(["--" + key.replace("_", "-"), str(config[key])])
     for key, option in (("coef", "--coef"), ("categorical", "--categorical"), ("continuous", "--continuous"),

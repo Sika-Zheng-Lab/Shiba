@@ -104,6 +104,11 @@ categorical design cell**. Only passing events enter FDR correction. Configure
 this with `minimum_reads` (default 10), `min_sample_fraction` (default 0.5), and
 optional `filter_group` columns; per-group counts are saved in `event_filter.tsv`.
 
+Use `-p 8` to fit components with eight persistent workers. Passing events are
+rebatched after filtering, and exact component results are cached within a run
+(`component_cache_size: 10000`; set to `0` to disable). Stage, batch, and component
+timing files report runtime, optimizer retries, and cache usage.
+
 ## Usage
 
 Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https://sika-zheng-lab.github.io/Shiba/).

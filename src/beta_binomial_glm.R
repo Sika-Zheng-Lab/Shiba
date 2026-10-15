@@ -150,35 +150,35 @@ prepare_design <- function() {
 }
 
 fit_matrix <- function(X, k, e) {
+    started <- proc.time()[3]; attempts <- 0L
     dat <- data.frame(k = k, e = e)
     predictors <- paste0("x", seq_len(ncol(X)))
     if (ncol(X)) for (i in seq_len(ncol(X))) dat[[predictors[i]]] <- X[, i]
     f <- if (ncol(X)) reformulate(predictors, response = "cbind(k,e)", intercept = FALSE) else cbind(k,e) ~ 0
     warnings <- character()
-    attempt <- function(control) tryCatch(withCallingHandlers(
+    attempt <- function(control) {
+        attempts <<- attempts + 1L
+        tryCatch(withCallingHandlers(
         glmmTMB::glmmTMB(f, data = dat, family = glmmTMB::betabinomial(link = "logit"),
                         dispformula = ~1, REML = FALSE, control = control),
         warning = function(w) { warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning") }),
         error = function(e) { warnings <<- c(warnings, conditionMessage(e)); NULL })
+    }
     good <- function(m) !is.null(m) && isTRUE(m$sdr$pdHess) && m$fit$convergence == 0 &&
         is.finite(as.numeric(logLik(m))) && all(is.finite(glmmTMB::fixef(m)$cond))
     fit <- attempt(glmmTMB::glmmTMBControl(optCtrl = list(iter.max = 1000, eval.max = 1500), parallel = 1L))
     if (!good(fit)) fit <- attempt(glmmTMB::glmmTMBControl(optimizer = optim,
                       optArgs = list(method = "BFGS"), optCtrl = list(maxit = 1500), parallel = 1L))
-    list(fit = fit, ok = good(fit), warnings = paste(unique(warnings), collapse = " | "))
+    list(fit = fit, ok = good(fit), warnings = paste(unique(warnings), collapse = " | "),
+         attempts = attempts, seconds = unname(proc.time()[3] - started))
 }
 
-fit_event <- function(dat, design) {
-    X <- design$X
-    ids <- unique(dat$component_id)
-    components <- lapply(ids, function(id) {
-        d <- dat[dat$component_id == id, ]
-        if (anyDuplicated(d$sample) || !setequal(d$sample, design$samples)) stop("Invalid component sample IDs")
-        d[match(design$samples, d$sample), ]
-    })
-    mask <- Reduce(`&`, lapply(components, function(d) d$inclusion + d$exclusion >= cfg$minimum_reads & d$inclusion + d$exclusion > 0))
-    x <- X[mask, , drop = FALSE]
-    status <- if (nrow(x) <= ncol(x) + 1L) "insufficient_samples" else if (qr(x)$rank < ncol(x)) "rank_deficient" else "ok"
+fit_component <- function(task, design) {
+    started <- proc.time()[3]
+    components <- list(task$data); ids <- task$data$component_id[1]
+    mask <- task$mask; x <- design$X[mask, , drop = FALSE]; status <- task$status
+    full_attempts <- null_attempts <- 0L
+    full_seconds <- null_seconds <- 0
     stats <- list(); predictions <- list()
     for (i in seq_along(components)) {
         d <- components[[i]]; k <- d$inclusion[mask]; e <- d$exclusion[mask]
@@ -186,6 +186,7 @@ fit_event <- function(dat, design) {
         if (state == "ok" && (all(k == 0) || all(e == 0))) state <- "boundary_response"
         if (state == "ok") {
             full <- fit_matrix(x, k, e)
+            full_attempts <- full$attempts; full_seconds <- full$seconds
             if (!full$ok) state <- "full_fit_failed"
         }
         if (state == "ok") {
@@ -217,9 +218,10 @@ fit_event <- function(dat, design) {
                 row$phi <- phi; row$rho <- rho; row$loglik_full <- as.numeric(logLik(full$fit))
                 # A basis for c'beta=0 supports arbitrary scalar contrasts, not
                 # merely dropping an interaction column or term.
-                Q <- qr.Q(qr(matrix(cvec, ncol = 1)), complete = TRUE)
-                basis <- Q[, -1, drop = FALSE]
+                basis <- design$null_bases[[name]]
                 null <- fit_matrix(x %*% basis, k, e)
+                null_attempts <- null_attempts + null$attempts
+                null_seconds <- null_seconds + null$seconds
                 if (!is.null(null$fit)) {
                     row$null_convergence <- null$fit$fit$convergence
                     row$null_pd_hessian <- isTRUE(null$fit$sdr$pdHess)
@@ -239,31 +241,140 @@ fit_event <- function(dat, design) {
             stats[[length(stats) + 1L]] <- row
         }
     }
-    list(stats = do.call(rbind, stats), predictions = if (length(predictions)) do.call(rbind, predictions) else NULL)
+    list(stats = do.call(rbind, stats), predictions = if (length(predictions)) do.call(rbind, predictions) else NULL,
+         timing = data.frame(event_type = task$data$event_type[1], event_id = task$data$event_id[1],
+             component_id = ids[1], cache_hit = FALSE, worker_pid = Sys.getpid(),
+             elapsed_seconds = unname(proc.time()[3] - started), full_seconds = full_seconds,
+             null_seconds = null_seconds, full_attempts = full_attempts, null_attempts = null_attempts,
+             retries = max(0L, full_attempts - 1L) + max(0L, null_attempts - length(design$contrasts))))
 }
 
+# A run has one immutable design, contrast set, prediction population and optimizer
+# configuration. A cache key therefore needs the exact ordered sample mask and the
+# included response counts. Hex serialization avoids hash collisions/rounding.
+component_key <- function(task) {
+    paste(as.character(serialize(list(mask = task$mask,
+        k = task$data$inclusion[task$mask], e = task$data$exclusion[task$mask]),
+        NULL, version = 2)), collapse = "")
+}
+
+prepare_tasks <- function(dat, design) {
+    groups <- split(dat, interaction(dat$event_type, dat$event_id, drop = TRUE, lex.order = TRUE))
+    tasks <- list()
+    for (event in groups) {
+        components <- lapply(unique(event$component_id), function(id) {
+            d <- event[event$component_id == id, ]
+            if (anyDuplicated(d$sample) || !setequal(d$sample, design$samples)) stop("Invalid component sample IDs")
+            d[match(design$samples, d$sample), ]
+        })
+        mask <- Reduce(`&`, lapply(components, function(d) d$inclusion + d$exclusion >= cfg$minimum_reads &
+                                   d$inclusion + d$exclusion > 0))
+        x <- design$X[mask, , drop = FALSE]
+        status <- if (nrow(x) <= ncol(x) + 1L) "insufficient_samples" else if (qr(x)$rank < ncol(x)) "rank_deficient" else "ok"
+        for (d in components) tasks[[length(tasks) + 1L]] <- list(data = d, mask = mask, status = status)
+    }
+    tasks
+}
+
+fit_worker <- function(task) fit_component(task, worker_design)
+
 fit_batches <- function() {
+    started <- proc.time()[3]
     suppressPackageStartupMessages(library(glmmTMB))
     design <- readRDS(cfg$design_rds)
-    first_stats <- TRUE; first_pred <- TRUE
+    design$null_bases <- lapply(design$contrasts, function(cvec)
+        qr.Q(qr(matrix(cvec, ncol = 1)), complete = TRUE)[, -1, drop = FALSE])
+    worker_design <- design
+    cluster <- NULL
+    if (cfg$processes > 1L) {
+        # Persistent workers avoid forking/loading packages for every input batch.
+        cluster <- parallel::makeCluster(cfg$processes,
+            type = if (.Platform$OS.type == "windows") "PSOCK" else "FORK")
+        on.exit(parallel::stopCluster(cluster), add = TRUE)
+        parallel::clusterExport(cluster, c("fit_matrix", "fit_component", "worker_design"), envir = environment())
+        parallel::clusterEvalQ(cluster, suppressPackageStartupMessages(library(glmmTMB)))
+    }
+    cache_limit <- if (is.null(cfg$component_cache_size)) 10000L else as.integer(cfg$component_cache_size)
+    cache_values <- vector("list", cache_limit)
+    cache_order <- character(cache_limit); cache_position <- 1L
+    total <- hits <- attempts <- retries <- 0L
+    first_stats <- first_pred <- first_timing <- TRUE
+    first_batch <- TRUE
     for (file in unlist(cfg$batches, use.names = FALSE)) {
+        batch_start <- proc.time()[3]
         dat <- read_tsv(file)
         for (v in c("inclusion", "exclusion")) {
             dat[[v]] <- as.numeric(dat[[v]])
             if (any(!is.finite(dat[[v]]) | dat[[v]] < 0 | dat[[v]] != floor(dat[[v]]))) stop("Invalid integer counts")
         }
-        groups <- split(dat, interaction(dat$event_type, dat$event_id, drop = TRUE, lex.order = TRUE))
-        message("Fitting ", length(groups), " events from ", basename(file))
-        result <- if (cfg$processes > 1L && .Platform$OS.type != "windows")
-            parallel::mclapply(groups, fit_event, design = design, mc.cores = cfg$processes, mc.preschedule = TRUE) else
-            lapply(groups, fit_event, design = design)
-        for (r in result) {
-            if (inherits(r, "try-error")) stop("Event worker failed: ", r)
-            write_tsv(r$stats, file.path(out, "component_statistics.tsv"), append = !first_stats); first_stats <- FALSE
-            if (!is.null(r$predictions)) {
-                write_tsv(r$predictions, file.path(out, "component_predictions.tsv"), append = !first_pred); first_pred <- FALSE
-            }
+        tasks <- prepare_tasks(dat, design)
+        message("Fitting ", length(tasks), " components from ", basename(file))
+        keys <- if (cache_limit > 0L) vapply(tasks, component_key, character(1)) else as.character(seq_along(tasks))
+        unique_indices <- which(!duplicated(keys))
+        cached <- match(keys, cache_order)
+        missing <- unique_indices[is.na(cached[unique_indices])]
+        # Components are independently fitted only after the event-wide mask is fixed.
+        chunk <- max(1L, min(8L, ceiling(length(missing) / (4L * cfg$processes))))
+        fitted <- if (!length(missing)) list() else if (is.null(cluster))
+            lapply(tasks[missing], fit_component, design = design) else
+            parallel::parLapplyLB(cluster, tasks[missing], fit_worker, chunk.size = chunk)
+        # Character-vector matching supports arbitrary sample sizes and avoids
+        # interning large keys as R environment symbols (which cannot be freed).
+        unique_keys <- keys[unique_indices]
+        values <- vector("list", length(unique_indices))
+        fitted_indices <- match(unique_indices, missing)
+        for (j in seq_along(unique_indices)) {
+            index <- unique_indices[j]
+            values[[j]] <- if (!is.na(cached[index])) cache_values[[cached[index]]] else fitted[[fitted_indices[j]]]
         }
+        value_indices <- match(keys, unique_keys)
+        reused_flags <- rep(TRUE, length(tasks)); reused_flags[missing] <- FALSE
+        statistics <- predictions <- timings <- vector("list", length(tasks))
+        for (j in seq_along(tasks)) {
+            value <- values[[value_indices[j]]]
+            reused <- reused_flags[j]
+            ids <- tasks[[j]]$data[1, c("event_type", "event_id", "component_id"), drop = FALSE]
+            for (column in names(ids)) {
+                value$stats[[column]] <- ids[[column]]
+                if (!is.null(value$predictions)) value$predictions[[column]] <- ids[[column]]
+                value$timing[[column]] <- ids[[column]]
+            }
+            if (reused) {
+                value$timing$cache_hit <- TRUE
+                value$timing$worker_pid <- NA_integer_
+                value$timing[, c("elapsed_seconds", "full_seconds", "null_seconds", "full_attempts", "null_attempts", "retries")] <- 0
+            }
+            statistics[[j]] <- value$stats; predictions[j] <- list(value$predictions); timings[[j]] <- value$timing
+        }
+        # FIFO bounded cache; entries are compact results, never glmmTMB fit objects.
+        if (cache_limit > 0L) for (j in seq_along(missing)) {
+            key <- keys[missing[j]]
+            cache_values[[cache_position]] <- fitted[[j]]
+            cache_order[cache_position] <- key
+            cache_position <- cache_position %% cache_limit + 1L
+        }
+        timing <- do.call(rbind, timings)
+        write_tsv(do.call(rbind, statistics), file.path(out, "component_statistics.tsv"), append = !first_stats)
+        first_stats <- FALSE
+        prediction <- do.call(rbind, predictions)
+        if (!is.null(prediction)) {
+            write_tsv(prediction, file.path(out, "component_predictions.tsv"), append = !first_pred)
+            first_pred <- FALSE
+        }
+        write_tsv(timing, file.path(out, "component_timings.tsv"), append = !first_timing); first_timing <- FALSE
+        batch <- data.frame(batch = basename(file), components = length(tasks), fitted_components = length(missing),
+            cache_hits = sum(timing$cache_hit), full_attempts = sum(timing$full_attempts),
+            null_attempts = sum(timing$null_attempts), retries = sum(timing$retries),
+            elapsed_seconds = unname(proc.time()[3] - batch_start))
+        write_tsv(batch, file.path(out, "batch_timings.tsv"), append = !first_batch); first_batch <- FALSE
+        message("Completed ", basename(file), ": ", length(tasks), " components, ", batch$cache_hits,
+                " cache hits, ", batch$retries, " retries, ", round(batch$elapsed_seconds, 3), " seconds")
+        total <- total + length(tasks); hits <- hits + batch$cache_hits
+        attempts <- attempts + batch$full_attempts + batch$null_attempts; retries <- retries + batch$retries
     }
+    write_json(list(processes = cfg$processes, scheduling = "dynamic components, persistent workers",
+        component_cache_size = cache_limit, components = total, cache_hits = hits,
+        optimizer_attempts = attempts, retries = retries, elapsed_seconds = unname(proc.time()[3] - started)),
+        file.path(out, "backend_performance.json"), auto_unbox = TRUE, pretty = TRUE)
 }
 if (args[1] == "design") prepare_design() else if (args[1] == "fit") fit_batches() else stop("Unknown backend stage")

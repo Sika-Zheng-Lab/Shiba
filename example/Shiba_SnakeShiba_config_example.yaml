@@ -64,6 +64,8 @@ excel:
 # p_adjust: BH
 # rscript: Rscript
 # event_batch_size: 200
+# Exact component-result cache (0 disables reuse for comparisons):
+# component_cache_size: 10000
 # Optional separate pairwise expression test in factorial mode:
 # expression_reference_group: Ref
 # expression_alternative_group: Alt

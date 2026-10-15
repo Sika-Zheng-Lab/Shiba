@@ -364,6 +364,14 @@ def validate_config_types(config, mode="bulk"):
     errors = []
 
     # Coverage fraction for the factorial event pre-filter.
+    if config.get('stat_method') == 'beta-binomial' and 'component_cache_size' in config:
+        value = config['component_cache_size']
+        try:
+            if not isinstance(value, (int, str)) or isinstance(value, bool) or int(value) < 0:
+                errors.append('component_cache_size must be a nonnegative integer')
+        except (TypeError, ValueError, OverflowError):
+            errors.append('component_cache_size must be a nonnegative integer')
+
     if config.get('stat_method') == 'beta-binomial' and 'min_sample_fraction' in config:
         try:
             fraction = float(config['min_sample_fraction'])

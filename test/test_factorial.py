@@ -176,9 +176,42 @@ class TestCoverageFilter(unittest.TestCase):
             self.assertTrue(validate_config_types(dict(stat_method="beta-binomial", min_sample_fraction=fraction)))
         args.min_sample_fraction = .5
         factorial.validate_options(args)
+        args.component_cache_size = -1
+        with self.assertRaisesRegex(ValueError, "component-cache-size"):
+            factorial.validate_options(args)
+        for value in [-1, .5, 1.0, float("nan"), float("inf"), True]:
+            self.assertTrue(validate_config_types(dict(stat_method="beta-binomial", component_cache_size=value)))
 
 
 class TestAggregation(unittest.TestCase):
+    def test_passing_batches_cross_input_and_type_boundaries(self):
+        from lib.event_components import COUNT_COLUMNS
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = factorial.PassingBatchWriter(tmp, 3)
+            frames = []
+            for kind, ids in [("SE", ["a"]), ("SE", ["b", "c"]), ("RI", ["a", "d"])]:
+                frame = pd.DataFrame([[kind, event, component, sample, 5, 5]
+                                      for event in ids for component in ["c1", "c2"] for sample in ["s1", "s2"]],
+                                     columns=COUNT_COLUMNS)
+                frames.append(frame)
+                writer.add(frame)
+            writer.add(pd.DataFrame(columns=COUNT_COLUMNS))
+            writer.flush()
+            batches = [pd.read_csv(path, sep="\t") for path in writer.paths]
+            self.assertEqual([len(b[factorial.KEYS].drop_duplicates()) for b in batches], [3, 2])
+            pd.testing.assert_frame_equal(pd.concat(batches, ignore_index=True), pd.concat(frames, ignore_index=True))
+
+    def test_vectorized_component_identity_and_negative_effects(self):
+        stats, definitions = self.fixture()
+        stats.loc[:1, "estimate"] = [-1., -2.]
+        stats.loc[3, "component_id"] = "unexpected"
+        result = factorial.aggregate_events(stats, definitions, ["interaction"]).set_index("event_id")
+        self.assertEqual(result.loc["SE_1", "conservative_component_effect"], -1.)
+        self.assertEqual(result.loc["MXE_1", "status"], "untestable")
+        stats.loc[3, "component_id"] = "c1"  # Correct row count, but duplicate/missing components.
+        result = factorial.aggregate_events(stats, definitions, ["interaction"]).set_index("event_id")
+        self.assertEqual(result.loc["MXE_1", "status"], "untestable")
+
     def test_pipeline_config_without_pairwise_groups(self):
         from lib.general import validate_config
         with tempfile.TemporaryDirectory() as tmp:
@@ -235,6 +268,7 @@ class TestAggregation(unittest.TestCase):
         result = factorial.aggregate_predictions(predictions, definitions)
         self.assertEqual(result.status.iloc[0], "incomplete_components")
         self.assertTrue(np.isnan(result.value.iloc[0]))
+        self.assertTrue(result[["component_min", "component_max"]].isna().all().all())
 
     def test_failures_remain_in_fdr_family(self):
         stats, definitions = self.fixture()
@@ -252,11 +286,13 @@ class TestAggregation(unittest.TestCase):
 
     def test_config_arguments(self):
         args = factorial.config_arguments(dict(stat_method="beta-binomial", formula="a * b", coef="aKO:bDrug",
-                                               reference_levels={"a": "WT"}, filter_group=["a", "b"], min_sample_fraction=.75))
+                                               reference_levels={"a": "WT"}, filter_group=["a", "b"], min_sample_fraction=.75,
+                                               component_cache_size=0))
         self.assertIn("a * b", args)
         self.assertEqual(args[args.index("--coef") + 1], "aKO:bDrug")
         self.assertEqual(args.count("--filter-group"), 2)
         self.assertEqual(args[args.index("--min-sample-fraction") + 1], "0.75")
+        self.assertEqual(args[args.index("--component-cache-size") + 1], "0")
         self.assertEqual(factorial.config_arguments({}), [])
 
 
@@ -293,6 +329,62 @@ class TestGlmmTMB(unittest.TestCase):
         dd = prediction[(prediction.event_id == "SE_1") & prediction.name.str.startswith("delta_delta:")]
         self.assertEqual(len(dd), 1)
         self.assertGreater(dd.value.iloc[0], .4)
+
+    def test_component_cache_masks_eviction_and_dynamic_workers(self):
+        directory = self.root / "cache_checks"
+        directory.mkdir()
+        shutil.copytree(self.root / "events", directory / "events")
+        counts = pd.read_csv(self.root / "junctions.bed", sep="\t").iloc[:3].copy()
+        # Exclude either of two samples with identical counts but different batch
+        # covariates. Included responses and sample counts then match, while the
+        # design rows differ. A cache keyed by responses alone would be wrong.
+        counts.iloc[0, 4:6] = counts.iloc[1, 4:6] = 200
+        counts.iloc[2, 4:6] = 0
+        altered = counts.iloc[1].copy(); altered['ID'] = "chr1:9000-9100"
+        altered['start'] = 9000; altered['end'] = 9100; altered.iloc[4] = 0
+        second = counts.iloc[1].copy(); second['ID'] = "chr1:9200-9300"
+        second['start'] = 9200; second['end'] = 9300; second.iloc[5] = 0
+        counts = pd.concat([counts, altered.to_frame().T, second.to_frame().T], ignore_index=True)
+        counts.to_csv(directory / "junctions.bed", sep="\t", index=False)
+        original = pd.read_csv(self.root / "events" / "EVENT_SE.txt", sep="\t").iloc[0]
+        rows = []
+        for i in range(12):
+            row = original.copy(); row['event_id'] = f"SE_cache_{i:02d}"
+            row['intron_b'] = altered['ID'] if i % 2 else second['ID']
+            rows.append(row)
+        pd.DataFrame(rows).to_csv(directory / "events" / "EVENT_SE.txt", sep="\t", index=False)
+        outputs = []
+        for cache_size, processes in [(0, 1), (2, 2), (1, 2)]:
+            output = directory / f"c{cache_size}"
+            command = self.base.copy()
+            command[2:5] = [str(directory / "junctions.bed"), str(directory / "events"), str(output)]
+            command += ["--event-batch-size", "1", "--component-cache-size", str(cache_size), "-p", str(processes)]
+            run = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            outputs.append(output)
+        for filename, keys in [("component_statistics.tsv", factorial.KEYS + ["component_id", "contrast"]),
+                               ("component_predictions.tsv", factorial.KEYS + ["component_id", "kind", "name"]),
+                               ("event_statistics.tsv", factorial.KEYS + ["contrast"])]:
+            baseline = pd.read_csv(outputs[0] / filename, sep="\t").set_index(keys).sort_index()
+            for output in outputs[1:]:
+                actual = pd.read_csv(output / filename, sep="\t").set_index(keys).sort_index()
+                pd.testing.assert_frame_equal(actual, baseline, rtol=1e-8, atol=1e-10)
+        plain = json.loads((outputs[0] / "backend_performance.json").read_text())
+        cached = json.loads((outputs[1] / "backend_performance.json").read_text())
+        evicted = json.loads((outputs[2] / "backend_performance.json").read_text())
+        self.assertEqual(plain['cache_hits'], 0)
+        self.assertEqual(cached['components'], 24)
+        self.assertEqual(cached['cache_hits'], 22)
+        self.assertLess(cached['optimizer_attempts'], plain['optimizer_attempts'])
+        self.assertGreater(evicted['optimizer_attempts'], cached['optimizer_attempts'])
+        timing = pd.read_csv(outputs[1] / "component_timings.tsv", sep="\t")
+        self.assertEqual(timing.loc[~timing.cache_hit, 'worker_pid'].nunique(), 2)
+        self.assertTrue(timing.loc[timing.cache_hit, 'elapsed_seconds'].eq(0).all())
+        self.assertEqual(timing.full_attempts.sum() + timing.null_attempts.sum(), cached['optimizer_attempts'])
+        batches = pd.read_csv(outputs[1] / "batch_timings.tsv", sep="\t")
+        self.assertEqual(len(batches), 2)
+        self.assertEqual(batches.iloc[1].fitted_components, 0)
+        self.assertTrue((outputs[1] / "stage_timings.tsv").exists())
 
     def test_matches_direct_r_full_and_reduced_formula(self):
         script = self.root / "reference.R"

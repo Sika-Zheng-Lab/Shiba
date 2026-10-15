@@ -28,6 +28,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
+- Accelerated factorial regression with vectorized event/prediction aggregation, post-filter batching, persistent workers dynamically scheduling component fits, and a bounded exact-result cache (`component_cache_size`, default 10000; 0 disables reuse). Added stage/component/batch timing and optimizer retry diagnostics without changing the tests or FDR family.
 - **Changed the input format for scShiba and SnakeScShiba from STARsolo SJ matrices to BAM/CRAM files, matching Shiba and SnakeShiba.** Junction and exon–intron boundary counts are now extracted directly from these alignment files using Tosa. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
 - Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
 - Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. Until Tosa is available from Bioconda, install it from crates.io with Cargo.

@@ -254,6 +254,9 @@ contrast; it does not assert equality of component effect magnitudes.
 | `sample_metadata.tsv`, `analysis.json`, `glmmTMB.log` | Reproducibility metadata, analysis settings and backend log |
 | `summary.txt` | Counts by event type, contrast, status and significance |
 | `factorial_results.xlsx` | Optional event and model prediction sheets (`--excel`) |
+| `stage_timings.tsv` | Python orchestration stages and elapsed wall-clock seconds |
+| `component_timings.tsv` | Per-component fitting time, full/null optimizer attempts, retries, worker PID and cache hits |
+| `batch_timings.tsv`, `backend_performance.json` | Batch wall times and backend workload/cache/retry totals |
 
 An event has no single fitted regression coefficient: `estimate_min/max` and
 `conservative_component_effect` summarize component coefficients, while the
@@ -334,11 +337,55 @@ Different coverage, junction dependence and replicate counts require further
 calibration. Run both examples with `test/simulate_factorial.py --events 200
 --replicates 8` (or `16`), `--seed 731`, and a new `--output` directory.
 
-R is started for design validation and once for all bounded count batches.
-`-p` parallelizes events on Unix; Windows uses sequential fitting. Each fit uses
-one internal thread to avoid nested parallelism. Intermediate counts are removed
-after the run; fitting logs remain on failure. Completed result files are moved
-into the output directory only after the analysis succeeds.
+### Parallel execution and performance
+
+Use `-p N` with `shiba.py` or `src/psi.py`, or `--cores N` with SnakeShiba.
+The default for the Python commands is one process. R is started for design
+validation and once for fitting. The fitting stage keeps workers alive across
+batches and dynamically assigns component fits to them, so a large AFE/ALE
+event does not occupy just one worker. Unix uses a fork cluster; Windows uses
+a PSOCK cluster. Each component's full model and null models run sequentially
+within one worker, with one internal fitting thread.
+
+The event-wide eligible sample mask is established **before** components are
+scheduled. Parallel scheduling does not change that mask, the likelihood,
+component consistency checks, or the FDR family. Passing events are packed
+across input batches and event types into fitting batches of up to
+`max(event_batch_size, 4 * processes)` events. The default `event_batch_size`
+is 200; it also bounds the number of input events extracted at a time. Memory
+depends on component counts and sample counts as well as the number of events.
+
+Within a run, exact component results are reused when the ordered sample mask
+and included inclusion/exclusion counts match. The design, contrasts,
+prediction population, and optimizer settings are fixed for the run. Keys use
+exact serialization, without rounding or approximate matching. Results are
+relabeled for each event/component, which remains a separate entry in testing
+and FDR correction. Diagnostics, including failures, are retained on reuse.
+The bounded FIFO cache stores compact results, not fitted model objects.
+Use `--component-cache-size 0` to disable both within-batch deduplication and
+cross-batch caching for comparisons; the default is 10,000 entries. In YAML:
+
+```yaml
+event_batch_size: 200
+component_cache_size: 10000
+```
+
+`stage_timings.tsv` separates input validation, design, filtering/batching,
+backend fitting, reading, event aggregation, prediction aggregation/output,
+observed PSI, and final output. `component_timings.tsv` counts actual optimizer
+attempts (initial fits plus retries). Cache-hit rows have zero time/attempts and
+no worker PID; the original diagnostics remain in `component_statistics.tsv`.
+Times summed over workers are not the wall-clock duration of a parallel run.
+Use batch wall times and `backend_performance.json` for overall backend timing.
+An all-filtered run writes empty timing tables and zero backend workload.
+
+Event and prediction aggregation use vectorized grouped operations, and
+component output is written in batches. These changes preserve statistical
+definitions; floating-point summaries can differ in their last digits.
+Intermediate counts are removed after the run; fitting logs remain on failure.
+Completed result files are moved into the output directory only after the
+analysis succeeds. Timings describe completed runs; a failed run retains its
+backend log rather than publishing partial result tables.
 
 ---
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,46 @@ PRED_COLUMNS = KEYS + ["component_id", "kind", "name", "value"]
 FILTER_COLUMNS = KEYS + ["filter_group", "n_samples", "n_eligible", "n_required", "group_pass", "filter_pass"]
 
 
+class StageTimer:
+    def __init__(self):
+        self.last = time.perf_counter()
+        self.rows = []
+
+    def mark(self, name):
+        now = time.perf_counter()
+        self.rows.append({"stage": name, "elapsed_seconds": now - self.last})
+        self.last = now
+        logger.info("Stage %s: %.3f seconds", name, self.rows[-1]["elapsed_seconds"])
+
+
+class PassingBatchWriter:
+    """Bounded batches of passing events, independent of input batch/type boundaries."""
+    def __init__(self, directory, event_limit):
+        self.directory, self.event_limit = Path(directory), event_limit
+        self.frames, self.paths, self.n_events = [], [], 0
+
+    def add(self, counts):
+        if counts.empty:
+            return
+        numbers = counts.groupby(KEYS, sort=False).ngroup().to_numpy()
+        total = int(numbers.max()) + 1
+        start = 0
+        while start < total:
+            stop = min(total, start + self.event_limit - self.n_events)
+            self.frames.append(counts.loc[(numbers >= start) & (numbers < stop)])
+            self.n_events += stop - start
+            start = stop
+            if self.n_events == self.event_limit:
+                self.flush()
+
+    def flush(self):
+        if self.frames:
+            path = self.directory / f"passing_{len(self.paths):06d}.tsv"
+            pd.concat(self.frames, ignore_index=True).to_csv(path, sep="\t", index=False)
+            self.paths.append(str(path))
+            self.frames, self.n_events = [], 0
+
+
 def add_arguments(parser):
     parser.add_argument("--stat-method", choices=["legacy", "beta-binomial"], default="legacy")
     parser.add_argument("--sample-metadata", help="TSV with sample and formula variables; defaults to --group")
@@ -42,6 +83,8 @@ def add_arguments(parser):
     parser.add_argument("--design-only", action="store_true", help="Validate/export design and coefficients without fitting")
     parser.add_argument("--rscript", default="Rscript", help="Rscript executable with glmmTMB and jsonlite")
     parser.add_argument("--event-batch-size", type=int, default=200)
+    parser.add_argument("--component-cache-size", type=int, default=10000,
+                        help="Maximum exact component results cached per run; 0 disables caching")
     parser.add_argument("--min-sample-fraction", type=float, default=0.5,
                         help="Required fraction of covered samples in every filter group (default: 0.5)")
     parser.add_argument("--filter-group", action="append", default=[], metavar="COLUMN",
@@ -57,6 +100,8 @@ def validate_options(args):
         raise ValueError("Specify --coef or --contrast-file, or use --design-only to list coefficients")
     if args.num_process < 1 or args.event_batch_size < 1 or args.minimum_reads < 1:
         raise ValueError("Processes, event batch size and minimum reads must be positive")
+    if args.component_cache_size < 0:
+        raise ValueError("--component-cache-size must be nonnegative")
     if not 0 < args.fdr < 1 or not np.isfinite(args.min_effect) or args.min_effect < 0:
         raise ValueError("Require 0 < FDR < 1 and a nonnegative finite minimum effect")
     if args.min_effect and not args.effect_name:
@@ -144,53 +189,63 @@ def filter_events(counts, groups, minimum_reads=10, fraction=0.5):
 
 
 def aggregate_events(statistics, definitions, contrasts, fdr=.05, adjust="BH", filtering=None):
-    """Conjunction test; only coverage-passing events enter the FDR family."""
-    rows = []
-    passed = (None if filtering is None else
-              set(filtering.loc[filtering.filter_pass.astype(bool), KEYS].itertuples(index=False, name=None)))
-    grouped = {(a, b, c): g for (a, b, c), g in statistics.groupby(KEYS + ["contrast"], sort=False)}
-    for (kind, event), components in definitions.groupby(KEYS, sort=False):
-        expected = set(components.component_id)
-        filtered = passed is not None and (kind, event) not in passed
-        for contrast in contrasts:
-            g = grouped.get((kind, event, contrast), pd.DataFrame(columns=STAT_COLUMNS))
-            valid = (len(g) == len(expected) and set(g.component_id) == expected and
-                     g.status.eq("ok").all() and np.isfinite(g.p_component).all() and
-                     g.p_component.between(0, 1).all() and np.isfinite(g.estimate).all())
-            same_direction = valid and (g.estimate.gt(0).all() or g.estimate.lt(0).all())
-            status = "filtered_low_coverage" if filtered else "ok" if same_direction else "inconsistent_direction" if valid else "untestable"
-            estimate = g.estimate.dropna()
-            rows.append(dict(event_type=kind, event_id=event, contrast=contrast,
-                             n_components=len(expected), n_components_ok=int(g.status.eq("ok").sum()),
-                             status=status, p_event=np.nan if filtered else float(g.p_component.max()) if same_direction else 1.0 if valid else np.nan,
-                             estimate_min=estimate.min(), estimate_max=estimate.max(),
-                             conservative_component_effect=(float(estimate.iloc[np.argmin(abs(estimate))]) if same_direction else np.nan),
-                             n_samples=int(g.n_samples.min()) if len(g) else 0))
-    columns = KEYS + ["contrast", "n_components", "n_components_ok", "status", "p_event",
-                      "estimate_min", "estimate_max", "conservative_component_effect", "n_samples"]
-    result = pd.DataFrame(rows, columns=columns)
+    """Vectorized conjunction tests; retain post-filter failures in each FDR family."""
+    ids = KEYS + ["contrast"]
+    expected = definitions.groupby(KEYS, sort=False).component_id.nunique().rename("n_components").reset_index()
+    result = expected.merge(pd.DataFrame({"contrast": contrasts}), how="cross")
+    stats = statistics[ids + ["component_id", "status", "estimate", "p_component", "n_samples"]].merge(
+                             definitions[KEYS + ["component_id"]].drop_duplicates().assign(known=True),
+                             on=KEYS + ["component_id"], how="left", validate="many_to_one")
+    for column in ["estimate", "p_component", "n_samples"]:
+        stats[column] = pd.to_numeric(stats[column])
+    stats["ok"] = stats.status.eq("ok")
+    stats["valid"] = (stats.ok & stats.known.eq(True) & np.isfinite(stats.estimate) &
+                      np.isfinite(stats.p_component) & stats.p_component.between(0, 1))
+    metrics = stats.groupby(ids, sort=False).agg(
+        rows=("component_id", "size"), distinct=("component_id", "nunique"),
+        valid=("valid", "all"), n_components_ok=("ok", "sum"),
+        p_max=("p_component", "max"), estimate_min=("estimate", "min"),
+        estimate_max=("estimate", "max"), n_samples=("n_samples", "min")).reset_index()
+    result = result.merge(metrics, on=ids, how="left", validate="one_to_one")
+    valid = (result.valid.eq(True) & result.rows.eq(result.n_components) &
+             result.distinct.eq(result.n_components))
+    direction = valid & (result.estimate_min.gt(0) | result.estimate_max.lt(0))
+    filtered = pd.Series(False, index=result.index)
+    if filtering is not None:
+        passed = filtering.loc[filtering.filter_pass.astype(bool), KEYS].drop_duplicates().assign(passed=True)
+        result = result.merge(passed, on=KEYS, how="left", validate="many_to_one")
+        filtered = ~result.passed.eq(True)
+    result["status"] = np.select([filtered, direction, valid],
+                                  ["filtered_low_coverage", "ok", "inconsistent_direction"], default="untestable")
+    result["p_event"] = np.where(filtered, np.nan, np.where(direction, result.p_max, np.where(valid, 1., np.nan)))
+    result["conservative_component_effect"] = np.where(direction,
+        np.where(result.estimate_min.gt(0), result.estimate_min, result.estimate_max), np.nan)
+    for column in ["n_components_ok", "n_samples"]:
+        result[column] = result[column].fillna(0).astype(int)
     result["q_event"] = np.nan
-    for _, group in result.groupby("contrast", sort=False):
-        group = group.loc[group.status.ne("filtered_low_coverage")]
-        if group.empty:
-            continue
-        # Do not silently remove failed/untestable events from the correction family.
+    for _, group in result.loc[~filtered].groupby("contrast", sort=False):
         q = multipletests(group.p_event.fillna(1), method="fdr_bh" if adjust == "BH" else "fdr_by")[1]
         result.loc[group.index, "q_event"] = np.where(group.p_event.notna(), q, np.nan)
     result["Diff events"] = np.where(result.status.eq("ok") & result.q_event.lt(fdr), "Yes", "No")
-    return result
+    return result[KEYS + ["contrast", "n_components", "n_components_ok", "status", "p_event",
+                         "estimate_min", "estimate_max", "conservative_component_effect", "n_samples", "q_event", "Diff events"]]
 
 
 def aggregate_predictions(predictions, definitions):
-    expected = definitions.groupby(KEYS).size()
-    rows = []
-    for key, group in predictions.groupby(KEYS + ["kind", "name"], sort=False):
-        complete = (len(group) == expected.loc[key[:2]] and not group.component_id.duplicated().any()
-                    and np.isfinite(group.value).all())
-        rows.append([*key, group.value.mean() if complete else np.nan,
-                     group.value.min() if complete else np.nan, group.value.max() if complete else np.nan,
-                     "ok" if complete else "incomplete_components"])
-    return pd.DataFrame(rows, columns=KEYS + ["kind", "name", "value", "component_min", "component_max", "status"])
+    ids = KEYS + ["kind", "name"]
+    columns = ids + ["value", "component_min", "component_max", "status"]
+    if predictions.empty:
+        return pd.DataFrame(columns=columns)
+    expected = definitions.groupby(KEYS).size().rename("expected").reset_index()
+    result = predictions.assign(finite=np.isfinite(predictions.value)).groupby(ids, sort=False).agg(
+        rows=("component_id", "size"), distinct=("component_id", "nunique"),
+        finite=("finite", "all"), value=("value", "mean"),
+        component_min=("value", "min"), component_max=("value", "max")).reset_index()
+    result = result.merge(expected, on=KEYS, how="left", validate="many_to_one")
+    complete = result.rows.eq(result.expected) & result.distinct.eq(result.rows) & result.finite
+    result.loc[~complete, ["value", "component_min", "component_max"]] = np.nan
+    result["status"] = np.where(complete, "ok", "incomplete_components")
+    return result[columns]
 
 
 def observed_psi(events, junctions, samples, minimum_reads):
@@ -210,6 +265,7 @@ def observed_psi(events, junctions, samples, minimum_reads):
 
 def run(args):
     validate_options(args)
+    timer = StageTimer()
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     logger.info("Running event-centric beta-binomial regression using glmmTMB")
@@ -237,6 +293,7 @@ def run(args):
     if not isinstance(contrasts, dict) or any(not isinstance(v, dict) for v in contrasts.values()):
         raise ValueError("Contrast file must map test names to coefficient-weight objects")
     prediction = read_json(args.prediction_grid)
+    timer.mark("input_validation")
     log = output / "glmmTMB.log"
     with tempfile.TemporaryDirectory(prefix=".factorial-", dir=output) as directory:
         work = Path(directory)
@@ -246,10 +303,11 @@ def run(args):
                    coefficients=args.coef, contrasts=contrasts, reference_levels=references,
                    categorical=args.categorical, continuous=args.continuous, prediction=prediction,
                    minimum_reads=args.minimum_reads, processes=args.num_process, design_only=args.design_only,
-                   design_rds=str(work / "design.rds"), batches=[])
+                   design_rds=str(work / "design.rds"), batches=[], component_cache_size=args.component_cache_size)
         config_file = work / "config.json"
         config_file.write_text(json.dumps(cfg, allow_nan=False))
         run_r(args, "design", config_file, log)
+        timer.mark("design")
         design = read_json(stage / "design.json")
         filter_columns, filter_groups = resolve_filter_groups(meta, design, args.filter_group)
         effect_names = ((design.get("prediction") or {}).get("effects") or {}).keys()
@@ -264,6 +322,7 @@ def run(args):
             return
         events = shibalib.read_events(args.event)
         definitions, filter_tables = [], []
+        batch_writer = PassingBatchWriter(work, max(args.event_batch_size, 4 * args.num_process))
         for kind in EVENT_TYPES:
             if events[kind].event_id.isna().any() or events[kind].event_id.duplicated().any():
                 raise ValueError(f"Invalid event IDs for {kind}")
@@ -275,11 +334,9 @@ def run(args):
                 passed_ids = filtering.loc[filtering.filter_pass, "event_id"].unique()
                 counts = counts.loc[counts.event_id.isin(passed_ids)]
                 definitions.append(component)
-                if counts.empty:
-                    continue
-                path = work / f"{kind}_{start}.tsv"
-                counts.to_csv(path, sep="\t", index=False)
-                cfg["batches"].append(str(path))
+                batch_writer.add(counts)
+        batch_writer.flush()
+        cfg["batches"] = batch_writer.paths
         definitions = pd.concat(definitions, ignore_index=True) if definitions else pd.DataFrame(columns=COMPONENT_COLUMNS)
         filtering = pd.concat(filter_tables, ignore_index=True) if filter_tables else pd.DataFrame(columns=FILTER_COLUMNS)
         filtering.to_csv(stage / "event_filter.tsv", sep="\t", index=False)
@@ -289,24 +346,43 @@ def run(args):
                     n_passed, n_events, args.minimum_reads, args.min_sample_fraction)
         definitions.to_csv(stage / "components.tsv", sep="\t", index=False)
         config_file.write_text(json.dumps(cfg, allow_nan=False))
+        timer.mark("coverage_and_batching")
         if cfg["batches"]:
             run_r(args, "fit", config_file, log)
+        else:
+            (stage / "backend_performance.json").write_text(json.dumps({
+                "processes": args.num_process, "scheduling": "no passing events",
+                "component_cache_size": args.component_cache_size, "components": 0,
+                "cache_hits": 0, "optimizer_attempts": 0, "retries": 0, "elapsed_seconds": 0}, indent=2))
+            pd.DataFrame(columns=KEYS + ["component_id", "cache_hit", "worker_pid", "elapsed_seconds",
+                         "full_seconds", "null_seconds", "full_attempts", "null_attempts", "retries"]).to_csv(
+                             stage / "component_timings.tsv", sep="\t", index=False)
+            pd.DataFrame(columns=["batch", "components", "fitted_components", "cache_hits", "full_attempts",
+                                  "null_attempts", "retries", "elapsed_seconds"]).to_csv(
+                                      stage / "batch_timings.tsv", sep="\t", index=False)
+        timer.mark("backend_fit")
         statistics = (pd.read_csv(stage / "component_statistics.tsv", sep="\t", keep_default_na=False, na_values=["NA"])
                       if (stage / "component_statistics.tsv").exists() else pd.DataFrame(columns=STAT_COLUMNS))
         predictions = (pd.read_csv(stage / "component_predictions.tsv", sep="\t", keep_default_na=False, na_values=["NA"])
                        if (stage / "component_predictions.tsv").exists() else pd.DataFrame(columns=PRED_COLUMNS))
-        statistics.to_csv(stage / "component_statistics.tsv", sep="\t", index=False)
-        predictions.to_csv(stage / "component_predictions.tsv", sep="\t", index=False)
+        if not (stage / "component_statistics.tsv").exists():
+            statistics.to_csv(stage / "component_statistics.tsv", sep="\t", index=False)
+        if not (stage / "component_predictions.tsv").exists():
+            predictions.to_csv(stage / "component_predictions.tsv", sep="\t", index=False)
+        timer.mark("read_component_results")
         tests = args.coef + list(contrasts)
         result = aggregate_events(statistics, definitions, tests, args.fdr, args.p_adjust, filtering)
+        timer.mark("aggregate_events")
         fitted = aggregate_predictions(predictions, definitions)
         fitted.to_csv(stage / "model_predictions.tsv", sep="\t", index=False)
+        timer.mark("aggregate_predictions_and_write")
         if args.min_effect:
             effect = fitted[(fitted.kind == "effect") & (fitted.name == args.effect_name)][KEYS + ["value"]]
             result = result.merge(effect.rename(columns={"value": "selected_PSI_effect"}), on=KEYS, how="left")
             result.loc[~result.selected_PSI_effect.abs().ge(args.min_effect), "Diff events"] = "No"
         matrix, observed = observed_psi(events, junctions, samples, args.minimum_reads)
         matrix.to_csv(stage / "PSI_matrix_sample.txt", sep="\t", index=False)
+        timer.mark("observed_psi_and_matrix")
         annotated = []
         for kind in EVENT_TYPES:
             table = result[result.event_type == kind].merge(events[kind], on="event_id", how="left", validate="many_to_one")
@@ -329,11 +405,15 @@ def run(args):
                     "fdr_family": "coverage-passing events across event types, separately per contrast; post-filter failures counted as p=1",
                     "min_sample_fraction": args.min_sample_fraction, "filter_group_columns": filter_columns,
                     "filter_groups": filter_groups, "n_events_passed": n_passed, "n_events_filtered": n_events - n_passed,
+                    "processes": args.num_process, "component_cache_size": args.component_cache_size,
+                    "passing_batch_event_limit": batch_writer.event_limit,
                     "minimum_reads": args.minimum_reads, "effect_name": args.effect_name, "min_effect": args.min_effect,
                     "event_prediction": "unweighted component mean; distinct from observed Shiba PSI",
                     "n_events": n_events, "n_samples": len(samples)}
         (stage / "analysis.json").write_text(json.dumps(manifest, indent=2))
         meta.to_csv(stage / "sample_metadata.tsv", sep="\t", index=False)
+        timer.mark("write_event_results")
+        pd.DataFrame(timer.rows).to_csv(stage / "stage_timings.tsv", sep="\t", index=False)
         for file in stage.iterdir():
             os.replace(file, output / file.name)
     logger.info("Regression completed: %d event/contrast rows; %d significant; %d untestable",

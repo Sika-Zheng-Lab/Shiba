@@ -5,12 +5,13 @@ import sys
 import os
 import pandas as pd
 import numpy as np
-import plotly.express as px
+import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-import seaborn as sns
 import html
 import logging
 from template_renderer import HTMLTemplateRenderer, get_splicing_event_config
+from lib import figure_style as style
+from pathlib import Path
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,6 +22,8 @@ def get_args():
 		formatter_class = argparse.ArgumentDefaultsHelpFormatter,
 		description = "Make plots for alternative splicing events"
 	)
+	parser.add_argument("--single-cell", action="store_true", help="Read flat scShiba results without bulk PCA")
+	parser.add_argument("--only-psi", action="store_true", help="Single-cell PSI-only report without differential tests")
 	parser.add_argument("-i", "--input", type = str, help = "Directory that contains result files")
 	parser.add_argument("-e", "--experiment-table", type = str, help = "Experiment table file")
 	parser.add_argument("-s", "--shiba-command", type = str, help = "Shiba command")
@@ -83,212 +86,69 @@ def load_psi_pca_table(input_dir: str, experiment_table_df: pd.DataFrame, output
 	contribution_psi_PC2 = str((contribution_psi_df.iloc[1, 1]*100).round(2))
 	return pca_psi_df, contribution_psi_PC1, contribution_psi_PC2
 
-def plots_pca(name: str, pca_df: pd.DataFrame, contribution_PC1: str, contribution_PC2: str, output_dir: str):
+def plots_pca(name, pca_df, contribution_PC1, contribution_PC2, output_dir):
+    style.configure()
+    fig, ax = plt.subplots(figsize=(4.8, 3.6), layout='constrained')
+    interactive = go.Figure()
+    symbols = ['circle', 'triangle-up', 'square', 'diamond', 'triangle-down', 'cross', 'x', 'triangle-left']
+    markers = ['o', '^', 's', 'D', 'v', 'P', 'X', '<']
+    for index, (group, frame) in enumerate(pca_df.groupby('group', sort=False)):
+        if 'group_order' in frame:
+            index = int(frame.group_order.iloc[0])
+        interactive.add_trace(go.Scatter(x=frame.PC1, y=frame.PC2, mode='markers', name=str(group),
+            text=frame['sample'] if 'sample' in frame else frame.index.astype(str),
+            marker=dict(size=10, color=style.PALETTE[index % 8], symbol=symbols[index % 8]),
+            hovertemplate='%{text}<br>PC1=%{x:.4g}<br>PC2=%{y:.4g}<extra>%{fullData.name}</extra>'))
+        ax.scatter(frame.PC1, frame.PC2, s=18, color=style.PALETTE[index % 8],
+                   marker=markers[index % 8], label=str(group), linewidths=.3, edgecolors='white')
+    ax.set_xlabel(f'PC1 ({contribution_PC1}%)')
+    ax.set_ylabel(f'PC2 ({contribution_PC2}%)')
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    interactive.update_layout(xaxis_title=f'PC1 ({contribution_PC1}%)', yaxis_title=f'PC2 ({contribution_PC2}%)')
+    content = style.export(fig, output_dir, f'pca_{name}', f'{name} PCA; each point represents a sample.', interactive=interactive)
+    directory = Path(output_dir)/'data'; directory.mkdir(parents=True, exist_ok=True)
+    (directory/f'pca_{name}.html').write_text(style.document(name+' PCA', [content]))
 
-	# Round PC1 and PC2
-	pca_df["PC1"] = pca_df["PC1"].round(2)
-	pca_df["PC2"] = pca_df["PC2"].round(2)
-	# Color palette
-	number_of_groups = pca_df["group"].nunique()
-	if number_of_groups <= 8:
-		color_palette = px.colors.qualitative.G10
-	else:
-		color_palette = px.colors.sequential.Viridis
-	fig = px.scatter(
-		pca_df,
-		x = "PC1",
-		y = "PC2",
-		color = "group",
-		color_discrete_sequence = color_palette,
-		opacity = 0.5,
-		hover_data = ["sample"]
-	)
-	fig.update_traces(
-		marker = dict(
-			size = 16,
-			line = dict(width = 1, color = 'Black')),
-			selector = dict(mode = 'markers')
-	)
-	fig.update_layout(
-		title = dict(
-			text = "PCA for " + name,
-			font = dict(size = 26, color = 'black'),
-			xref = 'paper',
-			x = 0.5,
-			y = 0.95,
-			xanchor = 'center',
-		)
-	)
-	fig.update_layout(
-		# Remove fixed width to allow responsive sizing
-		height = 500,  # Increased from 400 to 500 for taller plots
-		font ={
-			"family": "Arial",
-			"size": 18
-		},
-		xaxis_title = "PC1 ({}%)".format(contribution_PC1),
-		yaxis_title = "PC2 ({}%)".format(contribution_PC2),
-		legend_title = "Group",
-		# Add responsive layout settings
-		autosize = True,
-		margin = dict(l=60, r=60, t=80, b=60)
-	)
-	# Use responsive configuration when writing HTML
-	fig.write_html(
-		os.path.join(output_dir, "data", "pca_" + name + ".html"), 
-		include_plotlyjs = "cdn",
-		config = {
-			'responsive': True,
-			'displayModeBar': True,
-			'displaylogo': False,
-			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
-		}
-	)
 
-def plots(AS: str, input_dir: str, output_dir: str):
-
-	# load data
-	df = pd.read_csv(
-		os.path.join(input_dir, "splicing", "PSI_" + AS + ".txt"),
-		sep = "\t"
-	)
-	if not df.empty:
-		# Round dPSI and others
-		df["dPSI"] = df["dPSI"].round(4)
-		df['-log10(q)'] = -np.log10(df["q"])
-		df['-log10(q)'] = df['-log10(q)'].round(4)
-		df["ref_PSI"] = df["ref_PSI"].round(4)
-		df["alt_PSI"] = df["alt_PSI"].round(4)
-	# Volcano plot
-	if not df.empty:
-		df.loc[(df["Diff events"] == "Yes") & (df["dPSI"] > 0.1), "group"] = "up"
-		df.loc[(df["Diff events"] == "Yes") & (df["dPSI"] < -0.1), "group"] = "down"
-		df = df.fillna({"group": "others"})
-		fig = px.scatter(
-			df,
-			x = "dPSI",
-			y = "-log10(q)",
-			color = "group",
-			symbol="label",
-			opacity = 0.5,
-			category_orders = {"group": ["up", "down", "others"], "label": ["annotated", "unannotated"]},
-			color_discrete_sequence = ["#d01c8b", "#4dac26", "lightgrey"],
-			hover_data = ["gene_name", "event_id", "ref_PSI", "alt_PSI", "q"]
-		)
-		fig.update_traces(
-			marker = dict(
-				size = 8,
-				line = dict(width = 0, color = 'DarkSlateGrey')),
-				selector = dict(mode = 'markers')
-		)
-		# Remove the title from the volcano plot
-		fig.update_layout(title=None)
-	else:
-		# If there is no data, make empty plot
-		fig = px.scatter(
-			x = [None],
-			y = [None]
-		)
-		# Remove xlabel and ylabel
-		fig.update_xaxes(title = None)
-		fig.update_yaxes(title = None)
-		# Add "No data" text to the empty plot
-		fig.add_annotation(
-			text = "No data",
-			xref = "paper",
-			yref = "paper",
-			x = 0.5,
-			y = 0.5,
-			showarrow = False,
-			font = dict(size = 26, color = 'black')
-		)
-	fig.update_layout(
-		# Remove fixed width for responsive sizing
-		height = 400,
-		font ={
-			"family": "Arial",
-			"size": 16
-		},
-		legend_title = "Group, Label",
-		# Add responsive layout settings
-		autosize = True,
-		margin = dict(l=60, r=60, t=80, b=60)
-	)
-	# Use responsive configuration when writing HTML
-	fig.write_html(
-		os.path.join(output_dir, "data", "volcano_" + AS + ".html"), 
-		include_plotlyjs = "cdn",
-		config = {
-			'responsive': True,
-			'displayModeBar': True,
-			'displaylogo': False,
-			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
-		}
-	)
-
-	# Scatter
-	if not df.empty:
-		fig = px.scatter(
-			df,
-			x = "ref_PSI",
-			y = "alt_PSI",
-			color = "group",
-			symbol="label",
-			opacity = 0.5,
-			category_orders = {"group": ["up", "down", "others"], "label": ["annotated", "unannotated"]},
-			color_discrete_sequence = ["#d01c8b", "#4dac26", "lightgrey"],
-			hover_data = ["gene_name", "event_id", "dPSI", "q"]
-		)
-		fig.update_traces(
-			marker = dict(size=8,
-							line=dict(width=0, color='DarkSlateGrey')),
-							selector=dict(mode='markers')
-		)
-		fig.update_layout(title=None)
-	else:
-		# If there is no data, make empty plot
-		fig = px.scatter(
-			x = [None],
-			y = [None]
-		)
-		# Remove xlabel and ylabel
-		fig.update_xaxes(title = None)
-		fig.update_yaxes(title = None)
-		# Add "No data" text to the empty plot
-		fig.add_annotation(
-			text = "No data",
-			xref = "paper",
-			yref = "paper",
-			x = 0.5,
-			y = 0.5,
-			showarrow = False,
-			font = dict(size = 26, color = 'black')
-		)
-	fig.update_layout(
-		# Remove fixed width for responsive sizing
-		height = 400,
-		font ={
-			"family": "Arial",
-			"size": 16
-		},
-		xaxis_title = "PSI (Reference)",
-		yaxis_title = "PSI (Alternative)",
-		legend_title = "Group, Label",
-		# Add responsive layout settings
-		autosize = True,
-		margin = dict(l=60, r=60, t=80, b=60)
-	)
-	# Use responsive configuration when writing HTML
-	fig.write_html(
-		os.path.join(output_dir, "data", "scatter_" + AS + ".html"), 
-		include_plotlyjs = "cdn",
-		config = {
-			'responsive': True,
-			'displayModeBar': True,
-			'displaylogo': False,
-			'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
-		}
-	)
+def plots(AS, input_dir, output_dir, single_cell=False):
+    style.configure()
+    frame = pd.read_csv((Path(input_dir) if single_cell else Path(input_dir)/'splicing')/f'PSI_{AS}.txt', sep='\t')
+    for mode, x, y, xlabel, ylabel in [
+        ('volcano', 'dPSI', 'q', 'Observed ΔPSI', '−log10(FDR-adjusted P)'),
+        ('scatter', 'ref_PSI', 'alt_PSI', 'Reference PSI', 'Alternative PSI')]:
+        fig, ax = plt.subplots(figsize=(4.5, 3.4), layout='constrained')
+        interactive = go.Figure()
+        if len(frame):
+            valid = np.isfinite(frame[x]) & np.isfinite(frame[y])
+            if mode == 'volcano': valid &= frame[y].between(0, 1)
+            data = frame.loc[valid]
+            significant = data['Diff events'].eq('Yes')
+            for mask, label, color, marker in [(~significant, 'Not called', style.PALETTE[0], 'o'),
+                    (significant & data.dPSI.ge(0), 'Increased PSI', style.PALETTE[2], '^'),
+                    (significant & data.dPSI.lt(0), 'Decreased PSI', style.PALETTE[1], 'v')]:
+                subset = data.loc[mask]
+                if len(subset):
+                    values = -np.log10(subset[y].clip(lower=np.finfo(float).tiny)) if mode == 'volcano' else subset[y]
+                    custom = subset.reindex(columns=['event_id', 'gene_name', 'q']).fillna('').to_numpy()
+                    interactive.add_trace(go.Scattergl(x=subset[x], y=values, mode='markers', name=label, customdata=custom,
+                        marker=dict(size=9, opacity=.65, color=color, symbol={'o':'circle','^':'triangle-up','v':'triangle-down'}[marker]),
+                        hovertemplate='%{customdata[0]} · %{customdata[1]}<br>x=%{x:.4g}<br>y=%{y:.4g}<br>q=%{customdata[2]}<extra>%{fullData.name}</extra>'))
+                    ax.scatter(subset[x], values, color=color, marker=marker, s=10, linewidths=0, alpha=.65, label=label, rasterized=True)
+            if len(data): ax.legend()
+        else: ax.text(.5, .5, 'No event results', ha='center', transform=ax.transAxes)
+        if mode == 'scatter':
+            ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+            ax.plot([0, 1], [0, 1], color='#aaaaaa', lw=.7, zorder=0)
+        ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+        interactive.update_layout(xaxis_title=xlabel, yaxis_title=ylabel)
+        if mode == 'scatter':
+            interactive.update_xaxes(range=[0,1]); interactive.update_yaxes(range=[0,1])
+            interactive.add_shape(type='line', x0=0, x1=1, y0=0, y1=1, line=dict(color='#aaaaaa',width=1))
+        if not interactive.data:
+            interactive.add_annotation(text='No finite event results', x=.5, y=.5, xref='paper', yref='paper', showarrow=False)
+        content = style.export(fig, output_dir, f'{mode}_{AS}', f'{AS}: existing differential-event calls; missing coordinates omitted. Zero q-values clipped to machine minimum for log display.', interactive=interactive)
+        directory = Path(output_dir)/'data'; directory.mkdir(parents=True, exist_ok=True)
+        (directory/f'{mode}_{AS}.html').write_text(style.document(AS, [content]))
 
 def calculate_event_count(input_dir: str, AS: str) -> int:
 	"""Calculate the number of differential splicing events for a given AS type."""
@@ -347,132 +207,51 @@ def load_splicing_summary_image(output_dir: str) -> str:
 		logger.warning(f"Error loading splicing summary image: {e}")
 		return '<p style="text-align: center; color: #64748b;">Summary chart not available</p>'
 
-def write_summary_html(shiba_command: str, input_dir: str, output_dir: str):
-	"""Write summary HTML using modern template system with individual event files."""
-	
-	# Initialize template renderer
-	template_dir = os.path.join(os.path.dirname(__file__), "templates")
-	renderer = HTMLTemplateRenderer(template_dir)
-	
-	# Copy static files (CSS, JS) to output directory
-	renderer.copy_static_files(output_dir)
-	
-	# Load PCA content
-	pca_tpm_content = load_plot_content(output_dir, "pca_TPM.html")
-	pca_psi_content = load_plot_content(output_dir, "pca_PSI.html")
-	
-	# Prepare splicing events data
-	splicing_events = []
-	event_configs = get_splicing_event_config()
-	
-	for config in event_configs:
-		event_count = calculate_event_count(input_dir, config['code'])
-		event_data = {
-			'id': config['id'],
-			'icon': config['icon'],
-			'title': config['title'],
-			'description': config['description'],
-			'event_count': event_count,
-			'volcano_content': load_plot_content(output_dir, f"volcano_{config['code']}.html"),
-			'scatter_content': load_plot_content(output_dir, f"scatter_{config['code']}.html")
-		}
-		splicing_events.append(event_data)
-		
-		# Generate standalone individual HTML file for this event (main file)
-		standalone_individual_html = renderer.render_individual_event_standalone_html(event_data)
-		individual_filename = f"{config['id']}.html"
-		individual_filepath = os.path.join(output_dir, "data", individual_filename)
-		with open(individual_filepath, 'w', encoding='utf-8') as f:
-			f.write(standalone_individual_html)
-		logger.info(f"Generated standalone individual HTML: data/{individual_filename}")
-	
-	# Load splicing summary image
-	splicing_summary_content = load_splicing_summary_image(output_dir)
-	
-	# Get Shiba version
-	shiba_version = get_shiba_version()
-	
-	# Prepare template data for index page
-	template_data = {
-		'shiba_command': shiba_command,
-		'shiba_version': shiba_version,
-		'pca_tpm_content': pca_tpm_content,
-		'pca_psi_content': pca_psi_content,
-		'splicing_summary_content': splicing_summary_content,
-		'splicing_events': splicing_events
-	}
-	
-	# Generate standalone index/overview HTML (main entry point)
-	standalone_index_content = renderer.render_index_standalone_html(template_data)
-	with open(os.path.join(output_dir, "summary.html"), 'w', encoding='utf-8') as f:
-		f.write(standalone_index_content)
-	
-	logger.info("HTML files generated successfully!")
-	logger.info("  - summary.html (main overview page with links to individual event files)")
-	logger.info("  - Individual event files in data/ (data/se.html, data/five.html, etc.) - completely self-contained")
-	logger.info("Note: summary.html requires the data/ directory with individual event files to function properly.")
-	return 0
+def write_summary_html(shiba_command, input_dir, output_dir, single_cell=False):
+    sections = [style.command_section(input_dir, shiba_command),
+                '<p>Figures use existing Fisher results without recalculating tests. Increased/decreased PSI refers to alternative minus reference. '
+                'Missing coordinates are omitted; zero q-values are clipped to machine minimum for logarithmic display. ' +
+                ('PSI is aggregated by cell group; cells are not independent biological replicates.</p>' if single_cell else
+                 'PCA includes the samples in the supplied PCA files, which may contain groups beyond the pairwise comparison.</p>'),
+                '<h2>Differential splicing</h2>', load_plot_content(output_dir, 'barplot_splicing_summary.html')]
+    for name in (() if single_cell else ('TPM', 'PSI')):
+        sections += ['<h2>'+name+' PCA</h2>', load_plot_content(output_dir, f'pca_{name}.html')]
+    for event in get_splicing_event_config():
+        code = event['code']
+        sections += ['<h2>'+html.escape(event['title'])+'</h2>',
+                     load_plot_content(output_dir, f'volcano_{code}.html'),
+                     load_plot_content(output_dir, f'scatter_{code}.html')]
+    (Path(output_dir)/'summary.html').write_text(style.document('scShiba Fisher analysis' if single_cell else 'Shiba Fisher analysis', sections), encoding='utf-8')
+    return 0
 
-def load_plot_content(output_dir: str, filename: str) -> str:
-	"""Load plot content from an HTML file for direct embedding."""
-	file_path = os.path.join(output_dir, "data", filename)
-	
-	try:
-		with open(file_path, 'r', encoding='utf-8') as f:
-			content = f.read()
-		
-		# For direct embedding, we need to extract the plot div and script
-		# but keep them as interactive Plotly content
-		import re
-		
-		# Look for the main plot div with plotly-graph-div class
-		div_pattern = r'<div[^>]*class="plotly-graph-div"[^>]*>.*?</div>'
-		div_match = re.search(div_pattern, content, re.DOTALL)
-		
-		# Look for the script that initializes the plot
-		script_pattern = r'<script type="text/javascript">.*?Plotly\.newPlot.*?</script>'
-		script_match = re.search(script_pattern, content, re.DOTALL)
-		
-		if div_match and script_match:
-			# Return the div and script together for direct embedding
-			return f"{div_match.group()}\n{script_match.group()}"
-		
-		# Fallback: try to find any div and script tags
-		div_fallback = re.search(r'<div[^>]*id="[^"]*"[^>]*>.*?</div>', content, re.DOTALL)
-		script_fallback = re.search(r'<script[^>]*>.*?Plotly.*?</script>', content, re.DOTALL)
-		
-		if div_fallback and script_fallback:
-			return f"{div_fallback.group()}\n{script_fallback.group()}"
-		
-		# If regex fails, try a simpler line-by-line approach
-		lines = content.split('\n')
-		plot_lines = []
-		in_body = False
-		
-		for line in lines:
-			# Skip head content, only get body content
-			if '<body>' in line:
-				in_body = True
-				continue
-			if '</body>' in line:
-				break
-			if in_body and line.strip():
-				# Skip doctype, html, head tags
-				if not any(tag in line.lower() for tag in ['<!doctype', '<html', '<head', '</head', '<meta', '<title', '<link']):
-					plot_lines.append(line)
-		
-		if plot_lines:
-			return '\n'.join(plot_lines)
-		
-		# Final fallback: return full content
-		return content
-		
-	except FileNotFoundError:
-		logger.warning(f"Plot file not found: {filename}")
-		return create_empty_plot_content("Plot not available")
-	except Exception as e:
-		logger.warning(f"Error loading plot file {filename}: {e}")
-		return create_empty_plot_content("Plot not available")
+def write_single_cell_report(input_dir, output_dir, command=None, only_psi=False):
+    """Render aggregated single-cell results using the shared Fisher figures."""
+    source, output = Path(input_dir), Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    if only_psi:
+        sections = [style.command_section(source, command),
+                    '<p>PSI-only analysis: differential testing was not performed.</p>']
+        for event in get_splicing_event_config():
+            frame = pd.read_csv(source / f"PSI_{event['code']}.txt", sep='\t')
+            sections += ['<h2>'+html.escape(event['title'])+'</h2>',
+                         f'<p>{len(frame)} events; first 200 rows shown.</p>',
+                         frame.head(200).to_html(index=False, escape=True)]
+        (output/'summary.html').write_text(style.document('scShiba PSI analysis', sections), encoding='utf-8')
+        return
+    summary = pd.read_csv(source/'summary.txt', sep='\t')
+    barplot_splicing(summary, str(output/'png/barplot_splicing_summary.png'),
+                    str(output/'pdf/barplot_splicing_summary.pdf'))
+    for event in get_splicing_event_config():
+        plots(event['code'], source, output, single_cell=True)
+    write_summary_html(command, source, output, single_cell=True)
+
+
+def load_plot_content(output_dir, filename):
+    interactive = Path(output_dir)/'interactive'/(Path(filename).stem+'.html')
+    if interactive.exists(): return interactive.read_text(encoding='utf-8')
+    path = Path(output_dir)/'png'/(Path(filename).stem+'.png')
+    if path.exists(): return style.image_tag(path, Path(filename).stem.replace('_', ' '))
+    return '<p>Plot not available.</p>'
 
 def create_empty_plot_content(message: str) -> str:
 	"""Create content for empty/missing plots."""
@@ -490,45 +269,31 @@ def load_splicing_summary_table(input_dir: str) -> pd.DataFrame:
 	summary_df = pd.read_csv(os.path.join(input_dir, "splicing", "summary.txt"), sep = "\t")
 	return summary_df
 
-def barplot_splicing(summary_df: pd.DataFrame, png_path: str, pdf_path: str):
-	
-	g = sns.catplot(
-		data = summary_df,
-		x = "Number",
-		y = "AS",
-		order = ["SE", "FIVE", "THREE", "MXE", "RI", "AFE", "ALE", "MSE"],
-		hue = "Direction",
-		hue_order = ["Up", "Down"],
-		col = "Label",
-		col_order = ["annotated", "unannotated"],
-		palette = ["#d01c8b", "#4dac26"],
-		kind = "bar",
-		linewidth = 1,
-		edgecolor = "black",
-		height = 4, aspect = 0.8,
-	)
-	g.set_axis_labels("# Differentially spliced events", "")
-	g.set_titles(col_template="{col_name}")
-	sns.move_legend(g, "upper right", bbox_to_anchor=(1.05, 0.95), title = "Direction")
-	
-	# Set x-axis limit to 50 if max value is less than 40
-	max_value = summary_df["Number"].max()
-	if max_value < 40:
-		for ax in g.axes.flatten():
-			ax.set_xlim(0, 50)
-	
-	# Add bar labels for all facets and all containers
-	for ax in g.axes.flatten():
-		for c in ax.containers:
-			# Only add labels for bars with non-zero values
-			labels = [str(int(v)) if v != 0 else '' for v in c.datavalues]
-			ax.bar_label(c, labels=labels, label_type='edge', padding=2)
-	# Adjust spacing between subplots
-	plt.subplots_adjust(wspace=0.3)  # Increase horizontal spacing between plots
-	
-	# Save both PNG and PDF
-	plt.savefig(png_path, dpi = 400, bbox_inches = "tight")
-	plt.savefig(pdf_path, dpi = 400, bbox_inches = "tight", format = "pdf")
+def barplot_splicing(summary_df, png_path, pdf_path):
+    style.configure()
+    types = ['SE', 'FIVE', 'THREE', 'MXE', 'RI', 'AFE', 'ALE', 'MSE']
+    from plotly.subplots import make_subplots
+    interactive = make_subplots(rows=1, cols=2, shared_xaxes=True, subplot_titles=['Annotated', 'Unannotated'])
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.1), sharex=True, layout='constrained')
+    for index, (ax, label) in enumerate(zip(axes, ['annotated', 'unannotated'])):
+        data = summary_df[summary_df.Label.eq(label)]
+        for direction, offset, color in [('Up', -.18, style.PALETTE[2]), ('Down', .18, style.PALETTE[1])]:
+            values = data[data.Direction.eq(direction)].groupby('AS').Number.sum().reindex(types, fill_value=0)
+            interactive.add_trace(go.Bar(x=values.to_list(), y=types, orientation='h', name=direction, legendgroup=direction, showlegend=index==0, marker_color=color), row=1, col=index+1)
+            ax.barh(np.arange(len(types))+offset, values, height=.33, color=color, label=direction)
+        ax.set_yticks(np.arange(len(types)), types); ax.invert_yaxis()
+        ax.set_xlabel('Differentially spliced events')
+        ax.set_title(label.capitalize(), fontsize=8)
+        ax.text(-.12, 1.08, chr(65+index), transform=ax.transAxes, weight='bold', fontsize=10)
+    from matplotlib.ticker import MaxNLocator
+    axes[0].xaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+    axes[1].legend()
+    interactive.update_layout(barmode='group')
+    maximum = float(summary_df.Number.max()) if len(summary_df) else 0
+    interactive.update_xaxes(title_text='Differentially spliced events', range=[0,max(1,maximum*1.1)])
+    interactive.update_yaxes(autorange='reversed')
+    output = Path(png_path).parent.parent
+    style.export(fig, output, 'barplot_splicing_summary', 'Counts of existing significant events, by annotation and direction.', interactive=interactive)
 
 def main():
 
@@ -540,6 +305,9 @@ def main():
 		level = logging.DEBUG if args.verbose else logging.INFO
 	)
 	logger.info("Starting making plots....")
+	if args.single_cell:
+		write_single_cell_report(args.input, args.output, args.shiba_command, args.only_psi)
+		return
 	manifest_path = os.path.join(args.input, "splicing", "analysis.json")
 	if os.path.isfile(manifest_path):
 		import json
@@ -547,7 +315,7 @@ def main():
 			regression = json.load(handle).get("stat_method") in ("beta_binomial", "beta-binomial")
 		if regression:
 			from lib.factorial_report import write_report
-			write_report(args.input, args.output)
+			write_report(args.input, args.output, args.experiment_table, args.shiba_command)
 			return
 
 	# Set variables

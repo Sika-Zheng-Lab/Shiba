@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import sys
 import csv
+import shlex
 args = sys.argv
 
 with open(config["experiment_table"], newline="") as _handle:
@@ -40,20 +41,14 @@ if _validation_errors:
     print(f"ERROR: {len(_validation_errors)} configuration error(s) found. Aborting.", file=sys.stderr)
     sys.exit(1)
 
-command = " ".join(args)
-# Replace snakefile path with the absolute path
-command = command.replace(workflow.snakefile, os.path.join(base_dir, workflow.snakefile))
-# Replace config yaml path with the absolute path
-configfile_path= args[args.index("--configfile") + 1]
-# Absolute path of the directory containing the config yaml file
-configfile_dir_path = Path(configfile_path).resolve().parent
-command = command.replace(configfile_path, os.path.join(str(configfile_dir_path), configfile_path))
+command = shlex.join([sys.executable, *args])
 
 rule all:
     input:
         event_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES),
         PSI = expand("results/PSI_{sample}.txt", sample = EVENT_TYPES),
-        report = "report.json"
+        report = "report.json",
+        plots = "plots/summary.html"
 
 rule generate_report:
     input:
@@ -69,8 +64,8 @@ rule generate_report:
         start_time = start_time_str
     shell:
         """
-        export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
-        python -c 'from general import generate_report; generate_report("SnakeScShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}", "{params.start_time}")'
+        export PYTHONPATH={base_dir:q}/src/lib:$PYTHONPATH
+        python -c 'import sys; from general import generate_report; generate_report("SnakeScShiba", *sys.argv[1:])' {params.workdir:q} {params.version:q} {params.command:q} {params.experiment_table:q} {params.start_time:q}
         """
 
 rule gtf2event:
@@ -167,6 +162,7 @@ rule scpsi:
         events_all = expand("events/EVENT_{sample}.txt", sample = EVENT_TYPES)
     output:
         results = directory("results"),
+        summary = [] if config["only_psi"] else ["results/summary.txt"],
         PSI = expand("results/PSI_{sample}.txt", sample = EVENT_TYPES)
     threads:
         1
@@ -191,4 +187,22 @@ rule scpsi:
         {input.junc} \
         events \
         {output.results} >& {log}
+        """
+
+rule plots:
+    input:
+        PSI = expand("results/PSI_{sample}.txt", sample=EVENT_TYPES),
+        summary = [] if config["only_psi"] else ["results/summary.txt"]
+    output:
+        "plots/summary.html"
+    params:
+        script = os.path.join(base_dir, "src", "plots.py"),
+        command = command,
+        only_psi = "--only-psi" if config["only_psi"] else ""
+    log:
+        "log/plots.log"
+    shell:
+        """
+        python {params.script:q} --single-cell {params.only_psi} \
+        -i results -o plots -s {params.command:q} > {log:q} 2>&1
         """

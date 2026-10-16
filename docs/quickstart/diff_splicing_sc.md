@@ -5,20 +5,16 @@
 ## Before you start
 
 - Map sc(sn)RNA-seq reads to the reference genome and keep a coordinate-sorted BAM/CRAM with `CB` (cell barcode) and `UB` (UMI) tags. Tosa uses `CB` to select cells and `UB` to deduplicate molecules.
-- Download a gene annotataion file of your interest in GTF format.
+- Download a gene annotation file of your interest in GTF format.
 
 ---
 
 ## Installation
 
-``` bash
-# Install Shiba with conda
-conda create -n shiba -c conda-forge -c bioconda shiba tosa=1.0.0
-# Activate the conda environment
-conda activate shiba
-# Install styleframe for generating outputs in Excel format (optional)
-pip install styleframe==4.2
-```
+Follow the [installation guide](../installation.md) to install dependencies,
+including Tosa, and select the matching Shiba source checkout. Run the commands
+below from that checkout with its environment activated. Installing an older
+Conda package alone does not provide the current implementation.
 
 ---
 
@@ -103,7 +99,7 @@ excel:
 ### 2. Run
 
 ``` bash
-scshiba.py -p 4 config.yaml
+python ./scshiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -114,7 +110,7 @@ Results now include `PSI_RI.txt` for intron-retention analysis, alongside the ex
 
 	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	scshiba.py --verbose -p 4 config.yaml
+	python ./scshiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 

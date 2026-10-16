@@ -248,23 +248,123 @@ contrast; it does not assert equality of component effect magnitudes.
 
 ## Output
 
-| File | Contents |
+### Locations and execution modes
+
+For `python shiba.py config.yaml` and SnakeShiba, all paths below are relative
+to the configured `workdir`:
+
+```text
+workdir/
+├── annotation/                  # Optional transcript assembly
+├── events/                      # EVENT_<TYPE>.txt definitions
+├── junctions/                   # junctions.bed and counting intermediates
+├── results/
+│   ├── splicing/                # All regression files listed below
+│   ├── expression/              # Counts, abundance, optional DESeq2 results
+│   └── pca/                     # TPM and observed-PSI PCA
+├── plots/
+│   ├── summary.html             # Main self-contained interactive report
+│   ├── figure_style.json
+│   ├── png/
+│   ├── pdf/
+│   ├── svg/
+│   ├── interactive/             # Embedded plot fragments
+│   └── data/                    # Standalone PCA HTMLs, when PCA is included
+└── report.json                  # Pipeline execution provenance
+```
+
+`<TYPE>` is one of `SE`, `FIVE`, `THREE`, `MXE`, `RI`, `MSE`,
+`AFE`, or `ALE`. A standalone `src/psi.py` run writes the regression files
+**directly into its output argument**, without creating expression, PCA, or HTML
+reports. To use the reporting command below, choose `results/splicing` as that
+output and pass its parent `results` to `plots.py`.
+
+`shiba.py --mame` stops after splicing and does not generate expression, PCA,
+or plots. A successful standalone `--design-only` run produces only
+`design_matrix.tsv`, `contrasts.tsv`, `design.json`, and `glmmTMB.log`;
+it does not fit events or generate the remaining regression outputs.
+
+### Regression files in `results/splicing/`
+
+All files in this table are written by a successful full regression run, except
+the explicitly optional Excel workbook. Some tables can contain headers only
+when there are no applicable results.
+
+| File | Contents and use |
 | --- | --- |
-| `PSI_<TYPE>.txt`, `event_statistics.tsv` | Annotations and one row per event/contrast; P/Q, status, component effect range and calls |
-| `component_statistics.tsv` | Contrast estimates, Wald SE/CI, LRT, dispersion, sample count and fitting diagnostics |
-| `components.tsv` | Junction IDs and component definitions |
-| `event_filter.tsv` | All events: group definitions, eligible/total/required sample counts, per-group pass and overall filter pass |
-| `component_predictions.tsv` | Each component's profile PSI and PSI effects |
-| `model_predictions.tsv` | Event mean predictions/effects and component ranges; missing if incomplete |
-| `observed_PSI_<TYPE>.tsv` | Historical observed PSI and junction counts |
-| `PSI_matrix_sample.txt` | Observed PSI matrix for PCA |
-| `design_matrix.tsv`, `contrasts.tsv`, `design.json` | Actual design, contrast weights, factor levels, prediction definitions and versions |
-| `sample_metadata.tsv`, `analysis.json`, `glmmTMB.log` | Reproducibility metadata, analysis settings and backend log |
-| `summary.txt` | Counts by event type, contrast, status and significance |
-| `factorial_results.xlsx` | Optional event and model prediction sheets (`--excel`) |
-| `stage_timings.tsv` | Python orchestration stages and elapsed wall-clock seconds |
-| `component_timings.tsv` | Per-component fitting time, full/null optimizer attempts, retries, worker PID and cache hits |
-| `batch_timings.tsv`, `backend_performance.json` | Batch wall times and backend workload/cache/retry totals |
+| `event_statistics.tsv` | Main results across all event types: one row per event/contrast, event annotations, `p_event`, `q_event`, `status`, component effect summaries, and `Diff events`. Start here for downstream analysis; select the intended contrast before comparing events. |
+| `PSI_<TYPE>.txt` | The same event/contrast results split by event type. Despite the historical filename, these are regression results, not the legacy two-group Fisher schema. Sample `*_PSI` columns are added when `--individual-psi` is enabled. |
+| `component_statistics.tsv` | One row per tested component/contrast: logit `estimate`, Wald `se`/`ci_low`/`ci_high`, LRT `lr` and `p_component`, dispersion `phi`/`rho`, full/null log likelihoods, eligible sample count, convergence/Hessian flags, `status`, and `diagnostic`. Coverage-filtered events are not fitted. |
+| `components.tsv` | Definitions for all input events, including filtered events: component IDs and inclusion/exclusion junction IDs. Use to link a component result back to its junction comparison. |
+| `event_filter.tsv` | One row per event/filter group: `n_samples`, `n_eligible`, `n_required`, `group_pass`, and overall `filter_pass`. `filter_group` identifies the categorical cell. Use this table to explain coverage exclusions. |
+| `component_predictions.tsv` | Component-level predictions: `kind` distinguishes profiles from effects, `name` identifies the profile/effect, and `value` contains fitted PSI or a PSI-scale contrast. Header-only when no predictions are available. |
+| `model_predictions.tsv` | Event-level equal-weight component means for each `kind`/`name`, with `component_min`, `component_max`, and `status`. Incomplete component sets have missing numeric values and `incomplete_components` status; the file itself is still created. Ranges are not confidence intervals. |
+| `observed_PSI_<TYPE>.tsv` | Historical observed PSI and junction-count columns, separately from model predictions. Includes input events regardless of the regression coverage filter. |
+| `PSI_matrix_sample.txt` | Observed event-by-sample PSI matrix used for PCA; not fitted PSI. This mode does not generate `PSI_matrix_group.txt`. |
+| `design_matrix.tsv` | Actual numeric R model matrix, with sample IDs and one column per coefficient. |
+| `contrasts.tsv` | One row per coefficient and one column per named contrast, giving its weights. |
+| `design.json` | Formula, coefficient names, factor levels, prediction definitions, target hypothesis/population, and R/glmmTMB versions. |
+| `sample_metadata.tsv` | Metadata used by the analysis, aligned to the analysis samples. Factor coding and reference levels should be checked in `design.json` and `design_matrix.tsv`. |
+| `analysis.json` | Analysis manifest: method/backend, formula, contrasts, FDR method/family/threshold, coverage settings and groups, event/sample counts, effect-filter settings, process count, batch limit, and cache size. Also identifies the regression report mode. |
+| `glmmTMB.log` | R backend output from design construction and fitting; inspect alongside component diagnostics if a run or fit fails. |
+| `summary.txt` | Counts (`Number`) grouped by `event_type`, `contrast`, `status`, and `Diff events`. Counts across contrasts can include the same event more than once. |
+| `factorial_results.xlsx` | Optional (`--excel` / `excel: True`): eight event-type sheets plus `model_predictions`. It does not replace the component, filter, or diagnostic TSV files. |
+| `stage_timings.tsv` | Python orchestration stages and elapsed wall-clock seconds for each stage. |
+| `component_timings.tsv` | Per-component elapsed/full/null fitting time, optimizer attempts, retries, worker PID, and cache-hit information. |
+| `batch_timings.tsv` | Per-batch component/fitted-component counts, cache hits, optimizer attempts, retries, and elapsed seconds. |
+| `backend_performance.json` | Backend process/scheduling/cache settings and aggregate workload, cache, optimizer, retry, and elapsed-time measurements. |
+
+Timing files describe different levels of the same computation; do not add
+worker times to batch or stage times to estimate total wall time. When no events
+pass coverage, fitting/prediction tables and per-component/per-batch timings are
+empty, while filter results and backend totals still document the outcome.
+Internal `.factorial-*/` batch TSVs, configuration JSON, and `design.rds` are
+temporary working files, not retained analysis products.
+
+### Figures and HTML in `plots/`
+
+| File or pattern | Contents and generation condition |
+| --- | --- |
+| `summary.html` | Self-contained interactive report: command provenance, analysis settings, discovery counts, contrast/status summaries, available PSI effects/PCA, and previews of the first 200 event/prediction rows. Full tables remain in the TSV files. |
+| `figure_style.json` | Resolved static font paths, export DPI, and export formats. |
+| `png/<name>.png` | Static 300-dpi figure exports. |
+| `pdf/<name>.pdf`, `svg/<name>.svg` | Static publication exports; dense scatter points can be rasterized. |
+| `interactive/<name>.html` | Plot fragments assembled into the main HTML. These are not standalone pages and do not need to accompany `summary.html`. |
+| `data/pca_TPM.html`, `data/pca_PSI.html` | Standalone interactive PCA pages, created only when the corresponding PCA data and experiment table are supplied. |
+
+The figure `<name>` values are:
+
+- `barplot_splicing_summary`: significant-event counts per contrast, stacked by event type.
+- `contrast_1`, `contrast_2`, …: conservative logit component effect versus
+  −log10(event Q), one figure for each contrast present in the event table.
+  Numbering follows contrast appearance in that table; the HTML heading/caption
+  gives the contrast name.
+- `psi_effect_1`, `psi_effect_2`, …: at most 20 events with the largest absolute
+  finite model PSI effect for each available effect name. Numbering follows
+  effect-name appearance; figures are omitted when there are no finite effects.
+- `pca_TPM` and `pca_PSI`: optional sample PCA figures, requiring their PCA
+  tables and an experiment table.
+
+### Other full-pipeline outputs
+
+These files are shared with the bulk workflow; their availability depends on
+the selected steps and configuration.
+
+| Path relative to `workdir` | Contents |
+| --- | --- |
+| `annotation/assembled_annotation.gtf` | Assembled annotation when unannotated-event discovery is enabled, with assembly intermediates in the same directory. |
+| `events/EVENT_<TYPE>.txt` | Event definitions used for counting and splicing analysis. |
+| `junctions/junctions.bed` | Combined sample count table used by the regression. Counting intermediates vary with workflow and cleanup settings. |
+| `results/expression/counts.txt` | Gene count matrix. |
+| `results/expression/TPM.txt`, `results/expression/CPM.txt` | Gene abundance matrices; TPM supplies expression PCA. |
+| `results/expression/DEG.txt` | Pairwise DESeq2 results only when both expression comparison groups are supplied. This is not factorial splicing output. |
+| `results/expression/TPM_CPM.xlsx` | Optional expression workbook when Excel export is enabled. |
+| `results/pca/tpm_pca.tsv`, `results/pca/psi_pca.tsv` | Sample principal-component scores for TPM and observed PSI. |
+| `results/pca/tpm_contribution.tsv`, `results/pca/psi_contribution.tsv` | Explained variance fractions for each principal component. |
+| `report.json` | Pipeline execution provenance, including command, version, input experiment table, and timing. Not generated by standalone `psi.py`. |
+| `log/`, `benchmark/` | SnakeShiba rule logs and resource/timing records. These directories are not automatically created by the Python launcher. |
+
+### Reading results and reports
 
 An event has no single fitted regression coefficient: `estimate_min/max` and
 `conservative_component_effect` summarize component coefficients, while the
@@ -278,6 +378,41 @@ without assuming a single reference/alternative PSI pair. It writes the existing
 `plots/summary.html` and summary plot paths. The standalone regression report can
 also be generated with `src/plots.py` using a parent results directory containing
 `splicing/`.
+
+Both Fisher and beta-binomial reports use the same interactive Plotly theme:
+white backgrounds, thin axes, restrained colors, and compact typography.
+HTML uses larger screen-readable labels and markers than the static publication exports.
+The analysis command passed by the pipeline is shown at the top; when regenerating
+reports, `--shiba-command` overrides the command recorded in the parent
+`report.json`. Missing provenance is explicitly marked as not recorded.
+Hover to inspect samples/events, zoom or pan, and click legend entries to
+show/hide traces. Plotly JavaScript and figure data are embedded in one
+`summary.html`, so no network connection is required. Figures are rendered
+as they enter the viewport to bound WebGL resource use; axis/legend state is
+retained when scrolling. Static PNG (300 dpi), PDF, and SVG exports remain in
+`png/`, `pdf/`, and `svg/`. Browser toolbar export saves the current view as SVG
+(WebGL scatter points may be rasterized).
+
+Arial is preferred; when unavailable, static exports use DejaVu Sans and the
+browser uses its default sans-serif font. `SHIBA_FONT_DIR` optionally supplies
+local font files. `figure_style.json` records font paths for regression exports.
+
+Each contrast has a significance/effect scatter and status counts. Optional
+model PSI effects display at most 20 events with the largest absolute effect,
+without a significance filter; this selection is stated in the caption.
+No additional tests or confidence intervals are inferred. Missing coordinates
+are omitted with counts reported, and zero q-values are clipped only for log
+display. When PCA files and an experiment table are available, sample PCA
+figures are included. Embedded result tables show the first 200 rows; complete
+TSVs remain in the analysis output directory.
+
+```bash
+python src/plots.py -i /path/to/results -o /path/to/plots \
+  -e /path/to/Shiba_experiment.tsv
+```
+
+The HTML can be copied independently of its export directories. Large outputs
+and validation previews should remain outside version control.
 
 ## Shiba / SnakeShiba configuration
 
@@ -330,101 +465,3 @@ run the existing pairwise **gene-expression** analysis, set both
 `expression_reference_group` and `expression_alternative_group`. Otherwise
 expression abundance and PCA are produced without DESeq2 testing. The splicing
 formula is not applied to expression analysis.
-
-## Validation and limitations
-
-Run the Python tests and real-backend integration tests:
-
-```bash
-python -m unittest discover -s test -p 'test_factorial.py' -v
-```
-
-Real-backend tests require glmmTMB/jsonlite and are mandatory in the dedicated CI
-job. They cover a known interaction, null, contradictory junctions, unusable
-counts, general/reversed contrasts, ordering, parallel execution and designs.
-`test/simulate_factorial.py` provides a reproducible calibration/benchmark run.
-
-LRT P values are asymptotic. Small biological replicate counts, separation,
-near-binomial dispersion or poor coverage can make inference unreliable even
-when an optimizer returns success. The backend checks convergence, Hessian and
-likelihood ordering and retries failed fits with a second optimizer. It does
-not silently switch to a different distribution. This implementation does not
-provide dispersion shrinkage or a parametric-bootstrap P value. Calibration on
-the intended sample sizes and depths is essential before scientific use.
-
-A preliminary run on 2026-10-05 with R 4.5.2 / glmmTMB 1.1.13 used seed 731,
-200 SE events (100 interaction-null and 100 non-null), depth 100 and true rho
-0.05. The two inclusion components shared identical counts. Results were:
-
-| Replicates per cell | Null P < .05 | Realized false discovery proportion after BH | Power | Median estimated rho |
-| --- | --- | --- | --- | --- |
-| 8 | 9/100 (95% interval 4.2–16.4%) | 3.0% | 97% | 0.0406 |
-| 16 | 5/100 (95% interval 1.6–11.3%) | 2.0% | 100% | 0.0451 |
-
-These are two individual simulated datasets, not repeated-simulation estimates
-of expected FDR or guarantees for real RNA-seq experiments. The smaller-sample
-run illustrates why asymptotic calibration and dispersion bias need attention.
-Different coverage, junction dependence and replicate counts require further
-calibration. Run both examples with `test/simulate_factorial.py --events 200
---replicates 8` (or `16`), `--seed 731`, and a new `--output` directory.
-
-### Parallel execution and performance
-
-Use `-p N` with `shiba.py` or `src/psi.py`, or `--cores N` with SnakeShiba.
-The default for the Python commands is one process. R is started for design
-validation and once for fitting. The fitting stage keeps workers alive across
-batches and dynamically assigns component fits to them, so a large AFE/ALE
-event does not occupy just one worker. Unix uses a fork cluster; Windows uses
-a PSOCK cluster. Each component's full model and null models run sequentially
-within one worker, with one internal fitting thread.
-
-Observed PSI calculation also uses `-p N`, reusing one Python worker pool
-across event types and sending each worker only its event slice. Junction counts are shared between
-Python workers through shared memory, which is released when the calculation
-finishes or fails. Event output order is preserved; empty event types do not
-start a worker pool. R fitting and observed PSI run in separate stages, so their
-worker pools do not run concurrently.
-
-The event-wide eligible sample mask is established **before** components are
-scheduled. Parallel scheduling does not change that mask, the likelihood,
-component consistency checks, or the FDR family. Passing events are packed
-across input batches and event types into fitting batches of up to
-`max(event_batch_size, 4 * processes)` events. The default `event_batch_size`
-is 200; it also bounds the number of input events extracted at a time. Memory
-depends on component counts and sample counts as well as the number of events.
-
-Within a run, exact component results are reused when the ordered sample mask
-and included inclusion/exclusion counts match. The design, contrasts,
-prediction population, and optimizer settings are fixed for the run. Keys use
-exact serialization, without rounding or approximate matching. Results are
-relabeled for each event/component, which remains a separate entry in testing
-and FDR correction. Diagnostics, including failures, are retained on reuse.
-The bounded FIFO cache stores compact results, not fitted model objects.
-Use `--component-cache-size 0` to disable both within-batch deduplication and
-cross-batch caching for comparisons; the default is 10,000 entries. In YAML:
-
-```yaml
-event_batch_size: 200
-component_cache_size: 10000
-```
-
-`stage_timings.tsv` separates input validation, design, filtering/batching,
-backend fitting, reading, event aggregation, prediction aggregation/output,
-observed PSI, and final output. `component_timings.tsv` counts actual optimizer
-attempts (initial fits plus retries). Cache-hit rows have zero time/attempts and
-no worker PID; the original diagnostics remain in `component_statistics.tsv`.
-Times summed over workers are not the wall-clock duration of a parallel run.
-Use batch wall times and `backend_performance.json` for overall backend timing.
-An all-filtered run writes empty timing tables and zero backend workload.
-
-Event and prediction aggregation use vectorized grouped operations, and
-component output is written in batches. These changes preserve statistical
-definitions; floating-point summaries can differ in their last digits.
-Intermediate counts are removed after the run; fitting logs remain on failure.
-Completed result files are moved into the output directory only after the
-analysis succeeds. Timings describe completed runs; a failed run retains its
-backend log rather than publishing partial result tables.
-
-See the [parallel performance and real-data memory validation report](../validation/parallel_performance_20261015.md) for benchmark conditions, statistical equivalence checks, memory measurements, and computational next steps.
-
-A complete [beta-binomial example configuration](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/example/Shiba_SnakeShiba_beta_binomial_config_example.yaml) is available. `stat_method` accepts `fisher` or `beta_binomial`; omitting it runs Fisher testing.

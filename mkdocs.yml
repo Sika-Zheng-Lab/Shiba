@@ -99,4 +99,13 @@ nav:
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
   - Beta-binomial regression: usage/beta_binomial_regression.md
-  - Factorial workflow implementation and validation: usage/factorial_workflow_summary.md
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

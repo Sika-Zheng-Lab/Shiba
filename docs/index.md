@@ -1,6 +1,6 @@
 # Shiba
 
-![icon](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/Shiba_icon.png?raw=true){ align=right width=40% }
+![icon](assets/figures/Shiba_icon.png){ align=right width=40% }
 
 A versatile computational method for systematic identification of differential RNA splicing. **Shiba**/**scShiba** can quantify and identify differential splicing events from bulk RNA-seq data and single-cell RNA-seq data. **Shiba** and **scShiba** are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, **SnakeShiba** and **SnakeScShiba**, respectively.
 
@@ -14,6 +14,8 @@ See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.m
 
 - [Installation](installation.md)
 - Quick Start
+    - [Running the pipelines](quickstart/running.md)
+    - [Factorial beta-binomial analysis](quickstart/beta_binomial.md)
     - [With bulk RNA-seq data](quickstart/diff_splicing_bulk.md)
     - [With single-cell RNA-seq data](quickstart/diff_splicing_sc.md)
 - Output
@@ -24,6 +26,7 @@ See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.m
     - [snakeshiba.smk](usage/snakeshiba.md)
     - [scshiba.py](usage/scshiba.md)
     - [snakescshiba.smk](usage/snakescshiba.md)
+    - [Beta-binomial regression](usage/beta_binomial_regression.md)
 
 ## Citation
 

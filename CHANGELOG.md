@@ -15,19 +15,15 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Added
 
+- Added automatic interactive single-cell summary reports to scShiba and SnakeScShiba, sharing the bulk Fisher theme, plot sizes, command provenance, and figure exports; PSI-only runs receive a clearly labeled table report.
+
+- Added self-contained interactive Plotly HTML reports for factorial and Fisher analyses, a shared publication figure style with Arial with default-font fallback, and PNG/PDF/SVG exports. Factorial reports include status summaries, contrast scatters, optional PSI effects, and available PCA plots.
 - Added matching factorial sample metadata, experiment-table, contrast, and PSI prediction templates, with a MkDocs quick-start walkthrough for the beta-binomial configuration.
-
-- Documented real-data Fisher/observed-PSI memory measurements and a complete 32-CPU beta-binomial validation, with compact metrics and a process-tree memory monitor.
-
-- Parallelized pairwise Fisher event tests using `-p`, retaining event-type-wide BH correction and existing significance rules. Added bounded reuse of identical 2×2 tests and vectorized MSE/AFE/ALE significance assignment.
-- Enabled `-p` for factorial observed PSI with shared junction memory and exception-safe cleanup; made PSI event partitioning deterministic across worker processes.
-
 - Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta_binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts.
 - Preserved integer junction components for all eight event types, with common coverage masks, component direction consistency, conservative event-level tests, and BH/BY adjustment across event types per contrast.
 - Added default pre-test coverage filtering for factorial regression: every component must have at least 10 total reads in the same half (rounded up) of samples in every categorical design cell. Only passing events enter fitting and FDR correction. Supports configurable sample fractions/grouping columns and exports per-group counts in `event_filter.tsv`.
 - Added design inspection, covariate-standardized component PSI predictions and PSI contrasts, model diagnostics, contrast-aware reports, and regression output tables. Existing pairwise modes remain unchanged.
 - Added simulated factorial integration tests and a calibration/benchmark runner. New-mode LRT inference is asymptotic and does not borrow dispersion information across events.
-
 - Added intron-retention (RI) PSI and differential analysis to scShiba and SnakeScShiba, including summary and Excel output.
 - Added a generated two-library BAM fixture to test single-cell Tosa counting, UMI deduplication, group aggregation, and RI PSI.
 - Added beta-binomial as an optional statistical method for differential splicing analysis (`beta_binomial: True` in configuration). This method models splicing counts with a beta-binomial likelihood and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.

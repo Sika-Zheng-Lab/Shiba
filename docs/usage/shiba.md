@@ -3,7 +3,7 @@
 ``` bash
 usage: shiba.py [-h] [-p PROCESS] [-s START_STEP] [--mame] [-v] config
 
-Shiba v0.8.2 - Pipeline for identification of differential RNA splicing
+Shiba - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
     - Assembles transcript structures based on mapped reads using StringTie.
@@ -33,7 +33,7 @@ options:
   -v, --verbose         Verbose mode
 ```
 
-Check the [Manual](../manual/diff_splicing_bulk.md/#1-prepare-inputs) to learn how to prepare the `config`.
+Check the [Quick start](../quickstart/diff_splicing_bulk.md#1-prepare-inputs) to learn how to prepare the `config`.
 
 The `Shiba` command will run the following steps sequentially:
 
@@ -136,6 +136,11 @@ optional arguments:
 Tosa writes gzip-compressed junction and boundary tables for each BAM. Shiba converts their coordinates, combines strand rows, adds zero-count RI boundaries, and writes `junctions/junctions.bed`. For SnakeShiba, `bam2junc.py run` processes a single BAM and `bam2junc.py merge` combines the per-sample tables.
 
 ## Step4: `psi.py`
+
+The options below describe the Fisher workflow (`stat_method: fisher`, the default).
+For `stat_method: beta_binomial`, see the [factorial quick start](../quickstart/beta_binomial.md)
+and [regression CLI and output reference](beta_binomial_regression.md).
+Run `python src/psi.py --help` for the complete current option list.
 
 ``` bash
 usage: psi.py [-h] [-p NUM_PROCESS] [-g GROUP] [-f FDR] [-d PSI] [-r REFERENCE] [-a ALTERNATIVE] [-m MINIMUM_READS] [-i] [-t] [--onlypsi] [--onlypsi-group] [--excel] [-v] junctions event output

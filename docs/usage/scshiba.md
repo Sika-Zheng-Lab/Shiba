@@ -3,14 +3,16 @@
 ``` bash
 usage: scshiba.py [-h] [-p PROCESS] [-s START_STEP] [-v] config
 
-scShiba v0.8.2 - Pipeline for identification of differential RNA splicing in single-cell RNA-seq data
+scShiba - Pipeline for identification of differential RNA splicing in single-cell RNA-seq data
 
 Step 1: gtf2event.py
     - Converts GTF files to event format.
 Step 2: sc2junc.py
     - Counts junction and RI boundary reads from BAM/CRAM files with Tosa.
 Step 3: scpsi.py
-    - Calculates PSI values and perform differential analysis.
+    - Calculates PSI values and performs differential analysis.
+Step 4: plots.py
+    - Generates an interactive summary.html report.
 
 positional arguments:
   config                Config file in yaml format
@@ -24,13 +26,14 @@ options:
   -v, --verbose         Verbose mode
 ```
 
-Please check the [Manual](../manual/diff_splicing_sc.md/#1-prepare-inputs) to learn how to prepare the `config.yaml`.
+Please check the [Quick start](../quickstart/diff_splicing_sc.md#1-prepare-inputs) to learn how to prepare the `config.yaml`.
 
 The above command will run the following steps:
 
 1. `gtf2event.py`
 2. `sc2junc.py`
 3. `scpsi.py`
+4. `plots.py`
 
 ---
 
@@ -123,3 +126,26 @@ optional arguments:
   --excel               Make result files in excel format (default: False)
   -v, --verbose         Verbose output (default: False)
 ```
+
+## Interactive summary report
+
+The workflow automatically creates `plots/summary.html` in the work directory.
+This self-contained HTML uses the same interactive style as Shiba: enlarged text,
+muted colors, hover labels, zoom/pan, legend toggling, and Arial with browser-default
+font fallback. It includes the analysis command, differential-event counts, and
+volcano and PSI scatter plots for all eight event types, including RI.
+PNG, PDF, and SVG exports are saved alongside the report.
+
+Single-cell PSI values are aggregated by cell group. This report does not add
+biological replication or change the Fisher tests. Bulk TPM/PSI PCA panels are
+not included. With `only_psi: True`, the report instead shows up to 200 rows per
+event type and explicitly states that no differential testing was performed.
+
+To regenerate the report from existing results:
+
+```bash
+python src/plots.py --single-cell -i /path/to/workdir/results -o /path/to/workdir/plots
+```
+
+Add `--only-psi` for PSI-only results. The command is retrieved from the saved
+`report.json`; use `-s 'original analysis command'` to supply it explicitly.

@@ -1,12 +1,17 @@
 # Output files of Shiba/SnakeShiba
 
+This page describes **Fisher-mode** result columns. For `stat_method: beta_binomial`,
+use the [complete regression output reference](../usage/beta_binomial_regression.md#output);
+the two modes have different result schemas.
+
 The output directory of **Shiba** contains the following sub directories:
 
-- `annotation`: Assembled GTF file.
+- `annotation`: Assembled GTF file, only when unannotated-event discovery is enabled.
 - `events`: Text files of alternative splicing events.
 - `junctions`: Junction read counts.
 - `results`: Results of differential expression and splicing analysis.
-- `plots`: Plots of alternative splicing events.
+- `plots`: Interactive `summary.html`, individual figure HTMLs, and PNG/PDF/SVG exports.
+- `report.json`: Pipeline command, version, inputs, and execution timing.
 
 The following sub directories are added when **SnakeShiba** is used:
 
@@ -19,6 +24,8 @@ The following sub directories are added when **SnakeShiba** is used:
 
 - `PSI_[SE,FIVE,THREE,MXE,RI,MSE,AFE,ALE].txt`: Results of differential splicing analysis.
 - `PSI_matrix_[sample,group].txt`: PSI values of each event for all samples or groups. Blank cells indicate that the event did not pass the minimum read count threshold.
+- `analysis.json`: Method and analysis settings.
+- `results.xlsx`: Optional Excel export.
 - `summary.txt`: Numbers of the differentially spliced events for each splicing and event type.
 
 ---
@@ -42,7 +49,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_SE.txt`
 
 <figure markdown="span">
-	![SE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/SE.png?raw=true){ width="100%" }
+	![SE](../assets/figures/SE.png){ width="100%" }
 	<figcaption>Skipped exon</figcaption>
 </figure>
 
@@ -67,7 +74,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_FIVE.txt` and `PSI_THREE.txt`
 
 <figure markdown="span">
-	![FIVE_THREE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/FIVE_THREE.png?raw=true){ width="100%" }
+	![FIVE_THREE](../assets/figures/FIVE_THREE.png){ width="100%" }
 	<figcaption>Alternative 5' and 3' splice sites</figcaption>
 </figure>
 
@@ -87,32 +94,34 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_MXE.txt`
 
 <figure markdown="span">
-	![MXE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/MXE.png?raw=true){ width="100%" }
+	![MXE](../assets/figures/MXE.png){ width="100%" }
 	<figcaption>Mutually exclusive exons</figcaption>
+
+Exon A/B follow transcript orientation; on the minus strand, A is not the leftmost exon. Junctions a1/b1 are upstream (5′) and a2/b2 are downstream (3′) of their respective exon in transcript orientation.
 </figure>
 
-- **exon_a**: Genomic coordinates of the left-side mutually exclusive exon.
-- **exon_b**: Genomic coordinates of the right-side mutually exclusive exon.
-- **intron_a1**: Genomic coordinates of the left-side inclusive intron of the left-side mutually exclusive exon.
-- **intron_a2**: Genomic coordinates of the right-side inclusive intron of the left-side mutually exclusive exon.
-- **intron_b1**: Genomic coordinates of the left-side inclusive intron of the right-side mutually exclusive exon.
-- **intron_b2**: Genomic coordinates of the right-side inclusive intron of the right-side mutually exclusive exon.
-- **ref_junction_a1**: Junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon in the reference group.
-- **ref_junction_a2**: Junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon in the reference group.
-- **ref_junction_b1**: Junction read counts of the left-side inclusive intron of the right-side mutually exclusive exon in the reference group.
-- **ref_junction_b2**: Junction read counts of the right-side inclusive intron of the right-side mutually exclusive exon in the reference group.
-- **alt_junction_a1**: Junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon in the alternative group.
-- **alt_junction_a2**: Junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon in the alternative group.
-- **alt_junction_b1**: Junction read counts of the left-side inclusive intron of the right-side mutually exclusive exon in the alternative group.
-- **alt_junction_b2**: Junction read counts of the right-side inclusive intron of the right-side mutually exclusive exon in the alternative group.
-- **OR_a1b1**: Odds ratio comparing junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon to those of the left-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **p_a1b1**: *P*-value of Fisher's exact test for the junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon to those of the left-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **OR_a1b2**: Odds ratio comparing junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon to those of the right-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **p_a1b2**: Odds ratio comparing junction read counts of the left-side inclusive intron of the left-side mutually exclusive exon to those of the right-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **OR_a2b1**: Odds ratio comparing junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon to those of the left-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **p_a2b1**: Odds ratio comparing junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon to those of the left-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **OR_a2b2**: Odds ratio comparing junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon to those of the right-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
-- **p_a2b2**: Odds ratio comparing junction read counts of the right-side inclusive intron of the left-side mutually exclusive exon to those of the right-side inclusive intron of the right-side mutually exclusive exon, reference group against alternative group.
+- **exon_a**: Genomic coordinates of the upstream mutually exclusive exon (in transcript orientation).
+- **exon_b**: Genomic coordinates of the downstream mutually exclusive exon (in transcript orientation).
+- **intron_a1**: Genomic coordinates of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation).
+- **intron_a2**: Genomic coordinates of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation).
+- **intron_b1**: Genomic coordinates of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation).
+- **intron_b2**: Genomic coordinates of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation).
+- **ref_junction_a1**: Junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) in the reference group.
+- **ref_junction_a2**: Junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) in the reference group.
+- **ref_junction_b1**: Junction read counts of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation) in the reference group.
+- **ref_junction_b2**: Junction read counts of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation) in the reference group.
+- **alt_junction_a1**: Junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) in the alternative group.
+- **alt_junction_a2**: Junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) in the alternative group.
+- **alt_junction_b1**: Junction read counts of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation) in the alternative group.
+- **alt_junction_b2**: Junction read counts of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation) in the alternative group.
+- **OR_junction_a1b1**: Odds ratio comparing junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **p_junction_a1b1**: *P*-value of Fisher's exact test for the junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **OR_junction_a1b2**: Odds ratio comparing junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **p_junction_a1b2**: *P*-value of Fisher's exact test comparing junction read counts of the upstream (5′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **OR_junction_a2b1**: Odds ratio comparing junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **p_junction_a2b1**: *P*-value of Fisher's exact test comparing junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the upstream (5′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **OR_junction_a2b2**: Odds ratio comparing junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
+- **p_junction_a2b2**: *P*-value of Fisher's exact test comparing junction read counts of the downstream (3′) inclusive intron of the upstream mutually exclusive exon (in transcript orientation) to those of the downstream (3′) inclusive intron of the downstream mutually exclusive exon (in transcript orientation), reference group against alternative group.
 - **p_maximum**: Greater of the four *P*-values of Fisher's exact tests.
 
 ---
@@ -120,8 +129,8 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_RI.txt`
 
 <figure markdown="span">
-	![RI](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/RI.png?raw=true){ width="100%" }
-	<figcaption>Reteined intron</figcaption>
+	![RI](../assets/figures/RI.png){ width="100%" }
+	<figcaption>Retained intron</figcaption>
 </figure>
 
 - **exon_a**: Genomic coordinates of the left-side exon.
@@ -131,7 +140,7 @@ The following sub directories are added when **SnakeShiba** is used:
 - **ref_junction_a**: Junction read counts of the intron in the reference group.
 - **ref_junction_a_start**: The left-side exon-intron junction read counts of the retained intron in the reference group.
 - **ref_junction_a_end**: The right-side exon-intron junction read counts of the retained intron in the reference group.
-- **alt_junction_a**: : Junction read counts of the intron in the alternative group.
+- **alt_junction_a**: Junction read counts of the intron in the alternative group.
 - **alt_junction_a_start**: The left-side exon-intron junction read counts of the retained intron in the alternative group.
 - **alt_junction_a_end**: The right-side exon-intron junction read counts of the retained intron in the alternative group.
 - **OR_junction_a_start**: Odds ratio comparing the left-side exon-intron junction read counts to the intron junction read counts, reference group against alternative group.
@@ -145,7 +154,7 @@ The following sub directories are added when **SnakeShiba** is used:
 ## `PSI_MSE.txt`
 
 <figure markdown="span">
-	![MSE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/MSE.png?raw=true){ width="100%" }
+	![MSE](../assets/figures/MSE.png){ width="100%" }
 	<figcaption>Multiple skipped exons</figcaption>
 </figure>
 
@@ -155,14 +164,14 @@ The following sub directories are added when **SnakeShiba** is used:
 - **ref_junction**: Junction read counts of the associated introns of the skipped exons in the reference group, separated by semi-colons from the left to the right and the last one is the exclusive intron (e.g., `25;20;32;489`).
 - **alt_junction**: Junction read counts of the associated introns of the skipped exons in the alternative group, separated by semi-colons from the left to the right and the last one is the exclusive intron (e.g., `386;438;703;598`).
 - **OR_junction**: Odds ratio comparing junction read counts of the associated inclusive introns of the skipped exons to those of the exclusive intron, reference group against alternative group, separated by semi-colons from the left to the right (e.g., `0.07920361952594382;0.05584036006760605;0.055665610718888085`).
-- **p_juntion**: *P*-value of Fisher's exact test for the junction read counts of the associated inclusive introns of the skipped exons to those of the exclusive intron, reference group against alternative group, separated by semi-colons from the left to the right (e.g., `3.0283773991245187e-54;2.488569122823104e-66;3.7054604961481054e-93`).
+- **p_junction**: *P*-value of Fisher's exact test for the junction read counts of the associated inclusive introns of the skipped exons to those of the exclusive intron, reference group against alternative group, separated by semi-colons from the left to the right (e.g., `3.0283773991245187e-54;2.488569122823104e-66;3.7054604961481054e-93`).
 
 ---
 
 ## `PSI_AFE.txt` and `PSI_ALE.txt`
 
 <figure markdown="span">
-	![AFE_ALE](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/img/AFE_ALE.png?raw=true){ width="100%" }
+	![AFE_ALE](../assets/figures/AFE_ALE.png){ width="100%" }
 	<figcaption>Alternative first and last exons</figcaption>
 </figure>
 
@@ -204,80 +213,51 @@ The following sub directories are added when **SnakeShiba** is used:
 
 ---
 
+## Interactive plots
+
+`plots/summary.html` embeds the interactive figures and their data in one file.
+It contains the analysis command, event-count summary, TPM/PSI PCA, and volcano
+and PSI scatter plots for eight event types. Static exports are in `png/`,
+`pdf/`, and `svg/`; `interactive/` holds HTML fragments, while `data/`
+holds standalone PCA/scatter/volcano pages. See the
+[shared report behavior](../usage/beta_binomial_regression.md#reading-results-and-reports).
+
 ## An example of output directory structure
 
-```bash
-output
-├── annotation
-│   └── assembled_annotation.gtf
-├── events
-│   ├── EVENT_AFE.txt
-│   ├── EVENT_ALE.txt
-│   ├── EVENT_FIVE.txt
-│   ├── EVENT_MSE.txt
-│   ├── EVENT_MXE.txt
-│   ├── EVENT_RI.txt
-│   ├── EVENT_SE.txt
-│   └── EVENT_THREE.txt
-├── junctions
-│   ├── junctions.bed
-│   └── logs
-│       ├── featureCounts.log
-│       └── regtools.log
-├── plots
-│   ├── data
-│   │   ├── bar_AFE.html
-│   │   ├── bar_ALE.html
-│   │   ├── bar_FIVE.html
-│   │   ├── bar_MSE.html
-│   │   ├── bar_MXE.html
-│   │   ├── bar_RI.html
-│   │   ├── bar_SE.html
-│   │   ├── bar_THREE.html
-│   │   ├── pca_PSI.html
-│   │   ├── pca_TPM.html
-│   │   ├── scatter_AFE.html
-│   │   ├── scatter_ALE.html
-│   │   ├── scatter_FIVE.html
-│   │   ├── scatter_MSE.html
-│   │   ├── scatter_MXE.html
-│   │   ├── scatter_RI.html
-│   │   ├── scatter_SE.html
-│   │   ├── scatter_THREE.html
-│   │   ├── volcano_AFE.html
-│   │   ├── volcano_ALE.html
-│   │   ├── volcano_FIVE.html
-│   │   ├── volcano_MSE.html
-│   │   ├── volcano_MXE.html
-│   │   ├── volcano_RI.html
-│   │   ├── volcano_SE.html
-│   │   └── volcano_THREE.html
-│   └── summary.html
-└── results
-    ├── expression
-    │   ├── counts.txt
-    │   ├── CPM.txt
-    │   ├── DEG.txt
-    │   ├── logs
-    │   │   ├── DESeq2.log
-    │   │   └── featureCounts.log
-    │   ├── TPM_CPM.xlsx
-    │   └── TPM.txt
-    ├── pca
-    │   ├── psi_contribution.tsv
-    │   ├── psi_pca.tsv
-    │   ├── tpm_contribution.tsv
-    │   └── tpm_pca.tsv
-    └── splicing
-        ├── PSI_AFE.txt
-        ├── PSI_ALE.txt
-        ├── PSI_FIVE.txt
-        ├── PSI_matrix_group.txt
-        ├── PSI_matrix_sample.txt
-        ├── PSI_MSE.txt
-        ├── PSI_MXE.txt
-        ├── PSI_RI.txt
-        ├── PSI_SE.txt
-        ├── PSI_THREE.txt
-        └── summary.txt
+This is a full Fisher run; optional annotation, Excel, and expression-test
+outputs depend on configuration. `--mame` omits expression, PCA, and plots.
+PSI-only bulk runs omit plots and differential tests.
+
+```text
+workdir/
+├── annotation/assembled_annotation.gtf
+├── events/EVENT_<TYPE>.txt
+├── junctions/junctions.bed
+├── plots/
+│   ├── summary.html
+│   ├── data/
+│   ├── interactive/
+│   ├── png/
+│   ├── pdf/
+│   └── svg/
+├── results/
+│   ├── expression/
+│   │   ├── counts.txt
+│   │   ├── TPM.txt
+│   │   ├── CPM.txt
+│   │   ├── DEG.txt
+│   │   └── TPM_CPM.xlsx
+│   ├── pca/
+│   │   ├── tpm_pca.tsv
+│   │   ├── tpm_contribution.tsv
+│   │   ├── psi_pca.tsv
+│   │   └── psi_contribution.tsv
+│   └── splicing/
+│       ├── analysis.json
+│       ├── PSI_<TYPE>.txt
+│       ├── PSI_matrix_sample.txt
+│       ├── PSI_matrix_group.txt
+│       ├── summary.txt
+│       └── results.xlsx
+└── report.json
 ```

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import shlex
 import os
 import sys
 import logging
@@ -140,7 +141,7 @@ def main():
 
     # Get command line of this script
     logger.debug("Getting command line...")
-    command_line = " ".join(sys.argv)
+    command_line = shlex.join([sys.executable, *sys.argv])
     logger.debug(f"Command line: {command_line}")
 
     # Steps

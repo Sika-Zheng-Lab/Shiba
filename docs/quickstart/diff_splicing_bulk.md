@@ -4,33 +4,21 @@
 
 ## Before you start
 
+This guide uses the default `stat_method: fisher`. For factorial regression,
+use the [beta-binomial quick start](beta_binomial.md).
+
 - Perform mapping of RNA-seq reads to the reference genome and generate bam files with their index files (`.bai`)  by software such as [STAR](https://github.com/alexdobin/STAR) and [HISAT2](https://daehwankimlab.github.io/hisat2/).
     - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
-- Download a gene annotataion file of your interest in GTF format.
+- Download a gene annotation file of your interest in GTF format.
 
 ---
 
 ## Installation
 
-- **Shiba**:
-
-``` bash
-# Install Shiba with conda
-conda create -n shiba -c conda-forge -c bioconda shiba
-# Activate the conda environment
-conda activate shiba
-# Install styleframe for generating outputs in Excel format (optional)
-pip install styleframe==4.2
-```
-
-- **MameShiba**, a lightweight version of **Shiba**:
-
-``` bash
-# Install MameShiba with conda
-conda create -n mameshiba -c conda-forge -c bioconda mameshiba
-# Activate the conda environment
-conda activate mameshiba
-```
+Follow the [installation guide](../installation.md) to install dependencies,
+including Tosa, and select the matching Shiba source checkout. Run the commands
+below from that checkout with its environment activated. Installing an older
+Conda package alone does not provide the current implementation.
 
 ---
 
@@ -139,7 +127,7 @@ excel:
 ### 2. Run
 
 ``` bash
-shiba.py -p 4 config.yaml
+python ./shiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -148,7 +136,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	shiba.py --verbose -p 4 config.yaml
+	python ./shiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -169,7 +157,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 Make sure running with `--mame` option.
 
 ``` bash
-shiba.py --mame -p 4 config.yaml
+python ./shiba.py --mame -p 4 config.yaml
 ```
 
 ---

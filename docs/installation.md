@@ -252,3 +252,10 @@ a registry image that contains the new backend.
 
 These runtime setup steps also apply to SnakeScShiba, but the new factorial
 regression mode currently targets bulk biological replicate counts in SnakeShiba.
+
+## Fonts for publication figures
+
+Arial is preferred for figures. If it is unavailable, static exports use
+Matplotlib's default DejaVu Sans; HTML uses `Arial, sans-serif` and the browser's
+fallback font. Optional `SHIBA_FONT_DIR` can point to a directory containing
+licensed Arial font files. Fonts are not bundled with this repository.

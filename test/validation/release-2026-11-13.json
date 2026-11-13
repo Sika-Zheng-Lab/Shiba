@@ -1,6 +1,5 @@
 {
   "validation_date": "2026-11-13",
-  "code_commit": "9da70b229cc9c793164cbe287bda58a9295c6885",
   "version_unchanged": "v0.8.2",
   "runtime": {
     "python": "3.12.16 (main, Oct 26 2026, 11:37:43) [GCC 15.3.0]",
@@ -207,7 +206,8 @@
             "png",
             "pdf",
             "svg"
-          ]
+          ],
+          "first_plot_axis_labels_within_plot": true
         },
         {
           "report": "real-short/regression/plots/summary.html",
@@ -219,7 +219,8 @@
             "png",
             "pdf",
             "svg"
-          ]
+          ],
+          "first_plot_axis_labels_within_plot": true
         }
       ]
     },
@@ -382,7 +383,8 @@
             "png",
             "pdf",
             "svg"
-          ]
+          ],
+          "first_plot_axis_labels_within_plot": true
         },
         {
           "report": "real-long/regression/plots/summary.html",
@@ -394,7 +396,8 @@
             "png",
             "pdf",
             "svg"
-          ]
+          ],
+          "first_plot_axis_labels_within_plot": true
         }
       ]
     },
@@ -446,7 +449,8 @@
             "png",
             "pdf",
             "svg"
-          ]
+          ],
+          "first_plot_axis_labels_within_plot": true
         }
       ]
     }
@@ -586,15 +590,17 @@
   "conda_candidates": {
     "shiba": {
       "file": "shiba-0.8.2-py312_0.tar.bz2",
-      "sha256": "6acd9ed73b26296df41f94f4cecbc028d5eec7bee6c8dbb8c344bfdea1759e6c",
+      "sha256": "98032e8fd59663f66efcf912bd6461b73420f31dfea3dc06bf4b1c2d35b177ed",
       "status": "build and fresh-environment CLI/R tests passed",
-      "source": "local candidate; not the published v0.8.2 package"
+      "source": "local candidate; not the published v0.8.2 package",
+      "includes_current_plotting_fix": true
     },
     "mameshiba": {
       "file": "mameshiba-0.8.2-py312_0.tar.bz2",
-      "sha256": "112c9aef7d83ae42fc45bd2e5ed258f4f357e2cfbeb6b8e68d3748bc447404ff",
+      "sha256": "8bd2a116de9336446d799d9f41c847006a91277a47503a7aedbffcf10c94698a",
       "status": "build and fresh-environment CLI/R tests passed",
-      "source": "local candidate; not the published v0.8.2 package"
+      "source": "local candidate; not the published v0.8.2 package",
+      "includes_current_plotting_fix": true
     }
   },
   "synthetic_browser": [
@@ -608,7 +614,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     },
     {
       "report": "pipelines/shiba-factorial/plots/summary.html",
@@ -620,7 +627,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     },
     {
       "report": "pipelines/shiba-fisher/plots/summary.html",
@@ -632,7 +640,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     },
     {
       "report": "pipelines/snakescshiba/plots/summary.html",
@@ -644,7 +653,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     },
     {
       "report": "pipelines/snakeshiba-factorial/plots/summary.html",
@@ -656,7 +666,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     },
     {
       "report": "pipelines/snakeshiba-fisher/plots/summary.html",
@@ -668,7 +679,8 @@
         "png",
         "pdf",
         "svg"
-      ]
+      ],
+      "first_plot_axis_labels_within_plot": true
     }
   ],
   "limitations": [
@@ -688,5 +700,14 @@
       "docker/Dockerfile_develop"
     ],
     "docker_hub_access": "pull/push grant verified; no image uploaded"
+  },
+  "analysis_code_commit": "9da70b229cc9c793164cbe287bda58a9295c6885",
+  "report_rendering_validation": {
+    "source": "src/lib/figure_style.py",
+    "sha256": "8d8ad869dff6b170e6e6113813e67c471b8accfb323fbd2862e7cd323658b37e",
+    "additional_unit_tests_passed": 5,
+    "browser_reports_passed": 11,
+    "first_plot_axis_labels_within_plot": true,
+    "change": "Automatic axis margins prevent long contrast labels from being clipped."
   }
 }

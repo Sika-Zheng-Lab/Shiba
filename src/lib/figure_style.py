@@ -84,10 +84,10 @@ def plot_html(fig, caption):
                       margin=dict(l=125, r=45, t=60, b=90),
                       legend=dict(font=dict(size=14), bgcolor='rgba(0,0,0,0)'),
                       hoverlabel=dict(font=dict(family='Arial, sans-serif', size=15)))
-    fig.update_xaxes(showgrid=False, showline=True, linewidth=1, linecolor='#444',
+    fig.update_xaxes(automargin=True, showgrid=False, showline=True, linewidth=1, linecolor='#444',
                      ticks='outside', tickwidth=1, ticklen=4, zeroline=False,
                      title_font=dict(size=18), tickfont=dict(size=14))
-    fig.update_yaxes(showgrid=False, showline=True, linewidth=1, linecolor='#444',
+    fig.update_yaxes(automargin=True, showgrid=False, showline=True, linewidth=1, linecolor='#444',
                      ticks='outside', tickwidth=1, ticklen=4, zeroline=False,
                      title_font=dict(size=18), tickfont=dict(size=14))
     fig.update_annotations(font=dict(size=16))

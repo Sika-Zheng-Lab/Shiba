@@ -33,9 +33,16 @@ def main():
                 const range = plot.layout.xaxis.range;
                 const svg = await Plotly.toImage(plot, {format: 'svg'});
                 const png = await Plotly.toImage(plot, {format: 'png'});
-                return {range, svg: svg.startsWith('data:image/svg+xml'), png: png.startsWith('data:image/png')};
+                const box = plot.getBoundingClientRect();
+                const labelsFit = [...plot.querySelectorAll('.ytick text, .xtick text')].every(label => {
+                    const bounds = label.getBoundingClientRect();
+                    return bounds.width === 0 || (bounds.left >= box.left - 1 && bounds.right <= box.right + 1 &&
+                        bounds.top >= box.top - 1 && bounds.bottom <= box.bottom + 1);
+                });
+                return {range, labelsFit, svg: svg.startsWith('data:image/svg+xml'), png: png.startsWith('data:image/png')};
             }""")
             assert result["range"] == [0, 1] and result["svg"] and result["png"], result
+            assert result["labelsFit"], f"Clipped axis labels: {report}"
             assert not errors, errors
             assert not network, network
             page.screenshot(path=str(report.parent / "browser-check.png"), full_page=False)

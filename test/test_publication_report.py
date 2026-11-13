@@ -50,6 +50,8 @@ class TestPublicationReport(unittest.TestCase):
         self.assertEqual(spec['data'][0]['text'], [label])
         self.assertEqual(spec['layout']['font']['family'], 'Arial, sans-serif')
         self.assertFalse(spec['layout']['xaxis']['showgrid'])
+        self.assertTrue(spec['layout']['xaxis']['automargin'])
+        self.assertTrue(spec['layout']['yaxis']['automargin'])
 
     def test_command_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -11,6 +11,8 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Fixed
 
+- Prevented long contrast labels from being clipped in interactive HTML plots by sizing axis margins automatically.
+
 - Fixed Snakemake report generation when `PYTHONPATH` is unset, including clean Docker environments.
 
 - Fixed bulk assembly and expression skipping sample IDs beginning with `sample` (for example, `sample_WT_Control_0`).

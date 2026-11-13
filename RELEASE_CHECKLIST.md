@@ -27,9 +27,9 @@
 - 合成BAMの全工程: Shiba Fisher / Shiba factorial / SnakeShiba Fisher / SnakeShiba factorial / scShiba / SnakeScShibaの**6通り成功**。bulkはStringTie、featureCounts、DESeq2、PCA、Excel、HTMLを含む。
 - single-cell BAM/自己完結型（no_ref）CRAM: CB/UB、UMI重複除去、ライブラリをまたぐbarcode groupの集計、RI PSIが既知の期待値と一致。
 - Excel: 混在/全空シート、値とヘッダー、freeze panes、出力失敗時の既存ファイル保護を確認。回帰モードのworkbookも生成確認。
-- ブラウザ: 6通りの合成データ出力と公開データ出力で、外部ネットワークを遮断し、HTML表示、Plotlyズーム、SVG/PNG出力を確認。静的PNG/PDF/SVGの存在・ファイル形式も確認。
+- ブラウザ: 6通りの合成データ出力と公開データ出力で、外部ネットワークを遮断し、HTML表示、Plotlyズーム、SVG/PNG出力を確認。静的PNG/PDF/SVGの存在・ファイル形式も確認。画面確認で判明した長い交互作用名の見切れを自動余白で修正し、ブラウザで軸ラベルが描画領域内に収まることも確認した。
 - `mkdocs build --strict`、workflowのactionlint、Python構文チェック成功。
-- Docker統合CI: [`9da70b2`の全ジョブ成功](https://github.com/Sika-Zheng-Lab/Shiba/actions/runs/43503585120)。Shiba/MameShiba両候補のConda build・新規環境でのインストール/CLI/R起動テスト成功。公式channelの同一archiveと依存関係の修正metadataをローカルへミラーして検証した。
+- Docker統合CI: [`9da70b2`の全ジョブ成功](https://github.com/Sika-Zheng-Lab/Shiba/actions/runs/43503585120)。Shiba/MameShiba両候補のConda build・新規環境でのインストール/CLI/R起動テスト成功。公式channelの同一archiveと依存関係の修正metadataをローカルへミラーして検証した。軸ラベル修正後も両候補を再build・再test済み。
 
 依存環境はPython 3.12.16、NumPy 2.2.6、pandas 2.3.3、SciPy 1.15.2、Tosa 1.0.0、Snakemake 9.13.7、R 4.5.3、glmmTMB 1.1.13、TMB 1.9.19、Matrix 1.7.5、DESeq2 1.50.2。CI artifactには実際のConda explicit spec、pip freeze、runtime.json、統合テスト出力を保存する（保持7日）。
 

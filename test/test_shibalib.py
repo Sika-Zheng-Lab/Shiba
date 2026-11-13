@@ -274,6 +274,25 @@ class TestMakeJuncSet(unittest.TestCase):
 # ============================================================================
 # Event Filtering Functions
 # ============================================================================
+class TestEmptyEventFiltering(unittest.TestCase):
+    def test_empty_event_files_preserve_columns(self):
+        events = shibalib.read_events(DATA_DIR)
+        selectors = {
+            "SE": shibalib.event_for_analysis_se,
+            "FIVE": shibalib.event_for_analysis_five_three,
+            "THREE": shibalib.event_for_analysis_five_three,
+            "MXE": shibalib.event_for_analysis_mxe,
+            "RI": shibalib.event_for_analysis_ri,
+            "MSE": shibalib.event_for_analysis_mse,
+            "AFE": shibalib.event_for_analysis_afe_ale,
+            "ALE": shibalib.event_for_analysis_afe_ale,
+        }
+        for kind, select in selectors.items():
+            with self.subTest(event_type=kind):
+                empty = events[kind].iloc[:0]
+                pd.testing.assert_frame_equal(select(empty, {"chr1:100-200"}), empty)
+
+
 class TestEventForAnalysisSE(unittest.TestCase):
     def test_se_events_filtered(self):
         events = shibalib.read_events(DATA_DIR)

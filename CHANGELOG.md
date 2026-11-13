@@ -9,6 +9,10 @@ All notable changes to this Shiba project will be documented in this file.
 >
 > This version includes a **breaking change** in the MXE (Mutually Exclusive Exons) coordinate definition. `exon_a`/`exon_b` and their associated introns are now assigned based on gene strand direction (upstream/downstream) instead of genomic position (left/right). This affects all MXE output files (`EVENT_MXE.txt`, `PSI_MXE.txt`) for minus-strand genes. Results from previous versions are **not directly comparable** for MXE events on the minus strand. Please re-run the analysis with this version if you need consistent strand-aware MXE annotations.
 
+### Fixed
+
+- Preserve event-table columns when an event type has no rows, preventing a `KeyError: event_id` in bulk Fisher analysis of small or filtered annotations.
+
 ### Removed
 
 - Removed the supplementary two-group Python beta-binomial implementation, its bulk/single-cell `-b/--beta-binomial` flags, and the `beta_binomial` configuration key. Old keys now produce a migration error. Use `stat_method: beta_binomial` for bulk event-centric factorial regression or `stat_method: fisher` for Fisher testing.

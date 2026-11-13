@@ -378,7 +378,7 @@ def event_for_analysis_se(event_df, junc_set) -> pd.DataFrame:
     mask = np.array([
         (intron_a in junc_set) or (intron_b in junc_set) or (intron_c in junc_set)
         for intron_a, intron_b, intron_c in zip(intron_a_values, intron_b_values, intron_c_values)
-    ])
+    ], dtype=bool)
     
     return event_df[mask]
 
@@ -402,7 +402,7 @@ def event_for_analysis_mse(event_df, junc_set) -> pd.DataFrame:
     mask = np.array([
         len(set(intron.split(";")) & junc_set) > 0
         for intron in intron_values
-    ])
+    ], dtype=bool)
     
     return event_df[mask]
 
@@ -427,7 +427,7 @@ def event_for_analysis_five_three(event_df, junc_set) -> pd.DataFrame:
     mask = np.array([
         (intron_a in junc_set) or (intron_b in junc_set)
         for intron_a, intron_b in zip(intron_a_values, intron_b_values)
-    ])
+    ], dtype=bool)
     
     return event_df[mask]
 
@@ -452,7 +452,7 @@ def event_for_analysis_afe_ale(event_df, junc_set) -> pd.DataFrame:
     mask = np.array([
         len((set(intron_a.split(";")) | set(intron_b.split(";"))) & junc_set) > 0
         for intron_a, intron_b in zip(intron_a_values, intron_b_values)
-    ])
+    ], dtype=bool)
     
     return event_df[mask]
 
@@ -479,7 +479,7 @@ def event_for_analysis_mxe(event_df, junc_set) -> pd.DataFrame:
     mask = np.array([
         (intron_a1 in junc_set) or (intron_a2 in junc_set) or (intron_b1 in junc_set) or (intron_b2 in junc_set)
         for intron_a1, intron_a2, intron_b1, intron_b2 in zip(intron_a1_values, intron_a2_values, intron_b1_values, intron_b2_values)
-    ])
+    ], dtype=bool)
     
     return event_df[mask]
 

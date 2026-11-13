@@ -30,69 +30,79 @@ Shiba comprises four main steps:
 1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie](https://github.com/gpertea/stringtie)
 2. **Splicing event identification**: Identify alternative mRNA splicing events from assembled transcripts
 3. **Read counting**: Count splice junction and intron retention boundary reads using [Tosa](https://github.com/Sika-Zheng-Lab/Tosa)
-4. **Statistical analysis**: Identify DSEs based on Fisher's exact test
+4. **Statistical analysis**: Identify DSEs using Fisher's exact test or beta-binomial regression
+
+**Beta-binomial analysis**: Shiba and SnakeShiba support optional event-centric
+beta-binomial regression (`stat_method: beta_binomial`) for factorial experimental
+designs. This mode models junction counts across biological replicates with
+R/glmmTMB, accounting for overdispersion and supporting covariates, interaction
+terms (for example, genotype × treatment), and user-defined contrasts. It reports
+FDR-adjusted event-level results and model-based PSI predictions and effect sizes.
+See the [beta-binomial regression guide](docs/usage/beta_binomial_regression.md)
+for configuration and examples. Set `stat_method: beta_binomial` plus
+`formula`, metadata, and `coef` or `contrast_file` in the configuration.
+Set `stat_method: fisher` to use Fisher testing instead. The old supplementary
+`beta_binomial` key and `psi.py -b/--beta-binomial` have been removed; delete
+that key from existing configurations.
 
 <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
 
 ## Installation
 
+The event-centric factorial beta-binomial mode requires **R, glmmTMB, and
+jsonlite**, in addition to Shiba's existing dependencies. Use a source checkout
+that contains `src/beta_binomial_glm.R`; installing these R packages alone does
+not add the new mode to an older Shiba executable. The v0.8.2 package/image uses
+the earlier counting pipeline and does not contain this regression backend.
+
 ### Conda
 
+Create an environment for the current source checkout, including
+[Tosa from Bioconda](https://anaconda.org/bioconda/tosa):
+
 ```bash
-conda create -n shiba -c conda-forge -c bioconda shiba
+conda create -n shiba -c conda-forge -c bioconda \
+  python=3.12 shiba tosa=1.0.0 r-glmmtmb r-jsonlite
 conda activate shiba
-conda install -c conda-forge rust
-cargo install tosa --version 1.0.0 --locked
-pip install styleframe==4.2 # optional, for generating outputs in Excel format.
+python -m pip install styleframe==4.2 openpyxl # optional Excel output
 ```
 
-Tosa-based counting is in this repository's development code. The published Shiba v0.8.2 Conda package and Docker image still contain the earlier counting pipeline.
-
-If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
+For an existing Shiba environment, add Tosa and the regression backend with:
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda mameshiba
+conda activate shiba
+conda install -c conda-forge -c bioconda tosa=1.0.0 r-glmmtmb r-jsonlite
 ```
+
+From the source checkout, verify the backend and use the checked-out scripts:
+
+```bash
+Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE)); print(packageVersion("glmmTMB"))'
+python ./src/psi.py --help
+python ./shiba.py -p 4 config.yaml
+```
+
+The Conda package supplies the base dependencies; `python ./shiba.py` selects
+this checkout instead of an older `shiba.py` installed on `PATH`. The new R
+packages are optional for legacy splicing analysis. Existing gene-expression
+analysis still has its own R dependencies.
+
+For **MameShiba** (splicing only), use `mameshiba` in place of `shiba` in the
+`conda create` command, then run `python ./shiba.py --mame -p 4 config.yaml` from
+this checkout. MameShiba also needs glmmTMB/jsonlite when using the new mode.
 
 ### Docker
 
 ```bash
-docker pull naotokubota/shiba:v0.8.2
+docker pull shiba:v0.8.2
 ```
 
 ## Usage
 
-Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https://sika-zheng-lab.github.io/Shiba/).
-
-***Shiba***
-
-```bash
-shiba.py -p 4 config.yaml
-```
-
-***MameShiba***, a lightweight version of Shiba
-
-```bash
-shiba.py --mame -p 4 config.yaml
-```
-
-***SnakeShiba***, Snakemake-based workflow of Shiba
-
-```bash
-snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
-
-***scShiba***, a single-cell RNA-seq version of Shiba
-
-```bash
-scshiba.py -p 4 config.yaml
-```
-
-***SnakeScShiba***, Snakemake-based workflow of scShiba
-
-```bash
-snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
+See the documentation for [pipeline commands](docs/quickstart/running.md),
+[bulk RNA-seq](docs/quickstart/diff_splicing_bulk.md),
+[single-cell RNA-seq](docs/quickstart/diff_splicing_sc.md), and
+[factorial beta-binomial analysis with example inputs](docs/quickstart/beta_binomial.md).
 
 ## Visualization
 

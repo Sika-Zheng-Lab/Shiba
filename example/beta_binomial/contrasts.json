@@ -1,0 +1,12 @@
+{
+  "interaction": {
+    "genotypeKO:treatmentDrug": 1
+  },
+  "drug_in_WT": {
+    "treatmentDrug": 1
+  },
+  "drug_in_KO": {
+    "treatmentDrug": 1,
+    "genotypeKO:treatmentDrug": 1
+  }
+}

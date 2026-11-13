@@ -27,11 +27,14 @@ snakemake -s snakeshiba.smk \
 --rerun-incomplete
 ```
 
-Please check the [Quick Start](../quickstart/diff_splicing_bulk.md/#1-prepare-inputs_1) to learn how to prepare the `config.yaml`.
+Please check the [Quick Start](../quickstart/diff_splicing_bulk.md#1-prepare-inputs_1) to learn how to prepare the `config.yaml`.
 
-<figure markdown="span">
-	![SnakeShiba rulegraph](https://github.com/Sika-Zheng-Lab/Shiba/blob/mkdocs/img/SnakeShiba_rulegraph.svg?raw=true){ width="500" align="center" }
-	<figcaption>SnakeShiba rulegraph</figcaption>
-</figure>
+## Workflow
 
-This rulegraph was made by [snakevision](https://github.com/OpenOmics/snakevision).
+Optional transcript assembly → event extraction → per-sample Tosa counting → count merging → splicing analysis → expression/PCA → interactive report.
+
+Snakemake schedules independent rules according to their dependencies.
+
+
+Select `stat_method: fisher` (default) or `stat_method: beta_binomial`.
+See the [factorial quick start](../quickstart/beta_binomial.md) for the latter.

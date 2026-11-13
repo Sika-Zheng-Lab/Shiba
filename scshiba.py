@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import shlex
 import logging
 import subprocess
 import yaml
@@ -30,7 +31,9 @@ Step 1: gtf2event.py
 Step 2: sc2junc.py
     - Counts junction and RI boundary reads from BAM/CRAM with Tosa.
 Step 3: scpsi.py
-    - Calculates PSI values and perform differential analysis.""",
+    - Calculates PSI values and perform differential analysis.
+Step 4: plots.py
+    - Creates an interactive summary.html report.""",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("config", help="Config file in yaml format")
@@ -64,7 +67,7 @@ def main():
 	logger.info("Loading configuration...")
 	config_path = args.config
 	config = general.load_config(config_path)
-	general.apply_config_defaults(config)
+	general.apply_config_defaults(config, mode="sc")
 
 	# Check essential config keys
 	missing_keys = general.check_config(config, ["workdir", "experiment_table", "gtf"])
@@ -97,7 +100,7 @@ def main():
 
 	# Get command line of this script
 	logger.debug("Getting command line...")
-	command_line = " ".join(sys.argv)
+	command_line = shlex.join([sys.executable, *sys.argv])
 	logger.debug(f"Command line: {command_line}")
 
 	# Steps
@@ -139,7 +142,6 @@ def main():
 				"-f", str(config['fdr']),
 				"-d", str(config['delta_psi']),
 				"-m", str(config['minimum_reads']),
-				"-b", str(config.get('beta_binomial', False)),
 				"--onlypsi", str(config['only_psi']),
 				"--excel", str(config['excel']),
 				os.path.join(output_dir, "junctions", "junctions.bed"),
@@ -148,6 +150,15 @@ def main():
 			]
 		}
 	]
+
+	steps.append({
+		"name": "Step 4: plots.py",
+		"command": [
+			sys.executable, os.path.join(script_dir, "src", "plots.py"),
+			"--single-cell", "-i", os.path.join(output_dir, "results"),
+			"-o", os.path.join(output_dir, "plots"), "-s", command_line,
+		] + (["--only-psi"] if config["only_psi"] else [])
+	})
 
 	logger.info("Starting pipeline execution...")
 

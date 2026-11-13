@@ -1,0 +1,17 @@
+sample	bam	group
+WT_C_B1_1	/path/to/bams/WT_C_B1_1.bam	WT_Control
+WT_C_B1_2	/path/to/bams/WT_C_B1_2.bam	WT_Control
+WT_C_B2_1	/path/to/bams/WT_C_B2_1.bam	WT_Control
+WT_C_B2_2	/path/to/bams/WT_C_B2_2.bam	WT_Control
+WT_D_B1_1	/path/to/bams/WT_D_B1_1.bam	WT_Drug
+WT_D_B1_2	/path/to/bams/WT_D_B1_2.bam	WT_Drug
+WT_D_B2_1	/path/to/bams/WT_D_B2_1.bam	WT_Drug
+WT_D_B2_2	/path/to/bams/WT_D_B2_2.bam	WT_Drug
+KO_C_B1_1	/path/to/bams/KO_C_B1_1.bam	KO_Control
+KO_C_B1_2	/path/to/bams/KO_C_B1_2.bam	KO_Control
+KO_C_B2_1	/path/to/bams/KO_C_B2_1.bam	KO_Control
+KO_C_B2_2	/path/to/bams/KO_C_B2_2.bam	KO_Control
+KO_D_B1_1	/path/to/bams/KO_D_B1_1.bam	KO_Drug
+KO_D_B1_2	/path/to/bams/KO_D_B1_2.bam	KO_Drug
+KO_D_B2_1	/path/to/bams/KO_D_B2_1.bam	KO_Drug
+KO_D_B2_2	/path/to/bams/KO_D_B2_2.bam	KO_Drug

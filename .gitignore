@@ -13,8 +13,8 @@ __pycache__
 .cache
 .coverage
 coverage.xml
-src/demo_output
-src/*md
-src/*demo*
-src/*test*
-docs/tosa_migration_plan.md
+
+# Local environments and generated caches
+.venv/
+.pytest_cache/
+site/

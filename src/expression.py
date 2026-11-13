@@ -146,20 +146,9 @@ def compute_tpm_cpm(merged_table_df, gene_dict, output_dir, excel=False, save_co
     # Excel file
     if excel:
         logger.info("Exporting results to Excel...")
-        from styleframe import StyleFrame, Styler, utils
-        style = Styler(
-            horizontal_alignment=utils.horizontal_alignments.left,
-            wrap_text=False
-        )
-        with StyleFrame.ExcelWriter(os.path.join(output_dir, "TPM_CPM.xlsx")) as writer:
-            tpm_sf = StyleFrame(tpm_df)
-            tpm_sf.set_column_width(columns=tpm_df.columns, width=20)
-            tpm_sf.apply_column_style(cols_to_style=tpm_df.columns, styler_obj=style, style_header=True)
-            tpm_sf.to_excel(writer, index=False, columns_and_rows_to_freeze="C2", sheet_name="TPM")
-            cpm_sf = StyleFrame(cpm_df)
-            cpm_sf.set_column_width(columns=cpm_df.columns, width=20)
-            cpm_sf.apply_column_style(cols_to_style=cpm_df.columns, styler_obj=style, style_header=True)
-            cpm_sf.to_excel(writer, index=False, columns_and_rows_to_freeze="C2", sheet_name="CPM")
+        from lib.excel import write_workbook
+        write_workbook(os.path.join(output_dir, "TPM_CPM.xlsx"),
+                       [("TPM", tpm_df), ("CPM", cpm_df)], freeze_panes="C2")
 
 # ---------------------------------------------------------------------------
 # Subcommand: featurecounts — run featureCounts for a single BAM

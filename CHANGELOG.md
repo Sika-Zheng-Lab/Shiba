@@ -11,6 +11,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Fixed
 
+- Export all eight Excel sheets even when an event type has no results, preserve existing workbooks if writing fails, and apply the same empty-sheet handling to expression exports.
 - Preserve event-table columns when an event type has no rows, preventing a `KeyError: event_id` in bulk Fisher analysis of small or filtered annotations.
 
 ### Removed

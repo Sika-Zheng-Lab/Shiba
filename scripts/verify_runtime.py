@@ -20,6 +20,7 @@ def main():
     if tosa.split()[-1] != "1.0.0":
         raise RuntimeError(f"Expected Tosa 1.0.0, found {tosa}")
     metadata["tosa"] = tosa
+    metadata["snakemake"] = subprocess.check_output(["snakemake", "--version"], text=True).strip()
     r_code = '''options(warn=2)
 packages <- c("glmmTMB", "TMB", "Matrix", "jsonlite", "DESeq2")
 for (p in packages) stopifnot(requireNamespace(p, quietly=TRUE))

@@ -18,12 +18,13 @@ def main():
         results = []
         for report in reports:
             page = browser.new_page(accept_downloads=True)
+            page.set_default_timeout(60000)
             errors, network = [], []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.on("request", lambda request: network.append(request.url) if request.url.startswith(("http://", "https://")) else None)
             page.route("http://**/*", lambda route: route.abort())
             page.route("https://**/*", lambda route: route.abort())
-            page.goto(report.as_uri())
+            page.goto(report.as_uri(), wait_until="domcontentloaded")
             page.locator(".shiba-plot").first.scroll_into_view_if_needed()
             page.wait_for_function("document.querySelector('.shiba-plot').data !== undefined")
             result = page.evaluate("""async () => {

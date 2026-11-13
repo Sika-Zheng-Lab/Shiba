@@ -12,6 +12,7 @@ RUN micromamba install --yes --name base --file /tmp/environment.yml && \
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV PATH=/opt/conda/bin:$PATH
+ENV PYTHONNOUSERSITE=1
 
 USER root
 COPY . /opt/Shiba

@@ -85,7 +85,8 @@ def bulk_fixture(directory, genes=80):
 
 def execute(command, root, name):
     env = os.environ.copy()
-    env.update(OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1")
+    env.pop("PYTHONPATH", None)
+    env.update(OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", PYTHONNOUSERSITE="1")
     with (root / f"{name}.log").open("w") as log:
         result = subprocess.run(list(map(str, command)), cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
     if result.returncode:

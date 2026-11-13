@@ -64,7 +64,7 @@ rule generate_report:
         start_time = start_time_str
     shell:
         """
-        export PYTHONPATH={base_dir:q}/src/lib:$PYTHONPATH
+        export PYTHONPATH={base_dir:q}/src/lib${{PYTHONPATH:+:$PYTHONPATH}}
         python -c 'import sys; from general import generate_report; generate_report("SnakeScShiba", *sys.argv[1:])' {params.workdir:q} {params.version:q} {params.command:q} {params.experiment_table:q} {params.start_time:q}
         """
 

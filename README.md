@@ -65,6 +65,7 @@ cd Shiba
 git switch develop # select a release tag instead when installing that release
 conda env create -f environment.yml
 conda activate shiba
+export PYTHONNOUSERSITE=1
 python scripts/verify_runtime.py
 python ./shiba.py -p 4 config.yaml
 ```

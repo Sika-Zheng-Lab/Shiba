@@ -11,6 +11,8 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Fixed
 
+- Fixed Snakemake report generation when `PYTHONPATH` is unset, including clean Docker environments.
+
 - Fixed bulk assembly and expression skipping sample IDs beginning with `sample` (for example, `sample_WT_Control_0`).
 - Unified Excel exports on openpyxl, removing the extra StyleFrame dependency from current workflows.
 

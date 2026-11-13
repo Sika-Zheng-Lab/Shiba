@@ -49,6 +49,7 @@ and release validation. It includes Excel output and Snakemake:
 ```bash
 conda env create -f environment.yml
 conda activate shiba
+export PYTHONNOUSERSITE=1
 python scripts/verify_runtime.py
 ```
 

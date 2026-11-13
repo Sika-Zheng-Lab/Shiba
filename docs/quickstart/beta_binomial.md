@@ -17,16 +17,17 @@ do not duplicate samples to fill the design. BAM files and a matching reference
 GTF must be supplied separately. Install the dependencies in the
 [installation guide](../installation.md), including R/glmmTMB and jsonlite.
 
-From the Shiba checkout, prepare a directory (choose a new directory to avoid
+Set [`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows) to the
+installed package or source directory, then prepare a directory (choose a new directory to avoid
 overwriting existing configuration files):
 
 ```bash
 mkdir -p factorial_example
-cp example/Shiba_SnakeShiba_beta_binomial_config_example.yaml factorial_example/config.yaml
-cp example/beta_binomial/samples.tsv factorial_example/samples.tsv
-cp example/beta_binomial/Shiba_experiment.tsv factorial_example/Shiba_experiment.tsv
-cp example/beta_binomial/contrasts.json factorial_example/contrasts.json
-cp example/beta_binomial/predictions.json factorial_example/predictions.json
+cp "$SHIBA_HOME/example/Shiba_SnakeShiba_beta_binomial_config_example.yaml" factorial_example/config.yaml
+cp "$SHIBA_HOME/example/beta_binomial/samples.tsv" factorial_example/samples.tsv
+cp "$SHIBA_HOME/example/beta_binomial/Shiba_experiment.tsv" factorial_example/Shiba_experiment.tsv
+cp "$SHIBA_HOME/example/beta_binomial/contrasts.json" factorial_example/contrasts.json
+cp "$SHIBA_HOME/example/beta_binomial/predictions.json" factorial_example/predictions.json
 ```
 
 Before running, edit the copied files:
@@ -41,18 +42,20 @@ Before running, edit the copied files:
    selects Fisher testing. The removed top-level `beta_binomial: true/false`
    switch must not be used.
 
-Run the complete pipeline, including expression abundance, PCA, and reports:
+With the Conda environment activated, run the complete pipeline, including
+expression abundance, PCA, and reports. For a source checkout, substitute
+`python "$SHIBA_HOME/shiba.py"` for `shiba.py`:
 
 ```bash
-python shiba.py factorial_example/config.yaml -p 8
+shiba.py factorial_example/config.yaml -p 8
 ```
 
 For splicing only, or to reuse existing events and junction counts under the
 configured `workdir`, respectively:
 
 ```bash
-python shiba.py factorial_example/config.yaml -p 8 --mame
-python shiba.py factorial_example/config.yaml -p 8 --start-step 4 --mame
+shiba.py factorial_example/config.yaml -p 8 --mame
+shiba.py factorial_example/config.yaml -p 8 --start-step 4 --mame
 ```
 
 To run all three example contrasts, comment out `coef` and set `contrast_file`

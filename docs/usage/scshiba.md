@@ -1,5 +1,15 @@
 # scShiba usage
 
+After installing with Conda, activate the environment and run:
+
+```bash
+scshiba.py -p 4 config.yaml
+```
+
+For source execution and the `SHIBA_HOME` used by internal-script examples,
+see [Locating scripts and workflows](../installation.md#locating-scripts-and-workflows).
+The step scripts below are internal tools, not separate commands on `PATH`.
+
 ``` bash
 usage: scshiba.py [-h] [-p PROCESS] [-s START_STEP] [-v] config
 
@@ -144,7 +154,7 @@ event type and explicitly states that no differential testing was performed.
 To regenerate the report from existing results:
 
 ```bash
-python src/plots.py --single-cell -i /path/to/workdir/results -o /path/to/workdir/plots
+python "$SHIBA_HOME/src/plots.py" --single-cell -i /path/to/workdir/results -o /path/to/workdir/plots
 ```
 
 Add `--only-psi` for PSI-only results. The command is retrieved from the saved

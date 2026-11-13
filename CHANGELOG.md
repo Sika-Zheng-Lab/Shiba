@@ -2,7 +2,7 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
-## [v1.0.0] - 2026-XX-XX
+## [v1.0.0] - 2026-11-13
 
 > [!IMPORTANT]
 > Read counting and minus-strand MXE definitions have changed. Results may differ from v0.8.2; re-run all samples from alignment files instead of reusing previous counts.
@@ -15,7 +15,7 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Changed
 
-- Splice-junction and intron-retention boundary counting now uses ([Tosa]https://github.com/Sika-Zheng-Lab/Tosa) 1.0.0.
+- Splice-junction and intron-retention boundary counting now uses [Tosa](https://github.com/Sika-Zheng-Lab/Tosa) 1.0.0.
 - Single-cell input changes from STARsolo SJ matrices to BAM/CRAM with `CB`/`UB` tags. Experiment tables now use `sample`, `alignment`, and `barcode` columns.
 - MXE PSI now represents the upstream exon on both strands, changing results for minus-strand genes.
 - `PSI_matrix_group.txt` now includes all groups in the experiment table.

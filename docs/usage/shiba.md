@@ -1,5 +1,15 @@
 # Shiba usage
 
+After installing with Conda, activate the environment and run:
+
+```bash
+shiba.py -p 4 config.yaml
+```
+
+For source execution and the `SHIBA_HOME` used by internal-script examples,
+see [Locating scripts and workflows](../installation.md#locating-scripts-and-workflows).
+The step scripts below are internal tools, not separate commands on `PATH`.
+
 ``` bash
 usage: shiba.py [-h] [-p PROCESS] [-s START_STEP] [--mame] [-v] config
 
@@ -35,7 +45,8 @@ options:
 
 Check the [Quick start](../quickstart/diff_splicing_bulk.md#1-prepare-inputs) to learn how to prepare the `config`.
 
-The `Shiba` command will run the following steps sequentially:
+The `shiba.py` command will run the following steps sequentially (transcript
+assembly is skipped when `unannotated: False`):
 
 1. `bam2gtf.py`
 2. `gtf2event.py`
@@ -140,7 +151,7 @@ Tosa writes gzip-compressed junction and boundary tables for each BAM. Shiba con
 The options below describe the Fisher workflow (`stat_method: fisher`, the default).
 For `stat_method: beta_binomial`, see the [factorial quick start](../quickstart/beta_binomial.md)
 and [regression CLI and output reference](beta_binomial_regression.md).
-Run `python src/psi.py --help` for the complete current option list.
+Run `python "$SHIBA_HOME/src/psi.py" --help` for the complete current option list.
 
 ``` bash
 usage: psi.py [-h] [-p NUM_PROCESS] [-g GROUP] [-f FDR] [-d PSI] [-r REFERENCE] [-a ALTERNATIVE] [-m MINIMUM_READS] [-i] [-t] [--onlypsi] [--onlypsi-group] [--excel] [-v] junctions event output
@@ -177,7 +188,7 @@ optional arguments:
 ## Step5: `expression.py`
 
 ``` bash
-usage: expression.py [-h] -i INPUT -g REFERENCE -o OUTPUT [-r REFGROUP] [-a ALTGROUP] [-p PROCESSORS] [-v]
+usage: expression.py [-h] -i INPUT -g REFERENCE -o OUTPUT [-r REFGROUP] [-a ALTGROUP] [-p PROCESSORS] [--excel [EXCEL]] [-v]
 
 RNA expression analysis using featureCounts and DESeq2.
 
@@ -195,6 +206,7 @@ optional arguments:
                         Alternative group for differential expression analysis
   -p PROCESSORS, --processors PROCESSORS
                         Number of processors to use (default: 1)
+  --excel [EXCEL]        Export TPM/CPM to Excel (default: False)
   -v, --verbose         Increase output verbosity
 ```
 
@@ -221,12 +233,14 @@ optional arguments:
 ## Step7: `plots.py`
 
 ``` bash
-usage: plots.py [-h] [-i INPUT] [-e EXPERIMENT_TABLE] [-s SHIBA_COMMAND] [-o OUTPUT] [-v]
+usage: plots.py [-h] [--single-cell] [--only-psi] [-i INPUT] [-e EXPERIMENT_TABLE] [-s SHIBA_COMMAND] [-o OUTPUT] [-v]
 
 Make plots for alternative splicing events
 
 optional arguments:
   -h, --help            show this help message and exit
+  --single-cell         Read flat scShiba results without bulk PCA
+  --only-psi            Single-cell PSI-only report without differential tests
   -i INPUT, --input INPUT
                         Directory that contains result files (default: None)
   -e EXPERIMENT_TABLE, --experiment-table EXPERIMENT_TABLE

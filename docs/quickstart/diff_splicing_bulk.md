@@ -15,10 +15,10 @@ use the [beta-binomial quick start](beta_binomial.md).
 
 ## Installation
 
-Follow the [installation guide](../installation.md) to install dependencies,
-including Tosa, and select the matching Shiba source checkout. Run the commands
-below from that checkout with its environment activated. Installing an older
-Conda package alone does not provide the current implementation.
+Follow the [installation guide](../installation.md) and activate the environment
+containing Shiba. The commands below use the Conda-installed launchers. For a
+source checkout, use the [source invocation](../installation.md#locating-scripts-and-workflows)
+instead. These examples require the v1.0.0 implementation, including Tosa.
 
 ---
 
@@ -127,7 +127,7 @@ excel:
 ### 2. Run
 
 ``` bash
-python ./shiba.py -p 4 config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -136,7 +136,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 
 	You can run **Shiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	python ./shiba.py --verbose -p 4 config.yaml
+	shiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -157,7 +157,7 @@ You are going to use 4 threads for parallelization. You can change the number of
 Make sure running with `--mame` option.
 
 ``` bash
-python ./shiba.py --mame -p 4 config.yaml
+shiba.py --mame -p 4 config.yaml
 ```
 
 ---
@@ -234,10 +234,13 @@ excel:
 
 ### 2. Run
 
-Please make sure that you have installed Snakemake and Singularity and cloned the **Shiba** repository on your system.
+Install Snakemake and Apptainer/Singularity, set
+[`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows), and select a
+matching container image as described in the [installation guide](../installation.md#snakemake).
+For execution in the activated Conda environment, omit `--use-singularity`.
 
 ``` bash
-snakemake -s /path/to/Shiba/snakeshiba.smk \
+snakemake -s "$SHIBA_HOME/snakeshiba.smk" \
 --configfile config.yaml \
 --cores 16 \
 --use-singularity \

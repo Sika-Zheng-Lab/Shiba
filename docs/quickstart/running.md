@@ -1,6 +1,9 @@
 # Running Shiba pipelines
 
-Run these commands from the Shiba checkout after [installing dependencies](../installation.md) and preparing `config.yaml`. See the [bulk](diff_splicing_bulk.md), [single-cell](diff_splicing_sc.md), or [factorial beta-binomial](beta_binomial.md) quick start for input preparation.
+After [installing Shiba](../installation.md), activate its Conda environment and
+prepare `config.yaml`. These examples use the installed launchers. For a source
+checkout, substitute the [source invocation](../installation.md#locating-scripts-and-workflows).
+Set `SHIBA_HOME` as described there before running a Snakemake workflow. See the [bulk](diff_splicing_bulk.md), [single-cell](diff_splicing_sc.md), or [factorial beta-binomial](beta_binomial.md) quick start for input preparation.
 
 Fisher analysis also uses `-p N` to distribute event tests across processes.
 BH correction is applied after joining results, across the same event-type
@@ -12,7 +15,7 @@ serially; larger workloads use up to `N` workers. Each process caches up to
 ## Shiba
 
 ```bash
-python ./shiba.py -p 4 config.yaml
+shiba.py -p 4 config.yaml
 ```
 
 ## MameShiba
@@ -20,15 +23,17 @@ python ./shiba.py -p 4 config.yaml
 A lightweight version of Shiba.
 
 ```bash
-python ./shiba.py --mame -p 4 config.yaml
+shiba.py --mame -p 4 config.yaml
 ```
 
 ## SnakeShiba
 
-Snakemake-based workflow of Shiba.
+Snakemake-based workflow of Shiba. The example uses the active Conda environment.
+For container execution, follow the [container setup](../installation.md#snakemake)
+and add `--use-apptainer`.
 
 ```bash
-snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
+snakemake -s "$SHIBA_HOME/snakeshiba.smk" --configfile config.yaml --cores 4
 ```
 
 ## scShiba
@@ -36,7 +41,7 @@ snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
 A single-cell RNA-seq version of Shiba.
 
 ```bash
-python ./scshiba.py -p 4 config.yaml
+scshiba.py -p 4 config.yaml
 ```
 
 ## SnakeScShiba
@@ -44,5 +49,5 @@ python ./scshiba.py -p 4 config.yaml
 Snakemake-based workflow of scShiba.
 
 ```bash
-snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singularity
+snakemake -s "$SHIBA_HOME/snakescshiba.smk" --configfile config.yaml --cores 4
 ```

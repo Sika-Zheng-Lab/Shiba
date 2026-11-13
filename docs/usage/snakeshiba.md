@@ -16,10 +16,13 @@ Key Features of Snakemake:
 	- GitHub Repository: [https://github.com/snakemake/snakemake](https://github.com/snakemake/snakemake)
 	- Tutorials and Examples: [https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html](https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html)
 
-You can run the script using the following command:
+Set [`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows) and
+follow the [container setup](../installation.md#snakemake) before running this
+example. To use the activated Conda environment instead, omit
+`--use-singularity` and `--singularity-args`.
 
 ``` bash
-snakemake -s snakeshiba.smk \
+snakemake -s "$SHIBA_HOME/snakeshiba.smk" \
 --configfile config.yaml \
 --cores 4 \
 --use-singularity \

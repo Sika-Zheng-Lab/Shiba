@@ -16,10 +16,13 @@ Key Features of Snakemake:
 	- GitHub Repository: [https://github.com/snakemake/snakemake](https://github.com/snakemake/snakemake)
 	- Tutorials and Examples: [https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html](https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html)
 
-You can run the script using the following command:
+Set [`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows) and
+follow the [container setup](../installation.md#snakemake) before running this
+example. To use the activated Conda environment instead, omit
+`--use-singularity` and `--singularity-args`.
 
 ``` bash
-snakemake -s snakescshiba.smk \
+snakemake -s "$SHIBA_HOME/snakescshiba.smk" \
 --configfile config.yaml \
 --cores 4 \
 --use-singularity \
@@ -50,10 +53,10 @@ biological replication or change the Fisher tests. Bulk TPM/PSI PCA panels are
 not included. With `only_psi: True`, the report instead shows up to 200 rows per
 event type and explicitly states that no differential testing was performed.
 
-To regenerate the report from existing results:
+To regenerate the report from existing results, use the `SHIBA_HOME` set above:
 
 ```bash
-python src/plots.py --single-cell -i /path/to/workdir/results -o /path/to/workdir/plots
+python "$SHIBA_HOME/src/plots.py" --single-cell -i /path/to/workdir/results -o /path/to/workdir/plots
 ```
 
 Add `--only-psi` for PSI-only results. The command is retrieved from the saved

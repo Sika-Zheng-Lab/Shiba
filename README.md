@@ -13,7 +13,7 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
 
-# Shiba (v0.8.2) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
+# Shiba (v1.0.0) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
@@ -71,10 +71,10 @@ See the [installation guide](docs/installation.md) for other installation option
 
 ## Usage
 
-See the documentation for [pipeline commands](docs/quickstart/running.md),
-[bulk RNA-seq](docs/quickstart/diff_splicing_bulk.md),
-[single-cell RNA-seq](docs/quickstart/diff_splicing_sc.md), and
-[factorial beta-binomial analysis with example inputs](docs/quickstart/beta_binomial.md).
+See the user guide for [pipeline commands](https://sika-zheng-lab.github.io/Shiba/quickstart/running/),
+[bulk RNA-seq](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/),
+[single-cell RNA-seq](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_sc/), and
+[factorial beta-binomial analysis with example inputs](https://sika-zheng-lab.github.io/Shiba/quickstart/beta_binomial/).
 
 ## Visualization
 
@@ -85,35 +85,6 @@ Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi]
 ## Contributing
 
 Thank you for wanting to improve Shiba! If you have any bugs or questions, feel free to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) or pull request.
-
-### Preview the documentation
-
-The user guide is built with [Zensical](https://zensical.org/), using the existing
-`mkdocs.yml` configuration and the classic theme. From the repository root, use
-Python 3.12 to create a separate documentation environment:
-
-```bash
-python3.12 -m venv .venv-docs
-source .venv-docs/bin/activate
-python -m pip install -r requirements-docs.txt
-zensical serve
-```
-
-Open <http://localhost:8000/Shiba/>. Changes to `docs/` are rebuilt automatically;
-press Ctrl+C to stop the preview. To run the same build and link validation as CI:
-
-```bash
-zensical build --clean --strict
-```
-
-The generated site is written to `site/`. If running on a remote server, forward
-port 8000 to your computer (for example, `ssh -L 8000:127.0.0.1:8000 user@host`)
-and open the same local URL. If port 8000 is busy, use
-`zensical serve --dev-addr 127.0.0.1:8001` and forward/open port 8001 instead.
-
-Release CI publishes the verified build to the existing `gh-pages` branch with
-`ghp-import` after the release succeeds. Local preview and build commands do not
-publish the site.
 
 ## Citation
 

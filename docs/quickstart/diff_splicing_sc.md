@@ -11,10 +11,10 @@
 
 ## Installation
 
-Follow the [installation guide](../installation.md) to install dependencies,
-including Tosa, and select the matching Shiba source checkout. Run the commands
-below from that checkout with its environment activated. Installing an older
-Conda package alone does not provide the current implementation.
+Follow the [installation guide](../installation.md) and activate the environment
+containing Shiba. The commands below use the Conda-installed launchers. For a
+source checkout, use the [source invocation](../installation.md#locating-scripts-and-workflows)
+instead. These examples require the v1.0.0 implementation, including Tosa.
 
 ---
 
@@ -51,7 +51,10 @@ ATCGCCTAGACTCGAG Cluster-2
 
 `config.yaml`: A yaml file of the configuration.
 
-This guide describes the Tosa-enabled code in the selected source checkout. The v0.8.2 package uses the earlier STARsolo `SJ` input. To try the new path with generated data, run `python test/make_sc_tosa_fixture.py /path/to/fixture` and use its `config.yaml`.
+This guide describes the Tosa-enabled v1.0.0 implementation. The v0.8.2 package
+uses the earlier STARsolo `SJ` input. To try generated data from a source
+checkout, run `python test/make_sc_tosa_fixture.py /path/to/fixture` from the
+checkout root and use its `config.yaml`. This test helper is not packaged.
 
 ``` yaml
 workdir:
@@ -99,7 +102,7 @@ excel:
 ### 2. Run
 
 ``` bash
-python ./scshiba.py -p 4 config.yaml
+scshiba.py -p 4 config.yaml
 ```
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
@@ -110,7 +113,7 @@ Results now include `PSI_RI.txt` for intron-retention analysis, alongside the ex
 
 	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
 	```bash
-	python ./scshiba.py --verbose -p 4 config.yaml
+	scshiba.py --verbose -p 4 config.yaml
 	```
 	If you continue to encounter issues, please don't hesitate to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) on GitHub. The community and developers are here to help!
 
@@ -176,10 +179,13 @@ excel:
 
 ### 2. Run
 
-Please make sure that you have installed Snakemake and Singularity and cloned the Shiba repository on your system.
+Install Snakemake and Apptainer/Singularity, set
+[`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows), and select a
+matching container image as described in the [installation guide](../installation.md#snakemake).
+For execution in the activated Conda environment, omit `--use-singularity`.
 
 ``` bash
-snakemake -s /path/to/Shiba/snakescshiba.smk \
+snakemake -s "$SHIBA_HOME/snakescshiba.smk" \
 --configfile config.yaml \
 --cores 16 \
 --use-singularity \

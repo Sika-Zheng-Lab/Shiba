@@ -8,7 +8,7 @@ mode runs Fisher testing, with an optional Welch t-test. The old supplementary
 
 ## Installation
 
-Use the checked-out Shiba source containing this backend, with R packages
+Use Shiba v1.0.0 or the matching source checkout, with R packages
 `glmmTMB` and `jsonlite` installed in the R environment used by `Rscript`.
 For an existing Conda environment:
 
@@ -21,8 +21,10 @@ Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requi
 See the [installation guide](../installation.md) for new Shiba/MameShiba
 environments, CRAN and user-library installation, verification, and Docker or
 SnakeShiba container setup. Installing the packages alone does not add this
-mode to an older Shiba executable; run `python ./src/psi.py` or
-`python ./shiba.py` from the matching source checkout.
+mode to an older Shiba executable. Set
+[`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows) before using
+the internal-script examples below. For a source checkout, replace `shiba.py`
+with `python "$SHIBA_HOME/shiba.py"`.
 
 `--rscript /path/to/Rscript` selects another R installation; the corresponding
 pipeline setting is `rscript`. The backend uses `Rscript --vanilla`, so a custom
@@ -96,7 +98,7 @@ Do not interpret numeric time as a categorical time course without declaring it.
 First inspect the actual R coefficient names:
 
 ```bash
-python src/psi.py junctions.bed events design_check \
+python "$SHIBA_HOME/src/psi.py" junctions.bed events design_check \
   --stat-method beta_binomial --sample-metadata samples.tsv \
   --formula 'genotype * treatment + batch' \
   --reference-level genotype=WT --reference-level treatment=Control \
@@ -106,7 +108,7 @@ python src/psi.py junctions.bed events design_check \
 Then test the interaction:
 
 ```bash
-python src/psi.py junctions.bed events results \
+python "$SHIBA_HOME/src/psi.py" junctions.bed events results \
   --stat-method beta_binomial --sample-metadata samples.tsv \
   --formula 'genotype * treatment + batch' \
   --reference-level genotype=WT --reference-level treatment=Control \
@@ -250,7 +252,7 @@ contrast; it does not assert equality of component effect magnitudes.
 
 ### Locations and execution modes
 
-For `python shiba.py config.yaml` and SnakeShiba, all paths below are relative
+For `shiba.py config.yaml` and SnakeShiba, all paths below are relative
 to the configured `workdir`:
 
 ```text
@@ -407,7 +409,7 @@ figures are included. Embedded result tables show the first 200 rows; complete
 TSVs remain in the analysis output directory.
 
 ```bash
-python src/plots.py -i /path/to/results -o /path/to/plots \
+python "$SHIBA_HOME/src/plots.py" -i /path/to/results -o /path/to/plots \
   -e /path/to/Shiba_experiment.tsv
 ```
 
@@ -419,7 +421,7 @@ and validation previews should remain outside version control.
 Run the complete bulk pipeline with one command:
 
 ```bash
-python shiba.py config.yaml -p 8
+shiba.py config.yaml -p 8
 ```
 
 The pipeline runs transcript assembly, event extraction, junction counting,

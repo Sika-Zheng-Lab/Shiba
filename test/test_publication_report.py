@@ -37,6 +37,7 @@ class TestPublicationReport(unittest.TestCase):
                 fig, ax = plt.subplots();ax.set_xlabel('Fallback font')
                 figure_style.export(fig,tmp,'fallback','Fallback')
                 self.assertTrue((Path(tmp)/'pdf/fallback.pdf').exists())
+                self.assertIn('DejaVu Sans', (Path(tmp)/'svg/fallback.svg').read_text())
 
     def test_interactive_payload_round_trip(self):
         import re
@@ -80,7 +81,8 @@ class TestPublicationReport(unittest.TestCase):
                     self.assertTrue(src.startswith('data:image/png;base64,'))
                     self.assertTrue(base64.b64decode(src.split(',')[1]).startswith(b'\x89PNG'))
                 self.assertTrue((out/'svg/barplot_splicing_summary.svg').exists())
-                self.assertIn('Arial',(out/'svg/barplot_splicing_summary.svg').read_text())
+                self.assertRegex((out/'svg/barplot_splicing_summary.svg').read_text(),
+                                 r'font(?:-family)?:[^;]*(?:Arial|DejaVu Sans)')
 
     def test_fisher_and_pca_interactive_with_static_exports(self):
         with tempfile.TemporaryDirectory() as tmp:

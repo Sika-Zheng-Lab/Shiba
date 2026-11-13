@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml coverage
+          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml pysam coverage
 
       - name: Run tests with coverage
         run: |
@@ -49,8 +49,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y r-base r-cran-glmmtmb r-cran-jsonlite
-          python -m pip install numpy pandas scipy statsmodels plotly matplotlib openpyxl
+          python -m pip install numpy pandas scipy statsmodels plotly matplotlib openpyxl pyyaml
       - name: Require real backend and run regression tests
         run: |
           Rscript -e 'stopifnot(requireNamespace("glmmTMB"), requireNamespace("jsonlite"))'
-          python -m unittest discover -s test -p 'test_factorial.py' -v
+          python -m unittest test.test_factorial test.test_shiba_launcher -v

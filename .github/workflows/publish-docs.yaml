@@ -1,4 +1,4 @@
-name: Publish MkDocs
+name: Publish documentation
 
 on:
   workflow_call:
@@ -27,5 +27,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           pip install -r requirements-docs.txt
-          mkdocs build --strict
-          mkdocs gh-deploy --force
+          zensical build --clean --strict
+          ghp-import --no-jekyll --push --force --branch gh-pages site

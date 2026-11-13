@@ -86,6 +86,35 @@ Do you want to visualize the results of Shiba analysis? Try 🐕 [shiba2sashimi]
 
 Thank you for wanting to improve Shiba! If you have any bugs or questions, feel free to [open an issue](https://github.com/Sika-Zheng-Lab/Shiba/issues) or pull request.
 
+### Preview the documentation
+
+The user guide is built with [Zensical](https://zensical.org/), using the existing
+`mkdocs.yml` configuration and the classic theme. From the repository root, use
+Python 3.12 to create a separate documentation environment:
+
+```bash
+python3.12 -m venv .venv-docs
+source .venv-docs/bin/activate
+python -m pip install -r requirements-docs.txt
+zensical serve
+```
+
+Open <http://localhost:8000/Shiba/>. Changes to `docs/` are rebuilt automatically;
+press Ctrl+C to stop the preview. To run the same build and link validation as CI:
+
+```bash
+zensical build --clean --strict
+```
+
+The generated site is written to `site/`. If running on a remote server, forward
+port 8000 to your computer (for example, `ssh -L 8000:127.0.0.1:8000 user@host`)
+and open the same local URL. If port 8000 is busy, use
+`zensical serve --dev-addr 127.0.0.1:8001` and forward/open port 8001 instead.
+
+Release CI publishes the verified build to the existing `gh-pages` branch with
+`ghp-import` after the release succeeds. Local preview and build commands do not
+publish the site.
+
 ## Citation
 
 Kubota N, Chen L, Zheng S. [Shiba: a versatile computational method for systematic identification of differential RNA splicing across platforms](https://academic.oup.com/nar/article/53/4/gkaf098/8042001). *Nucleic Acids Research*  53(4), 2025, gkaf098.

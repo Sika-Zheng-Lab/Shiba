@@ -83,7 +83,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-docs.txt
-      - run: mkdocs build --strict
+      - run: zensical build --clean --strict
 
   containers:
     runs-on: ubuntu-24.04

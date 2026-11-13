@@ -8,6 +8,7 @@ repo_name: Sika-Zheng-Lab/Shiba
 
 theme:
   name: material
+  variant: classic
   palette:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"

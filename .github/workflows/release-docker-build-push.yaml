@@ -120,6 +120,6 @@ jobs:
     needs: [preflight, publish]
     permissions:
       contents: write
-    uses: ./.github/workflows/publish-mkdocs.yaml
+    uses: ./.github/workflows/publish-docs.yaml
     with:
       ref: ${{ needs.preflight.outputs.sha }}

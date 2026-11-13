@@ -1,99 +1,22 @@
-name: Update Version
+name: Check Version Labels
 
 on:
   push:
-    branches:
-      - develop
-    paths:
-      - 'VERSION'
+    branches: [develop]
+    paths: [VERSION]
+  pull_request:
+    branches: [main, develop]
+    paths: [VERSION]
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
-  update-readme-version:
-    runs-on: ubuntu-latest
-
+  check:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Check for merge commit
-        id: check_merge
-        run: |
-          if [ "$(git rev-list --count HEAD^@)" -gt 1 ]; then
-            echo "This is a merge commit. Skipping workflow."
-            exit 0
-          fi
-
-      - name: Read version from VERSION file
-        id: read_version
-        run: |
-          NEW_VERSION=$(cat VERSION)
-          echo "New version is $NEW_VERSION"
-          echo "::set-output name=NEW_VERSION::$NEW_VERSION"
-
-      - name: Get the branch name
-        id: get_branch
-        run: |
-          BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
-          echo "::set-output name=BRANCH_NAME::$BRANCH_NAME"
-
-      - name: Update README.md with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/g" README.md
-
-      - name: Update Shiba with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/VERSION = \"v[0-9]*\.[0-9]*\.[0-9]*\"/VERSION = \"${NEW_VERSION}\"/" shiba.py
-
-      - name: Update scShiba with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/VERSION = \"v[0-9]*\.[0-9]*\.[0-9]*\"/VERSION = \"${NEW_VERSION}\"/" scshiba.py
-
-      - name: Update SnakeShiba with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/VERSION = \"v[0-9]*\.[0-9]*\.[0-9]*\"/VERSION = \"${NEW_VERSION}\"/" snakeshiba.smk
-
-      - name: Update SnakeScShiba with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/VERSION = \"v[0-9]*\.[0-9]*\.[0-9]*\"/VERSION = \"${NEW_VERSION}\"/" snakescshiba.smk
-
-      - name: Update Dockerfile with new version
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docker/Dockerfile
-
-      - name: Update docs
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/usage/shiba.md
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/usage/scshiba.md
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/quickstart/diff_splicing_bulk.md
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/quickstart/diff_splicing_sc.md
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" docs/installation.md
-
-      - name: Update example files
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" example/Shiba_SnakeShiba_config_example.yaml
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" example/scShiba_SnakeScShiba_config_example.yaml
-
-      - name: Update issue templates
-        run: |
-          NEW_VERSION=${{ steps.read_version.outputs.NEW_VERSION }}
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/feature_request.yaml
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/question.yaml
-          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/${NEW_VERSION}/" .github/ISSUE_TEMPLATE/bug_report.yaml
-
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add README.md shiba.py scshiba.py snakeshiba.smk snakescshiba.smk docker/Dockerfile docs/usage/shiba.md docs/usage/scshiba.md docs/quickstart/diff_splicing_bulk.md docs/quickstart/diff_splicing_sc.md docs/installation.md example/Shiba_SnakeShiba_config_example.yaml example/scShiba_SnakeScShiba_config_example.yaml .github/ISSUE_TEMPLATE/feature_request.yaml .github/ISSUE_TEMPLATE/question.yaml .github/ISSUE_TEMPLATE/bug_report.yaml
-          git commit -m "actions: Ready for ${{ steps.read_version.outputs.NEW_VERSION }}"
-          git push origin HEAD:${{ steps.get_branch.outputs.BRANCH_NAME }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/update_version.py --check

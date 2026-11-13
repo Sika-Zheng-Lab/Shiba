@@ -31,13 +31,19 @@ def main():
                 await Plotly.relayout(plot, {'xaxis.range': [0, 1]});
                 const range = plot.layout.xaxis.range;
                 const svg = await Plotly.toImage(plot, {format: 'svg'});
-                return {range, svg: svg.startsWith('data:image/svg+xml')};
+                const png = await Plotly.toImage(plot, {format: 'png'});
+                return {range, svg: svg.startsWith('data:image/svg+xml'), png: png.startsWith('data:image/png')};
             }""")
-            assert result["range"] == [0, 1] and result["svg"], result
+            assert result["range"] == [0, 1] and result["svg"] and result["png"], result
             assert not errors, errors
             assert not network, network
             page.screenshot(path=str(report.parent / "browser-check.png"), full_page=False)
-            results.append({"report": str(report), "offline": True, "zoom": True, "svg_export": True})
+            for extension, signature in (("png", b"\x89PNG"), ("pdf", b"%PDF"), ("svg", b"<?xml")):
+                exports = list(report.parent.rglob(f"*.{extension}"))
+                assert exports, f"No {extension} exports for {report}"
+                assert all(path.read_bytes().startswith(signature) for path in exports), extension
+            results.append({"report": str(report), "offline": True, "zoom": True,
+                            "svg_export": True, "png_export": True, "static_formats": ["png", "pdf", "svg"]})
             page.close()
         browser.close()
     (args.directory / "browser-validation.json").write_text(json.dumps(results, indent=2))

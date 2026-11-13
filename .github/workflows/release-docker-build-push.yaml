@@ -69,6 +69,10 @@ jobs:
           git fetch origin main --tags
           python scripts/prepare_release.py --expected-sha "$RELEASE_SHA"
           echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+          python -m pip install PyYAML==6.0.3
+          python scripts/prepare_conda_recipes.py --manifest release-artifacts/source-manifest.json
+          cp release-artifacts/recipes/shiba/meta.yaml release-artifacts/shiba-meta.yaml
+          cp release-artifacts/recipes/mameshiba/meta.yaml release-artifacts/mameshiba-meta.yaml
           docker load -i release-artifacts/shiba-production.tar.gz
           test "$(docker inspect shiba-check:production --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$RELEASE_SHA"
       - uses: docker/login-action@v3
@@ -109,7 +113,7 @@ jobs:
           else
             gh release create "$VERSION" --verify-tag --draft --title "$VERSION" --notes-file release-artifacts/release-notes.md
           fi
-          gh release upload "$VERSION" "release-artifacts/shiba-${VERSION#v}.tar.gz" release-artifacts/source-manifest.json release-artifacts/image-manifest.json --clobber
+          gh release upload "$VERSION" "release-artifacts/shiba-${VERSION#v}.tar.gz" release-artifacts/source-manifest.json release-artifacts/image-manifest.json release-artifacts/shiba-meta.yaml release-artifacts/mameshiba-meta.yaml --clobber
           gh release edit "$VERSION" --draft=false --latest --notes-file release-artifacts/release-notes.md
 
   documentation:

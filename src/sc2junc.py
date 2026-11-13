@@ -85,7 +85,7 @@ def tosa_command(alignment, gtf, prefix, whitelist, threads, anchor,
 
 
 def run_tosa(alignment, barcode_table, gtf, prefix, threads=1, anchor=8,
-             boundary_anchor=1, min_intron=20, max_intron=500000,
+             boundary_anchor=6, min_intron=20, max_intron=500000,
              strand="unstranded"):
     groups = read_barcode_groups(barcode_table)
     directory = os.path.dirname(os.path.abspath(prefix))
@@ -140,7 +140,7 @@ def add_tosa_counts(prefix, barcode_groups, boundary_anchor, wanted_boundaries, 
                 counts[group][key] += int(row["Count"])
 
 
-def merge_tosa_samples(samples, prefixes, ri_event, output, boundary_anchor=1):
+def merge_tosa_samples(samples, prefixes, ri_event, output, boundary_anchor=6):
     wanted_boundaries = ri_boundary_ids(ri_event)
     counts = {}
     for sample, row in samples.items():
@@ -172,7 +172,7 @@ def add_tosa_options(parser, require_gtf):
     parser.add_argument("-g", "--gtf", required=require_gtf)
     parser.add_argument("-p", "--processors", type=int, default=1)
     parser.add_argument("-a", "--anchor", type=int, default=8)
-    parser.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    parser.add_argument("-b", "--boundary-anchor", type=int, default=6)
     parser.add_argument("-m", "--min-intron", type=int, default=20)
     parser.add_argument("-M", "--max-intron", type=int, default=500000)
     parser.add_argument("-s", "--strand", default="unstranded")
@@ -196,7 +196,7 @@ def build_parser():
     merge.add_argument("-d", "--directory", required=True)
     merge.add_argument("-r", "--ri-event", required=True)
     merge.add_argument("-o", "--output", required=True)
-    merge.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    merge.add_argument("-b", "--boundary-anchor", type=int, default=6)
     merge.add_argument("-v", "--verbose", action="store_true")
     return parser
 

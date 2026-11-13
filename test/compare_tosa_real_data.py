@@ -53,7 +53,7 @@ def main():
     parser.add_argument("--old-bed", required=True)
     parser.add_argument("--out-bed", required=True)
     parser.add_argument("--report", required=True)
-    parser.add_argument("--boundary-anchor", type=int, default=1)
+    parser.add_argument("--boundary-anchor", type=int, default=6)
     parser.add_argument("--sample", action="append", required=True,
                         help="SAMPLE=PATH_PREFIX; repeat for each sample")
     args = parser.parse_args()

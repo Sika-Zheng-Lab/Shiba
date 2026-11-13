@@ -74,7 +74,7 @@ unannotated:
 minimum_anchor_length:
   6 # (5)!
 boundary_anchor_length:
-  1 # Required aligned bases on each side of an RI boundary
+  6 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:
@@ -188,7 +188,7 @@ experiment_table:
 minimum_anchor_length:
   6 # (5)!
 boundary_anchor_length:
-  1 # Required aligned bases on each side of an RI boundary
+  6 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:

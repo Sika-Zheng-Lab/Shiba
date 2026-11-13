@@ -11,7 +11,7 @@ experiment_table:
 minimum_anchor_length:
   8
 boundary_anchor_length:
-  1
+  6
 minimum_intron_length:
   20
 maximum_intron_length:

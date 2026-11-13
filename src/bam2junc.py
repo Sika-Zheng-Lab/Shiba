@@ -70,7 +70,7 @@ def tosa_command(bam, gtf, prefix, threads, anchor, boundary_anchor,
     return command
 
 
-def run_tosa(bam, gtf, prefix, threads=1, anchor=8, boundary_anchor=1,
+def run_tosa(bam, gtf, prefix, threads=1, anchor=8, boundary_anchor=6,
              min_intron=70, max_intron=500000, strand="XS", log_file=None):
     os.makedirs(os.path.dirname(os.path.abspath(prefix)), exist_ok=True)
     command = tosa_command(bam, gtf, prefix, threads, anchor, boundary_anchor,
@@ -119,7 +119,7 @@ def read_tosa_counts(prefix, boundary_anchor, wanted_boundaries):
     return counts
 
 
-def merge_tosa_samples(prefixes, ri_event, output, boundary_anchor=1):
+def merge_tosa_samples(prefixes, ri_event, output, boundary_anchor=6):
     wanted_boundaries = ri_boundary_ids(ri_event)
     samples = sorted(prefixes)
     counts = {sample: read_tosa_counts(prefixes[sample], boundary_anchor, wanted_boundaries)
@@ -146,7 +146,7 @@ def add_tosa_options(parser, require_gtf):
     parser.add_argument("-g", "--gtf", required=require_gtf, help="GTF used to generate events")
     parser.add_argument("-p", "--processors", type=int, default=1)
     parser.add_argument("-a", "--anchor", type=int, default=8)
-    parser.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    parser.add_argument("-b", "--boundary-anchor", type=int, default=6)
     parser.add_argument("-m", "--min-intron", type=int, default=70)
     parser.add_argument("-M", "--max-intron", type=int, default=500000)
     parser.add_argument("-s", "--strand", default="XS",
@@ -172,7 +172,7 @@ def build_parser():
     merge.add_argument("-d", "--directory", required=True, help="Directory of sample prefixes")
     merge.add_argument("-r", "--ri-event", required=True)
     merge.add_argument("-o", "--output", required=True)
-    merge.add_argument("-b", "--boundary-anchor", type=int, default=1)
+    merge.add_argument("-b", "--boundary-anchor", type=int, default=6)
     merge.add_argument("-v", "--verbose", action="store_true")
     return parser
 

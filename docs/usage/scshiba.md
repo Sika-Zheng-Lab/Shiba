@@ -101,6 +101,7 @@ optional arguments:
   -p PROCESSORS, --processors PROCESSORS
   -a ANCHOR, --anchor ANCHOR
   -b BOUNDARY_ANCHOR, --boundary-anchor BOUNDARY_ANCHOR
+                        Bases required on each side of an RI boundary (default: 6)
   -m MIN_INTRON, --min-intron MIN_INTRON
   -M MAX_INTRON, --max-intron MAX_INTRON
   -s STRAND, --strand STRAND

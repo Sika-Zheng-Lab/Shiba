@@ -11,7 +11,7 @@ unannotated: true
 
 # Junction read filtering
 minimum_anchor_length: 6
-boundary_anchor_length: 1
+boundary_anchor_length: 6
 minimum_intron_length: 70
 maximum_intron_length: 500000
 strand: XS

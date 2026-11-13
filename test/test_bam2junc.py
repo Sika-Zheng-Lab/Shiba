@@ -42,7 +42,7 @@ class TestTosaAdapter(unittest.TestCase):
                                  ["1:198-200", "3p", "+", 8],
                                  ["1:500-502", "5p", "+", 9]])
         output = os.path.join(self.tmp.name, "junctions.bed")
-        bam2junc.merge_tosa_samples({"sample_2": second, "sample_1": first}, self.ri, output)
+        bam2junc.merge_tosa_samples({"sample_2": second, "sample_1": first}, self.ri, output, boundary_anchor=1)
         with open(output) as handle:
             reader = csv.DictReader(handle, delimiter="\t")
             self.assertEqual(reader.fieldnames, ["chr", "start", "end", "ID", "sample_1", "sample_2"])
@@ -53,6 +53,17 @@ class TestTosaAdapter(unittest.TestCase):
         self.assertEqual(rows["chr1:199-200"]["sample_1"], "8")
         self.assertEqual(rows["chr2:300-301"]["sample_1"], "0")
         self.assertNotIn("chr1:501-502", rows)
+
+    def test_default_six_base_boundary_coordinates(self):
+        prefix = self.write_tosa("s", [], [["chr1:94-106", "5p", "+", 3],
+                                           ["chr1:193-205", "3p", "+", 4]])
+        output = os.path.join(self.tmp.name, "default.bed")
+        bam2junc.merge_tosa_samples({"s": prefix}, self.ri, output)
+        group = "s"
+        with open(output) as handle:
+            rows = {r["ID"]: r for r in csv.DictReader(handle, delimiter="\t")}
+        self.assertEqual(rows["chr1:100-101"][group], "3")
+        self.assertEqual(rows["chr1:199-200"][group], "4")
 
     def test_boundary_anchor_two(self):
         prefix = self.write_tosa("s", [], [["chr1:98-102", "5p", "+", 3],

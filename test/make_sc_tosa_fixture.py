@@ -102,7 +102,6 @@ def build_fixture(output_dir):
             f"gtf: {gtf}\n"
             f"experiment_table: {directory / 'experiment.tsv'}\n"
             "minimum_anchor_length: 6\n"
-            "boundary_anchor_length: 1\n"
             "minimum_intron_length: 70\n"
             "maximum_intron_length: 500000\n"
             "strand: unstranded\n"

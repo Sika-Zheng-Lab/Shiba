@@ -209,7 +209,7 @@ rule bam2junc:
         "log/bam2junc/{sample}_tosa.log"
     params:
         base_dir = base_dir,
-        boundary_anchor = config.get("boundary_anchor_length", 1)
+        boundary_anchor = config.get("boundary_anchor_length", 6)
     shell:
         """
         python {params.base_dir}/src/bam2junc.py run \
@@ -238,7 +238,7 @@ rule merge_junc:
         "log/merge_junc.log"
     params:
         base_dir = base_dir,
-        boundary_anchor = config.get("boundary_anchor_length", 1)
+        boundary_anchor = config.get("boundary_anchor_length", 6)
     shell:
         """
         python {params.base_dir}/src/bam2junc.py merge \

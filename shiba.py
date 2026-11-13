@@ -179,7 +179,7 @@ def main():
                 "-g", os.path.join(output_dir, "annotation", "assembled_annotation.gtf") if config['unannotated'] else gtf,
                 "-p", processors,
                 "-a", str(config['minimum_anchor_length']),
-                "-b", str(config.get('boundary_anchor_length', 1)),
+                "-b", str(config.get('boundary_anchor_length', 6)),
                 "-m", str(config['minimum_intron_length']),
                 "-M", str(config['maximum_intron_length']),
                 "-s", config['strand']

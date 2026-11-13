@@ -474,7 +474,7 @@ def apply_config_defaults(config, mode="bulk"):
     """
     defaults = {
         'stat_method': 'fisher', 'unannotated': True, 'minimum_anchor_length': 6,
-        'boundary_anchor_length': 1, 'minimum_intron_length': 70,
+        'boundary_anchor_length': 6, 'minimum_intron_length': 70,
         'maximum_intron_length': 500000, 'strand': 'XS', 'only_psi': False,
         'only_psi_group': False, 'fdr': 0.05, 'delta_psi': 0.1,
         'minimum_reads': 10, 'individual_psi': True, 'ttest': False, 'excel': False,

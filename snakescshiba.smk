@@ -117,7 +117,7 @@ rule tosa_single:
     params:
         base_dir = base_dir,
         anchor = config.get("minimum_anchor_length", 8),
-        boundary_anchor = config.get("boundary_anchor_length", 1),
+        boundary_anchor = config.get("boundary_anchor_length", 6),
         min_intron = config.get("minimum_intron_length", 20),
         max_intron = config.get("maximum_intron_length", 500000),
         strand = config.get("strand", "unstranded")
@@ -147,7 +147,7 @@ rule sc2junc:
         "log/sc2junc.log"
     params:
         base_dir = base_dir,
-        boundary_anchor = config.get("boundary_anchor_length", 1)
+        boundary_anchor = config.get("boundary_anchor_length", 6)
     shell:
         """
         python {params.base_dir}/src/sc2junc.py merge \

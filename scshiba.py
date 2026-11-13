@@ -126,7 +126,7 @@ def main():
 				"-g", gtf,
 				"-p", processors,
 				"-a", str(config.get('minimum_anchor_length', 8)),
-				"-b", str(config.get('boundary_anchor_length', 1)),
+				"-b", str(config.get('boundary_anchor_length', 6)),
 				"-m", str(config.get('minimum_intron_length', 20)),
 				"-M", str(config.get('maximum_intron_length', 500000)),
 				"-s", str(config.get('strand', 'unstranded'))

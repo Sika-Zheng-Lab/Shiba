@@ -12,6 +12,11 @@ serially; larger workloads use up to `N` workers. Each process caches up to
 10,000 identical 2×2 tables. This cache is separate from the factorial
 `component_cache_size` setting.
 
+RI boundary counting defaults to `boundary_anchor_length: 6` (six aligned bases
+on each side). Explicit config values override this default. When changing it,
+regenerate Tosa counts from the alignments with the same setting for counting
+and merging; do not reuse intermediate boundary tables made with another value.
+
 ## Shiba
 
 ```bash

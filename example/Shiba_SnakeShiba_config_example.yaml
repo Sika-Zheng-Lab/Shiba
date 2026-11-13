@@ -15,7 +15,7 @@ unannotated:
 minimum_anchor_length:
   6
 boundary_anchor_length:
-  1
+  6
 minimum_intron_length:
   70
 maximum_intron_length:

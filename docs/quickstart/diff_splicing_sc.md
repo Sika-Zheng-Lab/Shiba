@@ -66,7 +66,7 @@ experiment_table:
 
 # Tosa counting
 minimum_anchor_length: 8
-boundary_anchor_length: 1
+boundary_anchor_length: 6
 minimum_intron_length: 20
 maximum_intron_length: 500000
 strand: unstranded
@@ -143,7 +143,7 @@ experiment_table:
 
 # Tosa counting
 minimum_anchor_length: 8
-boundary_anchor_length: 1
+boundary_anchor_length: 6
 minimum_intron_length: 20
 maximum_intron_length: 500000
 strand: unstranded

@@ -134,7 +134,7 @@ optional arguments:
   -a ANCHOR, --anchor ANCHOR
                         Minimum anchor length (default: 8)
   -b BOUNDARY_ANCHOR, --boundary-anchor BOUNDARY_ANCHOR
-                        Bases required on each side of an RI boundary (default: 1)
+                        Bases required on each side of an RI boundary (default: 6)
   -m MIN_INTRON, --min-intron MIN_INTRON
                         Minimum intron size (default: 70)
   -M MAX_INTRON, --max-intron MAX_INTRON

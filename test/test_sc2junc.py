@@ -53,7 +53,7 @@ class TestSingleCellTosaAdapter(unittest.TestCase):
             "s2": {"barcode": self.barcode_table("s2", [["A", "Alt"]])},
         }
         output = os.path.join(self.tmp.name, "junctions.bed")
-        sc2junc.merge_tosa_samples(samples, {"s1": first, "s2": second}, self.ri, output)
+        sc2junc.merge_tosa_samples(samples, {"s1": first, "s2": second}, self.ri, output, boundary_anchor=1)
         with open(output) as handle:
             reader = csv.DictReader(handle, delimiter="\t")
             self.assertEqual(reader.fieldnames, ["chr", "start", "end", "ID", "Alt", "Ref"])
@@ -64,6 +64,18 @@ class TestSingleCellTosaAdapter(unittest.TestCase):
         self.assertEqual(rows["chr1:199-200"]["Alt"], "2")
         self.assertEqual(rows["chr2:300-301"]["Ref"], "0")
         self.assertNotIn("chr1:500-501", rows)
+
+    def test_default_six_base_boundary_coordinates(self):
+        prefix = self.tosa_output("s", [], [["chr1:94-106", "5p", "+", "A", 3],
+                                            ["chr1:193-205", "3p", "+", "A", 4]])
+        samples = {"s": {"barcode": self.barcode_table("s", [["A", "Ref"]])}}
+        output = os.path.join(self.tmp.name, "default.bed")
+        sc2junc.merge_tosa_samples(samples, {"s": prefix}, self.ri, output)
+        group = "Ref"
+        with open(output) as handle:
+            rows = {r["ID"]: r for r in csv.DictReader(handle, delimiter="\t")}
+        self.assertEqual(rows["chr1:100-101"][group], "3")
+        self.assertEqual(rows["chr1:199-200"][group], "4")
 
     def test_boundary_anchor_two_and_strand_option(self):
         prefix = self.tosa_output("s", [], [["chr1:98-102", "5p", "+", "A", 3],

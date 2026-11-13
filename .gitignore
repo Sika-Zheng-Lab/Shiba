@@ -21,3 +21,6 @@ site/
 release-artifacts/
 test-results/
 .snakemake/
+
+# Local release planning notes
+/RELEASE_CHECKLIST.md

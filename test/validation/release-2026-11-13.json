@@ -1,0 +1,692 @@
+{
+  "validation_date": "2026-11-13",
+  "code_commit": "9da70b229cc9c793164cbe287bda58a9295c6885",
+  "version_unchanged": "v0.8.2",
+  "runtime": {
+    "python": "3.12.16 (main, Oct 26 2026, 11:37:43) [GCC 15.3.0]",
+    "packages": {
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "scipy": "1.15.2",
+      "statsmodels": "0.14.6",
+      "plotly": "6.3.1",
+      "matplotlib": "3.10.9",
+      "scikit-learn": "1.6.1",
+      "pyyaml": "6.0.3",
+      "pysam": "0.23.3",
+      "openpyxl": "3.1.5",
+      "snakemake": "0.0.0"
+    },
+    "tosa": "tosa 1.0.0",
+    "snakemake": "9.13.7",
+    "R": {
+      "R": "R version 4.5.3 (2026-03-11)",
+      "packages": {
+        "glmmTMB": "1.1.13",
+        "TMB": "1.9.19",
+        "Matrix": "1.7.5",
+        "jsonlite": "2.0.0",
+        "DESeq2": "1.50.2"
+      }
+    }
+  },
+  "tests": {
+    "total": 252,
+    "skipped": 0,
+    "result": "success"
+  },
+  "synthetic_workflows": {
+    "completed": [
+      "shiba-fisher",
+      "shiba-factorial",
+      "snakeshiba-fisher",
+      "snakeshiba-factorial",
+      "scshiba",
+      "snakescshiba"
+    ],
+    "fixture": "synthetic",
+    "version": "v0.8.2"
+  },
+  "public_data": {
+    "short": {
+      "input": {
+        "source_experiment": "experiment_table_all.tsv",
+        "source_gtf": "Homo_sapiens.GRCh38.106.gtf",
+        "region": [
+          "1",
+          0,
+          10000000
+        ],
+        "technology": "short",
+        "samples": [
+          {
+            "sample": "AA3",
+            "source_bam": "ERR7434589_Aligned.out.bam",
+            "reads": 2925114,
+            "subset_sha256": "5de9718617b481d215195f8d5ab4edf3b5d685b3fa8404fc5138bff2956c8294"
+          },
+          {
+            "sample": "AA4",
+            "source_bam": "ERR7434590_Aligned.out.bam",
+            "reads": 1960326,
+            "subset_sha256": "507b151f0cade79df0a02c7eb757e376ce6a8a468a6dcae38a62684feb9772d8"
+          },
+          {
+            "sample": "SF3B1_1",
+            "source_bam": "ERR7434779_Aligned.out.bam",
+            "reads": 2501469,
+            "subset_sha256": "3ee264da04e2c31561f6b8173a8d18df743df73c03b629d817a0c1fdbe0f1777"
+          },
+          {
+            "sample": "SF3B1_2",
+            "source_bam": "ERR7434780_Aligned.out.bam",
+            "reads": 2490959,
+            "subset_sha256": "973d77d880e54451f1d3d16bfe388782d9f71a88566dd6696ae11de04751b39a"
+          }
+        ]
+      },
+      "measurements": {
+        "metrics-fisher": {
+          "exit_code": 0,
+          "elapsed_seconds": 144.4482238292694,
+          "peak_bytes": {
+            "overall": {
+              "pss": 978874368,
+              "uss": 963051520,
+              "rss": 1020030976,
+              "python_pss": 978874368,
+              "r_pss": 0
+            },
+            "input_and_preparation": {
+              "pss": 978874368,
+              "uss": 963051520,
+              "rss": 1020030976,
+              "python_pss": 978874368,
+              "r_pss": 0
+            }
+          },
+          "samples": 127,
+          "memory_access_errors": 0,
+          "maximum_processes": 4,
+          "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+        },
+        "metrics-regression": {
+          "exit_code": 0,
+          "elapsed_seconds": 130.35183382034302,
+          "peak_bytes": {
+            "overall": {
+              "pss": 969846784,
+              "uss": 953794560,
+              "rss": 1014800384,
+              "python_pss": 969846784,
+              "r_pss": 669176832
+            },
+            "input_and_preparation": {
+              "pss": 117882880,
+              "uss": 100012032,
+              "rss": 161304576,
+              "python_pss": 117882880,
+              "r_pss": 0
+            },
+            "design": {
+              "pss": 285938688,
+              "uss": 263548928,
+              "rss": 341233664,
+              "python_pss": 112603136,
+              "r_pss": 173335552
+            },
+            "fitting": {
+              "pss": 786857984,
+              "uss": 733884416,
+              "rss": 907730944,
+              "python_pss": 118172672,
+              "r_pss": 669176832
+            },
+            "post_fit": {
+              "pss": 969846784,
+              "uss": 953794560,
+              "rss": 1014800384,
+              "python_pss": 969846784,
+              "r_pss": 0
+            }
+          },
+          "samples": 106,
+          "memory_access_errors": 0,
+          "maximum_processes": 5,
+          "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+        }
+      },
+      "events": {
+        "AFE": {
+          "total": 796,
+          "minus_strand": 315
+        },
+        "ALE": {
+          "total": 311,
+          "minus_strand": 170
+        },
+        "FIVE": {
+          "total": 147,
+          "minus_strand": 96
+        },
+        "MSE": {
+          "total": 176,
+          "minus_strand": 109
+        },
+        "MXE": {
+          "total": 6,
+          "minus_strand": 6
+        },
+        "RI": {
+          "total": 216,
+          "minus_strand": 125
+        },
+        "SE": {
+          "total": 393,
+          "minus_strand": 210
+        },
+        "THREE": {
+          "total": 200,
+          "minus_strand": 97
+        }
+      },
+      "regression_status": {
+        "filtered_low_coverage": 1675,
+        "untestable": 280,
+        "ok": 269,
+        "inconsistent_direction": 21
+      },
+      "browser": [
+        {
+          "report": "real-short/fisher/plots/summary.html",
+          "offline": true,
+          "zoom": true,
+          "svg_export": true,
+          "png_export": true,
+          "static_formats": [
+            "png",
+            "pdf",
+            "svg"
+          ]
+        },
+        {
+          "report": "real-short/regression/plots/summary.html",
+          "offline": true,
+          "zoom": true,
+          "svg_export": true,
+          "png_export": true,
+          "static_formats": [
+            "png",
+            "pdf",
+            "svg"
+          ]
+        }
+      ]
+    },
+    "long": {
+      "input": {
+        "source_experiment": "experiment_Shiba_GSE246705.tsv",
+        "source_gtf": "Mus_musculus.GRCm38.102.gtf",
+        "region": [
+          "1",
+          3000000,
+          13000000
+        ],
+        "technology": "long",
+        "samples": [
+          {
+            "sample": "GSM7875047",
+            "source_bam": "GSM7875047_Aligned.out.bam",
+            "reads": 4083,
+            "subset_sha256": "b04153932bcb72b078540643bb4bd6f16f7acd91244b334993a54a14b0b66a31"
+          },
+          {
+            "sample": "GSM7875055",
+            "source_bam": "GSM7875055_Aligned.out.bam",
+            "reads": 3094,
+            "subset_sha256": "96a859ba9c92beaf0d10145667d7694e8cf6e1e6323a519217de47036123cd7c"
+          },
+          {
+            "sample": "GSM7875051",
+            "source_bam": "GSM7875051_Aligned.out.bam",
+            "reads": 3456,
+            "subset_sha256": "91387a2e51570569df4b59479971e3922e68b8181fd087f58bba476efc9b8b22"
+          },
+          {
+            "sample": "GSM7875059",
+            "source_bam": "GSM7875059_Aligned.out.bam",
+            "reads": 5190,
+            "subset_sha256": "7baa0cf609c14032b27d0a995105310dfdcc81c1cda1ec3a3fa13331222de0de"
+          }
+        ]
+      },
+      "measurements": {
+        "metrics-fisher": {
+          "exit_code": 0,
+          "elapsed_seconds": 48.60326552391052,
+          "peak_bytes": {
+            "overall": {
+              "pss": 970610688,
+              "uss": 951214080,
+              "rss": 1009147904,
+              "python_pss": 970610688,
+              "r_pss": 0
+            },
+            "input_and_preparation": {
+              "pss": 970610688,
+              "uss": 951214080,
+              "rss": 1009147904,
+              "python_pss": 970610688,
+              "r_pss": 0
+            }
+          },
+          "samples": 42,
+          "memory_access_errors": 0,
+          "maximum_processes": 4,
+          "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+        },
+        "metrics-regression": {
+          "exit_code": 0,
+          "elapsed_seconds": 36.300129652023315,
+          "peak_bytes": {
+            "overall": {
+              "pss": 964452352,
+              "uss": 948809728,
+              "rss": 1008541696,
+              "python_pss": 964452352,
+              "r_pss": 241984512
+            },
+            "input_and_preparation": {
+              "pss": 103038976,
+              "uss": 87007232,
+              "rss": 144863232,
+              "python_pss": 103038976,
+              "r_pss": 0
+            },
+            "design": {
+              "pss": 357910528,
+              "uss": 337940480,
+              "rss": 403247104,
+              "python_pss": 116319232,
+              "r_pss": 241984512
+            },
+            "fitting": {
+              "pss": 266429440,
+              "uss": 246169600,
+              "rss": 411312128,
+              "python_pss": 117471232,
+              "r_pss": 148958208
+            },
+            "post_fit": {
+              "pss": 964452352,
+              "uss": 948809728,
+              "rss": 1008541696,
+              "python_pss": 964452352,
+              "r_pss": 0
+            }
+          },
+          "samples": 32,
+          "memory_access_errors": 0,
+          "maximum_processes": 3,
+          "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+        }
+      },
+      "events": {
+        "AFE": {
+          "total": 83,
+          "minus_strand": 16
+        },
+        "ALE": {
+          "total": 40,
+          "minus_strand": 22
+        },
+        "FIVE": {
+          "total": 15,
+          "minus_strand": 7
+        },
+        "MSE": {
+          "total": 11,
+          "minus_strand": 5
+        },
+        "MXE": {
+          "total": 1,
+          "minus_strand": 0
+        },
+        "RI": {
+          "total": 13,
+          "minus_strand": 2
+        },
+        "SE": {
+          "total": 56,
+          "minus_strand": 25
+        },
+        "THREE": {
+          "total": 11,
+          "minus_strand": 6
+        }
+      },
+      "regression_status": {
+        "filtered_low_coverage": 218,
+        "untestable": 9,
+        "ok": 2,
+        "inconsistent_direction": 1
+      },
+      "browser": [
+        {
+          "report": "real-long/fisher/plots/summary.html",
+          "offline": true,
+          "zoom": true,
+          "svg_export": true,
+          "png_export": true,
+          "static_formats": [
+            "png",
+            "pdf",
+            "svg"
+          ]
+        },
+        {
+          "report": "real-long/regression/plots/summary.html",
+          "offline": true,
+          "zoom": true,
+          "svg_export": true,
+          "png_export": true,
+          "static_formats": [
+            "png",
+            "pdf",
+            "svg"
+          ]
+        }
+      ]
+    },
+    "sc": {
+      "input": {
+        "source": "https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_possorted_genome_bam.bam",
+        "region": "1:1-10000000",
+        "tagged_reads": 764545,
+        "observed_cell_barcodes": 1221,
+        "bam_sha256": "4bbfe66501b36376a55d114fa62e5b3402f61661310769c1272deb8c3be3508f",
+        "grouping": "Alternating sorted cell barcodes; technical validation only",
+        "license": "CC BY 4.0",
+        "attribution": "10x Genomics, 1k PBMCs v3, 2018"
+      },
+      "measurements": {
+        "metrics": {
+          "exit_code": 0,
+          "elapsed_seconds": 22.510680437088013,
+          "peak_bytes": {
+            "overall": {
+              "pss": 207934464,
+              "uss": 194117632,
+              "rss": 263970816,
+              "python_pss": 207934464,
+              "r_pss": 0
+            },
+            "input_and_preparation": {
+              "pss": 207934464,
+              "uss": 194117632,
+              "rss": 263970816,
+              "python_pss": 207934464,
+              "r_pss": 0
+            }
+          },
+          "samples": 20,
+          "memory_access_errors": 0,
+          "maximum_processes": 4,
+          "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+        }
+      },
+      "browser": [
+        {
+          "report": "real-sc/scshiba/plots/summary.html",
+          "offline": true,
+          "zoom": true,
+          "svg_export": true,
+          "png_export": true,
+          "static_formats": [
+            "png",
+            "pdf",
+            "svg"
+          ]
+        }
+      ]
+    }
+  },
+  "calibration": {
+    "1000_events": {
+      "results": {
+        "seed": 731,
+        "events": 1000,
+        "replicates_per_cell": 8,
+        "depth": 100,
+        "rho": 0.05,
+        "elapsed_seconds": 80.65275872297934,
+        "untestable": 0,
+        "null_rejection_rate": 0.08,
+        "null_rejection_95pct_interval": [
+          0.05776611992883431,
+          0.10734546435634998
+        ],
+        "realized_false_discovery_proportion": 0.044573643410852716,
+        "power": 0.986,
+        "median_estimated_rho": 0.04190543815071705,
+        "note": "One simulated run; false discovery proportion is not an estimate of expected FDR across simulations."
+      },
+      "measurements": {
+        "exit_code": 0,
+        "elapsed_seconds": 86.44036078453064,
+        "peak_bytes": {
+          "overall": {
+            "pss": 903877632,
+            "uss": 835190784,
+            "rss": 1058439168,
+            "python_pss": 308946944,
+            "r_pss": 686509056
+          },
+          "input_and_preparation": {
+            "pss": 308946944,
+            "uss": 291467264,
+            "rss": 337907712,
+            "python_pss": 308946944,
+            "r_pss": 0
+          },
+          "design": {
+            "pss": 456860672,
+            "uss": 414068736,
+            "rss": 532627456,
+            "python_pss": 221571072,
+            "r_pss": 235309056
+          },
+          "fitting": {
+            "pss": 903877632,
+            "uss": 835190784,
+            "rss": 1058439168,
+            "python_pss": 233309184,
+            "r_pss": 686509056
+          },
+          "post_fit": {
+            "pss": 219872256,
+            "uss": 193777664,
+            "rss": 301150208,
+            "python_pss": 219872256,
+            "r_pss": 0
+          }
+        },
+        "samples": 71,
+        "memory_access_errors": 0,
+        "maximum_processes": 5,
+        "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+      }
+    },
+    "10000_events": {
+      "results": {
+        "seed": 731,
+        "events": 10000,
+        "replicates_per_cell": 8,
+        "depth": 100,
+        "rho": 0.05,
+        "elapsed_seconds": 744.7361858399818,
+        "untestable": 0,
+        "null_rejection_rate": 0.0712,
+        "null_rejection_95pct_interval": [
+          0.06422399733227288,
+          0.07868145741095742
+        ],
+        "realized_false_discovery_proportion": 0.03798208024931827,
+        "power": 0.9878,
+        "median_estimated_rho": 0.041771978093081405,
+        "note": "One simulated run; false discovery proportion is not an estimate of expected FDR across simulations."
+      },
+      "measurements": {
+        "exit_code": 0,
+        "elapsed_seconds": 761.7048902511597,
+        "peak_bytes": {
+          "overall": {
+            "pss": 1137978368,
+            "uss": 1056817152,
+            "rss": 1271078912,
+            "python_pss": 451542016,
+            "r_pss": 804603904
+          },
+          "input_and_preparation": {
+            "pss": 316018688,
+            "uss": 283127808,
+            "rss": 388956160,
+            "python_pss": 316018688,
+            "r_pss": 0
+          },
+          "design": {
+            "pss": 522522624,
+            "uss": 485326848,
+            "rss": 608104448,
+            "python_pss": 310903808,
+            "r_pss": 211618816
+          },
+          "fitting": {
+            "pss": 1137978368,
+            "uss": 1056817152,
+            "rss": 1271078912,
+            "python_pss": 333374464,
+            "r_pss": 804603904
+          },
+          "post_fit": {
+            "pss": 451542016,
+            "uss": 390311936,
+            "rss": 808009728,
+            "python_pss": 451542016,
+            "r_pss": 0
+          }
+        },
+        "samples": 626,
+        "memory_access_errors": 0,
+        "maximum_processes": 5,
+        "sampling": "One second sleep plus process-tree memory scan; sum PSS avoids shared-page double counting."
+      }
+    }
+  },
+  "conda_candidates": {
+    "shiba": {
+      "file": "shiba-0.8.2-py312_0.tar.bz2",
+      "sha256": "6acd9ed73b26296df41f94f4cecbc028d5eec7bee6c8dbb8c344bfdea1759e6c",
+      "status": "build and fresh-environment CLI/R tests passed",
+      "source": "local candidate; not the published v0.8.2 package"
+    },
+    "mameshiba": {
+      "file": "mameshiba-0.8.2-py312_0.tar.bz2",
+      "sha256": "112c9aef7d83ae42fc45bd2e5ed258f4f357e2cfbeb6b8e68d3748bc447404ff",
+      "status": "build and fresh-environment CLI/R tests passed",
+      "source": "local candidate; not the published v0.8.2 package"
+    }
+  },
+  "synthetic_browser": [
+    {
+      "report": "pipelines/scshiba/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    },
+    {
+      "report": "pipelines/shiba-factorial/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    },
+    {
+      "report": "pipelines/shiba-fisher/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    },
+    {
+      "report": "pipelines/snakescshiba/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    },
+    {
+      "report": "pipelines/snakeshiba-factorial/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    },
+    {
+      "report": "pipelines/snakeshiba-fisher/plots/summary.html",
+      "offline": true,
+      "zoom": true,
+      "svg_export": true,
+      "png_export": true,
+      "static_formats": [
+        "png",
+        "pdf",
+        "svg"
+      ]
+    }
+  ],
+  "limitations": [
+    "Public alignment validation uses selected chromosome regions, not full genomes.",
+    "PBMC groups are artificial barcode splits, not biological replicates.",
+    "Calibration is a single simulated run; realized FDP is not expected FDR.",
+    "Timing is from a shared HPC node; PSS sampled approximately once per second.",
+    "CRAM validation uses self-contained no_ref CRAM; external-reference lookup is not covered.",
+    "Final v1.0.0 version, release date, source checksum and external publication remain pending."
+  ],
+  "ci": {
+    "run": "https://github.com/Sika-Zheng-Lab/Shiba/actions/runs/43503585120",
+    "result": "all jobs passed",
+    "docker_platform": "linux/amd64",
+    "dockerfiles": [
+      "docker/Dockerfile",
+      "docker/Dockerfile_develop"
+    ],
+    "docker_hub_access": "pull/push grant verified; no image uploaded"
+  }
+}

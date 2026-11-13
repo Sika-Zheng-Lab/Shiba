@@ -5,55 +5,24 @@ All notable changes to this Shiba project will be documented in this file.
 ## [v1.0.0] - 2026-XX-XX
 
 > [!IMPORTANT]
-> **Splicing results can differ from previous versions.** Starting with v1.0.0, Shiba and SnakeShiba use Tosa instead of regtools and featureCounts for junction and exon–intron boundary counting, and scShiba and SnakeScShiba use Tosa instead of STARsolo SJ matrices. Tosa uses different counting rules, so the same input data can produce different read counts, PSI values, delta PSI values, and differential splicing results. These differences are expected consequences of the counting-method change. For consistent comparisons, re-run all samples with v1.0.0 using the same Tosa version and counting settings, starting from BAM/CRAM files rather than reusing counts from previous versions.
->
-> This version includes a **breaking change** in the MXE (Mutually Exclusive Exons) coordinate definition. `exon_a`/`exon_b` and their associated introns are now assigned based on gene strand direction (upstream/downstream) instead of genomic position (left/right). This affects all MXE output files (`EVENT_MXE.txt`, `PSI_MXE.txt`) for minus-strand genes. Results from previous versions are **not directly comparable** for MXE events on the minus strand. Please re-run the analysis with this version if you need consistent strand-aware MXE annotations.
-
-### Fixed
-
-- Prevented long contrast labels from being clipped in interactive HTML plots by sizing axis margins automatically.
-
-- Fixed Snakemake report generation when `PYTHONPATH` is unset, including clean Docker environments.
-
-- Fixed bulk assembly and expression skipping sample IDs beginning with `sample` (for example, `sample_WT_Control_0`).
-- Unified Excel exports on openpyxl, removing the extra StyleFrame dependency from current workflows.
-
-- Export all eight Excel sheets even when an event type has no results, preserve existing workbooks if writing fails, and apply the same empty-sheet handling to expression exports.
-- Preserve event-table columns when an event type has no rows, preventing a `KeyError: event_id` in bulk Fisher analysis of small or filtered annotations.
-
-### Removed
-
-- Removed the supplementary two-group Python beta-binomial implementation, its bulk/single-cell `-b/--beta-binomial` flags, and the `beta_binomial` configuration key. Old keys now produce a migration error. Use `stat_method: beta_binomial` for bulk event-centric factorial regression or `stat_method: fisher` for Fisher testing.
+> Read counting and minus-strand MXE definitions have changed. Results may differ from v0.8.2; re-run all samples from alignment files instead of reusing previous counts.
 
 ### Added
 
-- Added automatic interactive single-cell summary reports to scShiba and SnakeScShiba, sharing the bulk Fisher theme, plot sizes, command provenance, and figure exports; PSI-only runs receive a clearly labeled table report.
-
-- Added self-contained interactive Plotly HTML reports for factorial and Fisher analyses, a shared publication figure style with Arial with default-font fallback, and PNG/PDF/SVG exports. Factorial reports include status summaries, contrast scatters, optional PSI effects, and available PCA plots.
-- Added matching factorial sample metadata, experiment-table, contrast, and PSI prediction templates, with a MkDocs quick-start walkthrough for the beta-binomial configuration.
-- Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta_binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts in bulk Shiba/SnakeShiba. Single-cell workflows use Fisher testing; cells are not treated as independent biological replicates for this regression.
-- Preserved integer junction components for all eight event types, with common coverage masks, component direction consistency, conservative event-level tests, and BH/BY adjustment across event types per contrast.
-- Added default pre-test coverage filtering for factorial regression: every component must have at least 10 total reads in the same half (rounded up) of samples in every categorical design cell. Only passing events enter fitting and FDR correction. Supports configurable sample fractions/grouping columns and exports per-group counts in `event_filter.tsv`.
-- Added design inspection, covariate-standardized component PSI predictions and PSI contrasts, model diagnostics, contrast-aware reports, and regression output tables. Existing pairwise modes remain unchanged.
-- Added simulated factorial integration tests and a calibration/benchmark runner. New-mode LRT inference is asymptotic and does not borrow dispersion information across events.
-- Added intron-retention (RI) PSI and differential analysis to scShiba and SnakeScShiba, including summary and Excel output.
-- Added a generated two-library BAM fixture to test single-cell Tosa counting, UMI deduplication, group aggregation, and RI PSI.
+- Beta-binomial regression for bulk RNA-seq designs with covariates and interactions (`stat_method: beta_binomial`, using R/glmmTMB). Fisher's exact test remains the default.
+- Intron-retention (RI) analysis in scShiba and SnakeScShiba.
+- Self-contained interactive HTML reports for bulk and single-cell analyses, with PNG/PDF/SVG exports.
 
 ### Changed
 
-- Standardized `stat_method` to `fisher` (default when omitted) or `beta_binomial` in YAML and the PSI CLI; added a dedicated factorial configuration example.
+- Splice-junction and intron-retention boundary counting now uses ([Tosa]https://github.com/Sika-Zheng-Lab/Tosa) 1.0.0.
+- Single-cell input changes from STARsolo SJ matrices to BAM/CRAM with `CB`/`UB` tags. Experiment tables now use `sample`, `alignment`, and `barcode` columns.
+- MXE PSI now represents the upstream exon on both strands, changing results for minus-strand genes.
+- `PSI_matrix_group.txt` now includes all groups in the experiment table.
 
-- Documented the complete factorial workflow through `python shiba.py config.yaml -p N`; added launcher coverage and optional configuration defaults, and use the launcher's Python interpreter for pipeline steps.
+### Fixed
 
-- Accelerated factorial regression with vectorized event/prediction aggregation, post-filter batching, persistent workers dynamically scheduling component fits, and a bounded exact-result cache (`component_cache_size`, default 10000; 0 disables reuse). Added stage/component/batch timing and optimizer retry diagnostics without changing the tests or FDR family.
-- **Changed the input format for scShiba and SnakeScShiba from STARsolo SJ matrices to BAM/CRAM files, matching Shiba and SnakeShiba.** Junction and exon–intron boundary counts are now extracted directly from these alignment files using Tosa. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
-- Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
-- Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. The shared Conda environment and Dockerfiles install Tosa 1.0.0.
-- Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.
-- Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
-- Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.
-- Changed MXE (Mutually Exclusive Exons) coordinate definition from genomic-position-based to strand-aware assignment. `exon_a` now refers to the upstream (5') exon and `exon_b` to the downstream (3') exon relative to the gene's strand. Introns follow accordingly: `intron_a1`/`intron_a2` = 5'/3' side of `exon_a`, `intron_b1`/`intron_b2` = 5'/3' side of `exon_b`. This ensures PSI consistently represents the inclusion ratio of the upstream exon for both plus- and minus-strand genes.
-- `PSI_matrix_group.txt` now includes PSI values for all groups defined in the experiment table, not just the reference and alternative groups used for differential analysis. This applies to both `shiba.py` and `SnakeShiba`.
+- Fixed failures when event tables are empty, including Excel export.
 
 ## [v0.8.2] - 2026-02-23
 

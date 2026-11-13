@@ -19,6 +19,9 @@ class TestVersionUpdate(unittest.TestCase):
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / name, target)
+            # Keep this regression fixture independent of README editorial copy.
+            readme = root / "README.md"
+            readme.write_text(readme.read_text() + "\nHistorical note: v0.8.2 package/image.\n")
             before = {name: (root / name).read_bytes() for name in ("CHANGELOG.md", "docs/installation.md")}
             cmd = [sys.executable, str(ROOT / "scripts/update_version.py"), "v1.2.3", "--root", str(root)]
             subprocess.run(cmd, check=True, capture_output=True)

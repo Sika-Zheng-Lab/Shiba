@@ -20,3 +20,6 @@ test/*.out
 *.crai
 *.sif
 *.tar.gz
+
+# Maintainer-only release planning
+RELEASE_CHECKLIST.md

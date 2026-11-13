@@ -49,47 +49,25 @@ that key from existing configurations.
 
 ## Installation
 
-The event-centric factorial beta-binomial mode requires **R, glmmTMB, and
-jsonlite**, in addition to Shiba's existing dependencies. Use a source checkout
-that contains `src/beta_binomial_glm.R`; installing these R packages alone does
-not add the new mode to an older Shiba executable. The v0.8.2 package/image uses
-the earlier counting pipeline and does not contain this regression backend.
-
-### Conda
-
-Use the environment shared by source installs, containers, and release checks:
+Install Shiba from Bioconda (with the `conda-forge` and `bioconda` channels configured):
 
 ```bash
-git clone https://github.com/Sika-Zheng-Lab/Shiba.git
-cd Shiba
-git switch develop # select a release tag instead when installing that release
-conda env create -f environment.yml
-conda activate shiba
-export PYTHONNOUSERSITE=1
-python scripts/verify_runtime.py
-python ./shiba.py -p 4 config.yaml
+conda install shiba
 ```
 
-`python ./shiba.py` selects this checkout instead of an older executable on
-`PATH`. The environment includes Tosa, the R regression backend, gene-expression
-dependencies, Snakemake, and Excel support. For splicing-only **MameShiba**, run
-`python ./shiba.py --mame -p 4 config.yaml`; regression still requires glmmTMB/jsonlite.
-See the [installation guide](docs/installation.md) for existing environments and
-optional R setup.
-
-### Docker
-
-Build the same checkout locally (the supported release image platform is
-`linux/amd64`):
+If the new dependencies are missing from an existing environment, install them with:
 
 ```bash
-docker build --platform linux/amd64 -f docker/Dockerfile -t shiba:local .
-docker run --rm shiba:local python /opt/Shiba/scripts/verify_runtime.py
+conda install -c conda-forge -c bioconda tosa=1.0.0 \
+  r-glmmtmb=1.1.13 r-tmb=1.9.19 r-jsonlite=2.0 openpyxl=3.1
 ```
 
-Published images use the **`naotokubota/shiba`** repository. Select an existing
-release tag that matches the scripts and input format; the v0.8.2 image does
-not contain the Tosa/factorial workflow described here.
+If Bioconda has not yet published Shiba v1.0.0, these dependencies alone do not
+upgrade the Shiba code. Use the [source installation instructions](docs/installation.md#source-checkout)
+with the v1.0.0 release checkout and its `environment.yml` until the package is available.
+The source environment also supplies the matching Python, plotting, and expression-analysis dependencies.
+
+See the [installation guide](docs/installation.md) for other installation options.
 
 ## Usage
 

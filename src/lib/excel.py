@@ -5,22 +5,25 @@ import tempfile
 
 
 def write_workbook(path, sheets, freeze_panes="B2"):
-    from styleframe import StyleFrame, Styler, utils
+    import pandas as pd
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.utils import get_column_letter
 
     path = Path(path)
-    style = Styler(horizontal_alignment=utils.horizontal_alignments.left, wrap_text=False)
     with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".xlsx", delete=False) as handle:
         temporary = Path(handle.name)
     try:
-        with StyleFrame.ExcelWriter(temporary) as writer:
+        with pd.ExcelWriter(temporary, engine="openpyxl") as writer:
             for name, frame in sheets:
-                styled = StyleFrame(frame)
-                styled.set_column_width(columns=frame.columns, width=20)
-                styled.apply_column_style(cols_to_style=frame.columns, styler_obj=style, style_header=True)
-                styled.to_excel(writer, index=False, sheet_name=name)
-                # openpyxl permits a freeze boundary beyond the last populated
-                # row; StyleFrame's argument rejects header-only sheets.
-                writer.sheets[name].freeze_panes = freeze_panes
+                frame.to_excel(writer, index=False, sheet_name=name)
+                sheet = writer.sheets[name]
+                sheet.freeze_panes = freeze_panes
+                for index in range(1, len(frame.columns) + 1):
+                    sheet.column_dimensions[get_column_letter(index)].width = 20
+                for row in sheet:
+                    for cell in row:
+                        cell.alignment = Alignment(horizontal="left", wrap_text=False)
+                        cell.font = Font(name="Calibri", size=11, bold=cell.row == 1)
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)

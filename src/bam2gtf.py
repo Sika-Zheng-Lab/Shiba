@@ -55,7 +55,7 @@ def main():
 	with open(experiment_file, "r") as experiment:
 		for line in experiment:
 			line = line.strip()
-			if not line or line.startswith("sample"):
+			if not line or line.split(maxsplit=1)[0] == "sample":
 				continue
 			# Parse the line
 			try:

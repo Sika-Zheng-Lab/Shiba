@@ -51,7 +51,7 @@ ATCGCCTAGACTCGAG Cluster-2
 
 `config.yaml`: A yaml file of the configuration.
 
-The Tosa-enabled scShiba code is currently in this repository's development version. The published v0.8.2 package uses the earlier STARsolo `SJ` input. To try the new path with generated data, run `python test/make_sc_tosa_fixture.py /path/to/fixture` and use its `config.yaml`.
+This guide describes the Tosa-enabled code in the selected source checkout. The v0.8.2 package uses the earlier STARsolo `SJ` input. To try the new path with generated data, run `python test/make_sc_tosa_fixture.py /path/to/fixture` and use its `config.yaml`.
 
 ``` yaml
 workdir:
@@ -126,7 +126,7 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 
 `config.yaml`: A yaml file of the configuration. This is the same as the input for **scShiba** but with the addition of the `container` field.
 
-The `v1.0.0` container tag below is for the upcoming Tosa-enabled release. For a development checkout, run Snakemake locally with Tosa on `PATH` or build a container from `docker/Dockerfile_develop`.
+The container reference below must resolve to a published release matching your source. Until that release is available, run Snakemake locally with the source environment or build `docker/Dockerfile_develop` and set `container` to your matching SIF image.
 
 ``` yaml
 workdir:

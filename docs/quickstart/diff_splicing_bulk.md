@@ -172,7 +172,7 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 
 `config.yaml`: A yaml file of the configuration. This is the same as the configuration for **Shiba** but with the addition of the `container` field and without the `only_psi` and `only_psi_group` fields as they are not supported in **SnakeShiba**.
 
-The `v1.0.0` container tag below is for the upcoming Tosa-enabled release. For a development checkout, build `docker/Dockerfile_develop` and make the image available to your container runtime, or run Snakemake locally with Tosa installed on `PATH`.
+The container reference below must resolve to a published release matching your source. Until that release is available, build `docker/Dockerfile_develop` and use a matching SIF image, or run Snakemake locally with the source environment.
 
 ``` yaml
 workdir:

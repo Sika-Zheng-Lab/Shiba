@@ -18,3 +18,5 @@ coverage.xml
 .venv/
 .pytest_cache/
 site/
+release-artifacts/
+test-results/

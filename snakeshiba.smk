@@ -26,7 +26,7 @@ def load_experiment(file):
     with open(file, "r") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("sample"):
+            if not line or line.split(maxsplit=1)[0] == "sample":
                 continue
             try:
                 sample, bam, group, technology = line.split(maxsplit=3)

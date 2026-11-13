@@ -13,7 +13,7 @@ from lib import shibalib
 from lib.excel import write_workbook
 
 
-@unittest.skipUnless(importlib.util.find_spec("styleframe"), "styleframe is required")
+@unittest.skipUnless(importlib.util.find_spec("openpyxl"), "openpyxl is required")
 class TestExcel(unittest.TestCase):
     def test_empty_and_mixed_splicing_sheets(self):
         from openpyxl import load_workbook
@@ -42,8 +42,7 @@ class TestExcel(unittest.TestCase):
                         book.close()
 
     def test_failure_does_not_publish_partial_workbook(self):
-        from styleframe import StyleFrame
-        original = StyleFrame.to_excel
+        original = pd.DataFrame.to_excel
         def fail_second(frame, *args, **kwargs):
             if kwargs["sheet_name"] == "FIVE":
                 raise OSError("simulated write failure")
@@ -51,7 +50,7 @@ class TestExcel(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "results.xlsx"
             path.write_bytes(b"previous complete workbook")
-            with patch.object(StyleFrame, "to_excel", new=fail_second):
+            with patch.object(pd.DataFrame, "to_excel", new=fail_second):
                 with self.assertRaisesRegex(OSError, "simulated write failure"):
                     shibalib.save_excel(tmp, *([pd.DataFrame(columns=["event_id", "q"])] * 8))
             self.assertEqual(path.read_bytes(), b"previous complete workbook")

@@ -17,7 +17,7 @@
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
 
-The development version of scShiba and SnakeScShiba counts junction and intron-retention boundary reads directly from tagged BAM/CRAM files with Tosa. See the [single-cell input guide](docs/quickstart/diff_splicing_sc.md) for the new experiment table.
+The scShiba and SnakeScShiba code in this checkout counts junction and intron-retention boundary reads directly from tagged BAM/CRAM files with Tosa. See the [single-cell input guide](docs/quickstart/diff_splicing_sc.md) for the new experiment table.
 
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
@@ -57,45 +57,38 @@ the earlier counting pipeline and does not contain this regression backend.
 
 ### Conda
 
-Create an environment for the current source checkout, including
-[Tosa from Bioconda](https://anaconda.org/bioconda/tosa):
+Use the environment shared by source installs, containers, and release checks:
 
 ```bash
-conda create -n shiba -c conda-forge -c bioconda \
-  python=3.12 shiba tosa=1.0.0 r-glmmtmb r-jsonlite
+git clone https://github.com/Sika-Zheng-Lab/Shiba.git
+cd Shiba
+git switch develop # select a release tag instead when installing that release
+conda env create -f environment.yml
 conda activate shiba
-python -m pip install styleframe==4.2 openpyxl # optional Excel output
-```
-
-For an existing Shiba environment, add Tosa and the regression backend with:
-
-```bash
-conda activate shiba
-conda install -c conda-forge -c bioconda tosa=1.0.0 r-glmmtmb r-jsonlite
-```
-
-From the source checkout, verify the backend and use the checked-out scripts:
-
-```bash
-Rscript --vanilla -e 'stopifnot(requireNamespace("glmmTMB", quietly=TRUE), requireNamespace("jsonlite", quietly=TRUE)); print(packageVersion("glmmTMB"))'
-python ./src/psi.py --help
+python scripts/verify_runtime.py
 python ./shiba.py -p 4 config.yaml
 ```
 
-The Conda package supplies the base dependencies; `python ./shiba.py` selects
-this checkout instead of an older `shiba.py` installed on `PATH`. The new R
-packages are optional for legacy splicing analysis. Existing gene-expression
-analysis still has its own R dependencies.
-
-For **MameShiba** (splicing only), use `mameshiba` in place of `shiba` in the
-`conda create` command, then run `python ./shiba.py --mame -p 4 config.yaml` from
-this checkout. MameShiba also needs glmmTMB/jsonlite when using the new mode.
+`python ./shiba.py` selects this checkout instead of an older executable on
+`PATH`. The environment includes Tosa, the R regression backend, gene-expression
+dependencies, Snakemake, and Excel support. For splicing-only **MameShiba**, run
+`python ./shiba.py --mame -p 4 config.yaml`; regression still requires glmmTMB/jsonlite.
+See the [installation guide](docs/installation.md) for existing environments and
+optional R setup.
 
 ### Docker
 
+Build the same checkout locally (the supported release image platform is
+`linux/amd64`):
+
 ```bash
-docker pull shiba:v0.8.2
+docker build --platform linux/amd64 -f docker/Dockerfile -t shiba:local .
+docker run --rm shiba:local python /opt/Shiba/scripts/verify_runtime.py
 ```
+
+Published images use the **`naotokubota/shiba`** repository. Select an existing
+release tag that matches the scripts and input format; the v0.8.2 image does
+not contain the Tosa/factorial workflow described here.
 
 ## Usage
 

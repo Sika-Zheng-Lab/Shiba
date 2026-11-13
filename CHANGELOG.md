@@ -11,6 +11,9 @@ All notable changes to this Shiba project will be documented in this file.
 
 ### Fixed
 
+- Fixed bulk assembly and expression skipping sample IDs beginning with `sample` (for example, `sample_WT_Control_0`).
+- Unified Excel exports on openpyxl, removing the extra StyleFrame dependency from current workflows.
+
 - Export all eight Excel sheets even when an event type has no results, preserve existing workbooks if writing fails, and apply the same empty-sheet handling to expression exports.
 - Preserve event-table columns when an event type has no rows, preventing a `KeyError: event_id` in bulk Fisher analysis of small or filtered annotations.
 
@@ -24,19 +27,13 @@ All notable changes to this Shiba project will be documented in this file.
 
 - Added self-contained interactive Plotly HTML reports for factorial and Fisher analyses, a shared publication figure style with Arial with default-font fallback, and PNG/PDF/SVG exports. Factorial reports include status summaries, contrast scatters, optional PSI effects, and available PCA plots.
 - Added matching factorial sample metadata, experiment-table, contrast, and PSI prediction templates, with a MkDocs quick-start walkthrough for the beta-binomial configuration.
-- Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta_binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts.
+- Added optional event-centric beta-binomial regression with an R/glmmTMB backend (`stat_method: beta_binomial`). Supports fixed-effect factorial designs, covariates, named coefficients, and arbitrary scalar linear contrasts in bulk Shiba/SnakeShiba. Single-cell workflows use Fisher testing; cells are not treated as independent biological replicates for this regression.
 - Preserved integer junction components for all eight event types, with common coverage masks, component direction consistency, conservative event-level tests, and BH/BY adjustment across event types per contrast.
 - Added default pre-test coverage filtering for factorial regression: every component must have at least 10 total reads in the same half (rounded up) of samples in every categorical design cell. Only passing events enter fitting and FDR correction. Supports configurable sample fractions/grouping columns and exports per-group counts in `event_filter.tsv`.
 - Added design inspection, covariate-standardized component PSI predictions and PSI contrasts, model diagnostics, contrast-aware reports, and regression output tables. Existing pairwise modes remain unchanged.
 - Added simulated factorial integration tests and a calibration/benchmark runner. New-mode LRT inference is asymptotic and does not borrow dispersion information across events.
 - Added intron-retention (RI) PSI and differential analysis to scShiba and SnakeScShiba, including summary and Excel output.
 - Added a generated two-library BAM fixture to test single-cell Tosa counting, UMI deduplication, group aggregation, and RI PSI.
-- Added beta-binomial as an optional statistical method for differential splicing analysis (`beta_binomial: True` in configuration). This method models splicing counts with a beta-binomial likelihood and performs a likelihood ratio test (LRT) between full and null models to detect differential splicing events.
-  - Optimized with analytical gradients using digamma functions for faster convergence.
-  - Supports parallel computation via `ProcessPoolExecutor` using the `-p` option.
-  - Includes pre-filters (zero-variance PSI, identical group means) to skip unnecessary optimization.
-  - Uses moment-based initial parameter estimation for robust and fast convergence.
-- Added unit tests for beta-binomial testing covering core functionality, edge cases, and parallel execution.
 
 ### Changed
 
@@ -47,7 +44,7 @@ All notable changes to this Shiba project will be documented in this file.
 - Accelerated factorial regression with vectorized event/prediction aggregation, post-filter batching, persistent workers dynamically scheduling component fits, and a bounded exact-result cache (`component_cache_size`, default 10000; 0 disables reuse). Added stage/component/batch timing and optimizer retry diagnostics without changing the tests or FDR family.
 - **Changed the input format for scShiba and SnakeScShiba from STARsolo SJ matrices to BAM/CRAM files, matching Shiba and SnakeShiba.** Junction and exon–intron boundary counts are now extracted directly from these alignment files using Tosa. Single-cell experiment tables now require `sample`, `alignment`, and `barcode` columns; `alignment` files need `CB` tags, with `UB` tags used for UMI deduplication.
 - Replaced regtools junction extraction and featureCounts RI boundary counting in bulk Shiba and SnakeShiba with Tosa 1.0.0. The `junctions.bed` schema remains the same; counts and downstream PSI can change because Tosa uses different read-counting rules. Gene-expression counting still uses featureCounts.
-- Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. Until Tosa is available from Bioconda, install it from crates.io with Cargo.
+- Added `boundary_anchor_length` (default: 1) and `unstranded` as bulk-counting configuration options. The shared Conda environment and Dockerfiles install Tosa 1.0.0.
 - Migrated Docker base image from `continuumio/miniconda3:23.10.0-1` to `mambaorg/micromamba:2.5` for both production and development Dockerfiles.
 - Replaced `mamba`/`conda` commands with `micromamba` in Dockerfiles.
 - Fixed version detection in `shiba.py` and `scshiba.py` by using `os.path.realpath` instead of `os.path.abspath` to correctly resolve symlinks in Docker containers.

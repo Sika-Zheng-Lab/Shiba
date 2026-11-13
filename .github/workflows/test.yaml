@@ -7,8 +7,16 @@ on:
         required: false
         type: string
         default: ''
+      save_image:
+        required: false
+        type: boolean
+        default: false
     secrets:
       CODECOV_TOKEN:
+        required: false
+      DOCKER_HUB_USERNAME:
+        required: false
+      DOCKER_HUB_ACCESS_TOKEN:
         required: false
   push:
     branches: [main, develop]
@@ -16,8 +24,18 @@ on:
     branches: [main, develop]
 
 jobs:
+  registry-credentials:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify Docker Hub credentials without publishing
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -33,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml pysam coverage
+          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml pysam coverage openpyxl
 
       - name: Run tests with coverage
         run: |
@@ -49,8 +67,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
 
-  factorial-regression:
-    runs-on: ubuntu-latest
+  documentation:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,12 +76,72 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install R regression backend and Python dependencies
+      - run: pip install -r requirements-docs.txt
+      - run: mkdocs build --strict
+
+  containers:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: production
+            file: docker/Dockerfile
+          - name: development
+            file: docker/Dockerfile_develop
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the exact source for linux/amd64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          load: true
+          tags: shiba-check:${{ matrix.name }}
+          build-args: GIT_SHA=${{ steps.source.outputs.sha }}
+          cache-from: type=gha,scope=shiba-${{ matrix.name }}
+          cache-to: type=gha,scope=shiba-${{ matrix.name }},mode=max
+      - name: Verify backends and run every test without skips
+        env:
+          CANDIDATE: shiba-check:${{ matrix.name }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y r-base r-cran-glmmtmb r-cran-jsonlite
-          python -m pip install numpy pandas scipy statsmodels plotly matplotlib openpyxl pyyaml
-      - name: Require real backend and run regression tests
+          mkdir -p test-results
+          docker run --rm "$CANDIDATE" python /opt/Shiba/scripts/verify_runtime.py > test-results/runtime.json
+          docker run --rm "$CANDIDATE" micromamba list --explicit > test-results/conda-explicit.txt
+          docker run --rm "$CANDIDATE" python -m pip freeze > test-results/pip-freeze.txt
+          docker run --rm "$CANDIDATE" python /opt/Shiba/scripts/run_tests.py
+      - name: Exercise all four workflows and exports
+        env:
+          CANDIDATE: shiba-check:${{ matrix.name }}
         run: |
-          Rscript -e 'stopifnot(requireNamespace("glmmTMB"), requireNamespace("jsonlite"))'
-          python -m unittest test.test_factorial test.test_shiba_launcher -v
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/test-results:/results" "$CANDIDATE" python /opt/Shiba/test/release_smoke.py /results/pipelines
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check interactive reports in an offline browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python test/check_report_browser.py test-results/pipelines
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-${{ matrix.name }}-${{ steps.source.outputs.sha }}
+          path: test-results
+          retention-days: 7
+      - name: Save the tested production image for publication
+        if: inputs.save_image && matrix.name == 'production'
+        run: docker save shiba-check:production | gzip > shiba-production.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: inputs.save_image && matrix.name == 'production'
+        with:
+          name: validated-image-${{ steps.source.outputs.sha }}
+          path: shiba-production.tar.gz
+          compression-level: 0
+          retention-days: 7

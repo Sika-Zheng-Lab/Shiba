@@ -9,7 +9,7 @@ this requirement from the existing analysis modes.
 | Fisher splicing analysis (optional Welch t-test) | Existing Python dependencies; glmmTMB/jsonlite are not required |
 | `stat_method: beta_binomial` | R with glmmTMB and jsonlite |
 | Gene-expression differential analysis | Existing R/DESeq2 dependencies, independently of the splicing mode |
-| Excel output | `styleframe==4.2` for legacy output; `openpyxl` for the new regression workbook |
+| Excel output | `openpyxl` for all workbooks |
 
 The source checkout must contain `src/beta_binomial_glm.R` and the new
 `--stat-method` option in `src/psi.py`. Adding R packages does not update an older
@@ -25,6 +25,7 @@ repository and select the branch or release containing the new backend:
 ```bash
 git clone https://github.com/Sika-Zheng-Lab/Shiba.git
 cd Shiba
+git switch develop # for a released build, select its release tag instead
 ```
 
 Before continuing, confirm that the selected revision contains the backend:
@@ -42,13 +43,13 @@ previous Conda package. The new mode is configured as described in the
 
 ### New Shiba environment
 
-Use the Shiba package to install the base pipeline dependencies, then run the
-checked-out source:
+Use the checked-in environment shared by the source install, both Dockerfiles,
+and release validation. It includes Excel output and Snakemake:
 
 ```bash
-conda create -n shiba -c conda-forge -c bioconda \
-  python=3.12 shiba tosa=1.0.0 r-glmmtmb r-jsonlite
+conda env create -f environment.yml
 conda activate shiba
+python scripts/verify_runtime.py
 ```
 
 The regression packages are available as
@@ -67,7 +68,7 @@ on existing compatible junction counts and event files.
 For optional Excel output:
 
 ```bash
-python -m pip install styleframe==4.2 openpyxl
+python -m pip install openpyxl
 ```
 
 Run the checked-out pipeline after preparing `config.yaml`:
@@ -78,32 +79,30 @@ python ./shiba.py -p 4 config.yaml
 
 ### Existing Shiba environment
 
-Add the R backend to the environment used to run Shiba:
+For reproducible release validation, create a separate environment from this
+checkout rather than updating an environment used for older analyses:
 
 ```bash
-conda activate shiba
-conda install -c conda-forge r-glmmtmb r-jsonlite
+conda env create -n shiba-candidate -f environment.yml
+conda activate shiba-candidate
+python scripts/verify_runtime.py
 ```
 
-Use `python ./shiba.py` or `python ./src/psi.py` from the new checkout after the
-installation. The additional packages alone do not replace an older installed
-Shiba script. If counting from BAM/CRAM files, also install Tosa as shown above.
+Keep the environment used for older results available. Adding R packages alone
+does not replace an older Shiba executable; run the checked-out scripts.
 
 ### MameShiba
 
-For splicing-only analysis, use the MameShiba package for the base dependencies:
+Use the same source environment and select splicing-only execution:
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda \
-  python=3.12 mameshiba tosa=1.0.0 r-glmmtmb r-jsonlite
-conda activate mameshiba
 python ./shiba.py --mame -p 4 config.yaml
 ```
 
-The new regression backend is required even in MameShiba when
-`stat_method: beta_binomial` is selected. The full pipeline's expression, PCA,
-and plotting steps are skipped by `--mame`; its existing Excel behavior is
-unchanged.
+The regression backend is required when `stat_method: beta_binomial` is selected.
+`--mame` skips expression, PCA, plotting, and Excel output. The separately
+packaged MameShiba dependency set omits the expression backend; the v0.8.2
+package does not supply the new factorial backend.
 
 ## Installing the R backend with CRAN
 
@@ -184,8 +183,12 @@ docker run --rm shiba:factorial Rscript --vanilla -e 'stopifnot(requireNamespace
 docker run --rm shiba:factorial python /opt/Shiba/src/psi.py --help
 ```
 
-Both `docker/Dockerfile` and `docker/Dockerfile_develop` install glmmTMB/jsonlite,
-install Tosa 1.0.0 from Bioconda with micromamba, and copy the checked-out Shiba source into `/opt/Shiba`.
+Both `docker/Dockerfile` and `docker/Dockerfile_develop` install `environment.yml`
+with micromamba and copy the checked-out source into `/opt/Shiba`. The release
+image targets `linux/amd64`. CI records exact Conda packages, pip packages,
+R versions, and the source SHA, then runs every test with no skips. Optional
+`shiba2sashimi` is installed separately when needed; it is not required by these
+pipelines.
 `shiba:factorial` above is a local tag, not a published Docker Hub image.
 
 Mount your working directory and start a shell:

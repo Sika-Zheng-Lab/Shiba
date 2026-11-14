@@ -126,7 +126,8 @@ jobs:
           tags: shiba-check:${{ matrix.name }}
           build-args: GIT_SHA=${{ steps.source.outputs.sha }}
           cache-from: type=gha,scope=shiba-${{ matrix.name }}
-          cache-to: type=gha,scope=shiba-${{ matrix.name }},mode=max
+          # Merged pull_request: closed runs have read-only cache access.
+          cache-to: ${{ !(github.event_name == 'pull_request' && github.event.action == 'closed') && format('type=gha,scope=shiba-{0},mode=max', matrix.name) || '' }}
       - name: Verify backends and run every test without skips
         env:
           CANDIDATE: shiba-check:${{ matrix.name }}

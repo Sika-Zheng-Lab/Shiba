@@ -1,7 +1,9 @@
 workdir:
   /path/to/workdir/output
+# For factorial regression, use an image containing the checked-out backend
+# and R/glmmTMB + jsonlite; see docs/installation.md for local Docker/SIF builds.
 container:
-  docker://naotokubota/shiba:v0.8.2
+  docker://naotokubota/shiba:v1.0.0
 gtf:
   /path/to/workdir/annotation.gtf
 experiment_table:
@@ -12,12 +14,18 @@ unannotated:
 # Junction read filtering
 minimum_anchor_length:
   6
+boundary_anchor_length:
+  6
 minimum_intron_length:
   70
 maximum_intron_length:
   500000
 strand:
   XS
+
+# Statistical method: fisher (default) or beta_binomial (factorial regression).
+# To enable regression, change this value and fill in the options below.
+stat_method: fisher
 
 # PSI calculation
 only_psi:
@@ -40,3 +48,28 @@ ttest:
   True
 excel:
   True
+
+# Event-centric factorial regression (requires R/glmmTMB and jsonlite).
+# Set stat_method above to beta_binomial and uncomment/fill in these settings.
+# Run all steps: python shiba.py config.yaml -p 8
+# Run splicing only: add --mame; reuse counts/events: add --start-step 4.
+# sample_metadata: /path/to/samples.tsv
+# formula: genotype * treatment + batch
+# coef: ["genotypeKO:treatmentDrug"]
+# reference_levels: {genotype: WT, treatment: Control}
+# categorical: [batch]
+# Coverage: minimum_reads (10 above) in at least half of EVERY group before testing/FDR.
+# Default groups are combinations of all categorical formula factors, including batch.
+# min_sample_fraction: 0.5
+# Optional override of grouping columns:
+# filter_group: [genotype, treatment]
+# contrast_file: /path/to/contrasts.json
+# prediction_grid: /path/to/predictions.json
+# p_adjust: BH
+# rscript: Rscript
+# event_batch_size: 200
+# Exact component-result cache (0 disables reuse for comparisons):
+# component_cache_size: 10000
+# Optional separate pairwise expression test in factorial mode:
+# expression_reference_group: Ref
+# expression_alternative_group: Alt

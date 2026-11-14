@@ -3,55 +3,123 @@ name: Create Release and Build Docker Image
 on:
   pull_request:
     types: [closed]
-    branches:
-      - main
+    branches: [main]
 
-permissions: write-all
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
 
 jobs:
-  create-release-and-build:
+  preflight:
     if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Read version from VERSION file
-        id: tag_version
-        run: |
-          NEW_TAG=$(cat VERSION)
-          echo "New tag is $NEW_TAG"
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag -a ${{ steps.tag_version.outputs.NEW_TAG }} -m "Release ${{ steps.tag_version.outputs.NEW_TAG }}"
-          git push origin ${{ steps.tag_version.outputs.NEW_TAG }}
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
         with:
-          tag_name: ${{ steps.tag_version.outputs.NEW_TAG }}
-          name: ${{ steps.tag_version.outputs.NEW_TAG }}
-          body: ${{ github.event.pull_request.body }}
-          draft: false
-          prerelease: false
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release version, date, source and existing tag
+        id: source
+        env:
+          RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          python scripts/prepare_release.py --expected-sha "$RELEASE_SHA"
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  validate:
+    needs: preflight
+    uses: ./.github/workflows/test.yaml
+    with:
+      ref: ${{ needs.preflight.outputs.sha }}
+      save_image: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+  publish:
+    needs: [preflight, validate]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      RELEASE_SHA: ${{ needs.preflight.outputs.sha }}
+      IMAGE: naotokubota/shiba
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: validated-image-${{ needs.preflight.outputs.sha }}
+          path: release-artifacts
+      - name: Recheck source before any publication
+        run: |
+          git fetch origin main --tags
+          python scripts/prepare_release.py --expected-sha "$RELEASE_SHA"
+          echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+          python -m pip install PyYAML==6.0.3
+          python scripts/prepare_conda_recipes.py --manifest release-artifacts/source-manifest.json
+          cp release-artifacts/recipes/shiba/meta.yaml release-artifacts/shiba-meta.yaml
+          cp release-artifacts/recipes/mameshiba/meta.yaml release-artifacts/mameshiba-meta.yaml
+          docker load -i release-artifacts/shiba-production.tar.gz
+          test "$(docker inspect shiba-check:production --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$RELEASE_SHA"
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Build and push Docker image
+      - name: Publish tested image without replacing another release
         run: |
-          TAG=${{ steps.tag_version.outputs.NEW_TAG }}
-          docker build -t naotokubota/shiba:$TAG -t naotokubota/shiba:latest -f docker/Dockerfile .
-          docker push naotokubota/shiba:$TAG
-          docker push naotokubota/shiba:latest
+          if docker pull "$IMAGE:$VERSION" 2>pull-error.log; then
+            test "$(docker inspect "$IMAGE:$VERSION" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$RELEASE_SHA"
+            echo 'Reusing the existing image for this source commit.'
+          elif grep -Eq 'manifest unknown|manifest.*not found' pull-error.log; then
+            docker tag shiba-check:production "$IMAGE:$VERSION"
+            docker push "$IMAGE:$VERSION"
+          else
+            cat pull-error.log >&2
+            exit 1
+          fi
+          docker run --rm "$IMAGE:$VERSION" python /opt/Shiba/scripts/verify_runtime.py
+          docker image inspect "$IMAGE:$VERSION" > release-artifacts/image-manifest.json
+          docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+      - name: Create or reuse the tag at the verified commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git show-ref --verify --quiet "refs/tags/$VERSION"; then
+            git tag -a "$VERSION" "$RELEASE_SHA" -m "Release $VERSION"
+            git push origin "refs/tags/$VERSION"
+          fi
+      - name: Publish release only after all assets and images are ready
+        run: |
+          if gh release view "$VERSION" --json isDraft --jq .isDraft > release-state.txt; then
+            if [ "$(cat release-state.txt)" = false ]; then
+              echo 'This release is already published; keeping its assets unchanged.'
+              exit 0
+            fi
+          else
+            gh release create "$VERSION" --verify-tag --draft --title "$VERSION" --notes-file release-artifacts/release-notes.md
+          fi
+          gh release upload "$VERSION" "release-artifacts/shiba-${VERSION#v}.tar.gz" release-artifacts/source-manifest.json release-artifacts/image-manifest.json release-artifacts/shiba-meta.yaml release-artifacts/mameshiba-meta.yaml --clobber
+          gh release edit "$VERSION" --draft=false --latest --notes-file release-artifacts/release-notes.md
+
+  documentation:
+    needs: [preflight, publish]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-docs.yaml
+    with:
+      ref: ${{ needs.preflight.outputs.sha }}

@@ -1,8 +1,13 @@
 
 import os
+import datetime
+import shlex
 _version_path = os.path.join(os.path.dirname(workflow.snakefile), "VERSION")
 with open(_version_path, "r") as _vf:
     VERSION = _vf.read().strip()
+
+# Capture pipeline start time as ISO string for report generation
+start_time_str = datetime.datetime.now().isoformat(timespec="microseconds")
 
 '''
 SnakeShiba: A snakemake-based workflow of Shiba for differential RNA splicing analysis between two groups of samples
@@ -21,7 +26,7 @@ def load_experiment(file):
     with open(file, "r") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("sample"):
+            if not line or line.split(maxsplit=1)[0] == "sample":
                 continue
             try:
                 sample, bam, group, technology = line.split(maxsplit=3)
@@ -37,13 +42,25 @@ base_dir = os.path.dirname(workflow.snakefile)
 
 # Validate configuration before pipeline execution
 sys.path.insert(0, os.path.join(base_dir, "src", "lib"))
-from general import validate_config
+from general import apply_config_defaults, validate_config
+apply_config_defaults(config)
 _validation_errors = validate_config(config, mode="bulk")
 if _validation_errors:
     for _err in _validation_errors:
         print(f"ERROR: Configuration error: {_err}", file=sys.stderr)
     print(f"ERROR: {len(_validation_errors)} configuration error(s) found. Aborting.", file=sys.stderr)
     sys.exit(1)
+
+sys.path.insert(0, os.path.join(base_dir, "src"))
+from lib.factorial_config import config_arguments
+regression = config.get("stat_method", "fisher") == "beta_binomial"
+expression_ref = config.get("expression_reference_group", "NA") if regression else config["reference_group"]
+expression_alt = config.get("expression_alternative_group", "NA") if regression else config["alternative_group"]
+deg_targets = ["results/expression/DEG.txt"] if not regression or expression_ref != "NA" else []
+statistics_args = config_arguments(config) if regression else [
+    "-r", str(config["reference_group"]), "-a", str(config["alternative_group"]),
+    "-t", str(config["ttest"])]
+statistics_options = shlex.join(statistics_args)
 
 command = " ".join(args)
 # Replace snakefile path with the absolute path
@@ -66,7 +83,7 @@ rule all:
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
         counts = "results/expression/counts.txt",
-        deg = "results/expression/DEG.txt",
+        deg = deg_targets,
         tpm_pca = "results/pca/tpm_pca.tsv",
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
@@ -82,7 +99,7 @@ rule generate_report:
         tpm = "results/expression/TPM.txt",
         cpm = "results/expression/CPM.txt",
         counts = "results/expression/counts.txt",
-        deg = "results/expression/DEG.txt",
+        deg = deg_targets,
         tpm_pca = "results/pca/tpm_pca.tsv",
         tpm_contribution = "results/pca/tpm_contribution.tsv",
         psi_pca = "results/pca/psi_pca.tsv",
@@ -93,11 +110,12 @@ rule generate_report:
         workdir = config["workdir"],
         version = VERSION,
         command = command,
-        experiment_table = config["experiment_table"]
+        experiment_table = config["experiment_table"],
+        start_time = start_time_str
     shell:
         """
-        export PYTHONPATH={base_dir}/src/lib:$PYTHONPATH
-        python -c 'from general import generate_report; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}")'
+        export PYTHONPATH={base_dir}/src/lib${{PYTHONPATH:+:$PYTHONPATH}}
+        python -c 'from general import generate_report; generate_report("SnakeShiba", "{params.workdir}", "{params.version}", "{params.command}", "{params.experiment_table}", "{params.start_time}")'
         """
 
 rule bam2gtf:
@@ -178,74 +196,40 @@ rule bam2junc:
     wildcard_constraints:
         sample = "|".join(experiment_dict)
     input:
-        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"]
+        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"],
+        gtf = "annotation/assembled.gtf"
     output:
-        junc = temp("junctions/{sample}.junc")
-    threads:
-        1
-    benchmark:
-        "benchmark/bam2junc/{sample}_regtools.txt"
-    log:
-        "log/bam2junc/{sample}_regtools.log"
-    shell:
-        """
-        regtools junctions extract \
-        -a {config[minimum_anchor_length]} \
-        -m {config[minimum_intron_length]} \
-        -M {config[maximum_intron_length]} \
-        -s {config[strand]} \
-        -o {output.junc} \
-        {input.bam} >& {log}
-        """
-
-rule make_RI_saf:
-    input:
-        "events"
-    output:
-        temp("junctions/RI.saf")
-    shell:
-        """
-        cat {input}/EVENT_RI.txt | \
-        cut -f 6,7 | \
-        sed -e 1d | \
-        awk -F'\t' -v OFS='\t' '{{split($1,l,":"); split(l[2],m,"-"); print l[1]":"m[1]"-"m[1]+1,l[1],m[1],m[1]+1,$2; print l[1]":"m[2]-1"-"m[2],l[1],m[2]-1,m[2],$2}}' | \
-        awk '!a[$0]++' > {output}
-        """
-
-rule bam2junc_RI:
-    wildcard_constraints:
-        sample = "|".join(experiment_dict)
-    input:
-        RI = "junctions/RI.saf",
-        bam = lambda wildcards: experiment_dict[wildcards.sample]["bam"]
-    output:
-        junc = temp("junctions/{sample}_exon-intron.junc"),
-        junc_summary = temp("junctions/{sample}_exon-intron.junc.summary")
+        junc = temp("junctions/{sample}_junction.tsv.gz"),
+        boundary = temp("junctions/{sample}_boundary.tsv.gz")
     threads:
         8
     benchmark:
-        "benchmark/bam2junc/{sample}_featureCounts_RI.txt"
+        "benchmark/bam2junc/{sample}_tosa.txt"
     log:
-        "log/bam2junc/{sample}_featureCounts_RI.log"
+        "log/bam2junc/{sample}_tosa.log"
     params:
         base_dir = base_dir,
-        longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
+        boundary_anchor = config.get("boundary_anchor_length", 6)
     shell:
         """
-        python {params.base_dir}/src/bam2junc_RI_snakemake.py \
-        -b {input.bam} \
-        -r {input.RI} \
-        -o {output.junc} \
-        -t {threads} \
-        {params.longread_option} \
-        -v \
-        &> {log}
+        python {params.base_dir}/src/bam2junc.py run \
+        --bam {input.bam} \
+        --prefix junctions/{wildcards.sample} \
+        -g {input.gtf} \
+        -p {threads} \
+        -a {config[minimum_anchor_length]} \
+        -b {params.boundary_anchor} \
+        -m {config[minimum_intron_length]} \
+        -M {config[maximum_intron_length]} \
+        -s {config[strand]} \
+        -v >& {log}
         """
 
 rule merge_junc:
     input:
-        exonexon = expand("junctions/{sample}.junc", sample = experiment_dict),
-        exonintron = expand("junctions/{sample}_exon-intron.junc", sample = experiment_dict)
+        junctions = expand("junctions/{sample}_junction.tsv.gz", sample = experiment_dict),
+        boundaries = expand("junctions/{sample}_boundary.tsv.gz", sample = experiment_dict),
+        RI = "events/EVENT_RI.txt"
     output:
         "junctions/junctions.bed"
     benchmark:
@@ -253,13 +237,16 @@ rule merge_junc:
     log:
         "log/merge_junc.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        boundary_anchor = config.get("boundary_anchor_length", 6)
     shell:
         """
-        python {params.base_dir}/src/merge_junc_snakemake.py \
-        --exonexon {input.exonexon} \
-        --exonintron {input.exonintron} \
-        --output {output} \
+        python {params.base_dir}/src/bam2junc.py merge \
+        -i {config[experiment_table]} \
+        -d junctions \
+        -r {input.RI} \
+        -o {output} \
+        -b {params.boundary_anchor} \
         -v \
         >& {log}
         """
@@ -273,25 +260,24 @@ rule psi:
         PSI = expand("results/splicing/PSI_{sample}.txt", sample = ["SE", "FIVE", "THREE", "MXE", "RI", "MSE", "AFE", "ALE"]),
         PSI_matrix_sample = "results/splicing/PSI_matrix_sample.txt"
     threads:
-        1
+        workflow.cores
     benchmark:
         "benchmark/psi.txt"
     log:
         "log/psi.log"
     params:
-        base_dir = base_dir
+        base_dir = base_dir,
+        statistics = statistics_options
     shell:
         """
-        python {params.base_dir}/src/psi_snakemake.py \
+        python {params.base_dir}/src/psi.py \
         -p {threads} \
         -g {config[experiment_table]} \
         -f {config[fdr]} \
         -d {config[delta_psi]} \
         -m {config[minimum_reads]} \
-        -r {config[reference_group]} \
-        -a {config[alternative_group]} \
         -i {config[individual_psi]} \
-        -t {config[ttest]} \
+        {params.statistics} \
         --onlypsi False \
         --onlypsi-group False \
         --excel {config[excel]} \
@@ -321,7 +307,7 @@ rule expression_featureCounts:
         longread_option = lambda wildcards: "-l" if experiment_dict[wildcards.sample]["technology"] == "long" else ""
     shell:
         """
-        python {params.base_dir}/src/expression_featureCounts_snakemake.py \
+        python {params.base_dir}/src/expression.py featurecounts \
         -b {input.bam} \
         -g {input.gtf} \
         -o {output.counts} \
@@ -347,7 +333,7 @@ rule expression_tpm:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/tpm_snakemake.py \
+        python {params.base_dir}/src/expression.py tpm \
         --countfiles {input.counts} \
         --reference-gtf {input.gtf} \
         --output results/expression/ \
@@ -369,11 +355,11 @@ rule deseq2:
         base_dir = base_dir
     shell:
         """
-        python {params.base_dir}/src/deseq2_snakemake.py \
+        python {params.base_dir}/src/expression.py deseq2 \
         --count {input.counts} \
         --experiment-table {config[experiment_table]} \
-        --reference {config[reference_group]} \
-        --alternative {config[alternative_group]} \
+        --reference {expression_ref:q} \
+        --alternative {expression_alt:q} \
         --output {output.deseq2} \
         -v \
         &> {log}

@@ -1,34 +1,83 @@
 name: Tests
 
 on:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+        default: ''
+      save_image:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+      DOCKER_HUB_USERNAME:
+        required: false
+      DOCKER_HUB_ACCESS_TOKEN:
+        required: false
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
 jobs:
+  registry-credentials:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Docker Hub credentials without publishing
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Verify the repository grants push access
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        run: python scripts/verify_registry_access.py
+
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          ref: ${{ inputs.ref || github.sha }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml coverage
+      - name: Set up the full analysis environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          init-shell: bash
 
-      - name: Run tests with coverage
+      - name: Verify backends and install coverage
+        shell: bash -el {0}
+        env:
+          PYTHONNOUSERSITE: '1'
         run: |
-          coverage run -m unittest discover -s test -v
+          python scripts/verify_runtime.py
+          python -m pip install coverage==7.17.3
+
+      - name: Run all tests with coverage, rejecting skips
+        shell: bash -el {0}
+        env:
+          PYTHONNOUSERSITE: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          export COVERAGE_RCFILE="$PWD/.coveragerc"
+          export COVERAGE_FILE="$PWD/.coverage"
+          coverage erase
+          coverage run scripts/run_tests.py
+          coverage combine
           coverage xml
-          coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+          coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -37,3 +86,82 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
+
+  documentation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-docs.txt
+      - run: zensical build --clean --strict
+
+  containers:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: production
+            file: docker/Dockerfile
+          - name: development
+            file: docker/Dockerfile_develop
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the exact source for linux/amd64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          load: true
+          tags: shiba-check:${{ matrix.name }}
+          build-args: GIT_SHA=${{ steps.source.outputs.sha }}
+          cache-from: type=gha,scope=shiba-${{ matrix.name }}
+          cache-to: type=gha,scope=shiba-${{ matrix.name }},mode=max
+      - name: Verify backends and run every test without skips
+        env:
+          CANDIDATE: shiba-check:${{ matrix.name }}
+        run: |
+          mkdir -p test-results
+          docker run --rm "$CANDIDATE" python /opt/Shiba/scripts/verify_runtime.py > test-results/runtime.json
+          docker run --rm "$CANDIDATE" micromamba list --explicit > test-results/conda-explicit.txt
+          docker run --rm "$CANDIDATE" python -m pip freeze > test-results/pip-freeze.txt
+          docker run --rm "$CANDIDATE" python /opt/Shiba/scripts/run_tests.py
+      - name: Exercise all four workflows and exports
+        env:
+          CANDIDATE: shiba-check:${{ matrix.name }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/test-results:/results" "$CANDIDATE" python /opt/Shiba/test/release_smoke.py /results/pipelines
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check interactive reports in an offline browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python test/check_report_browser.py test-results/pipelines
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-${{ matrix.name }}-${{ steps.source.outputs.sha }}
+          path: test-results
+          retention-days: 7
+      - name: Save the tested production image for publication
+        if: inputs.save_image && matrix.name == 'production'
+        run: docker save shiba-check:production | gzip > shiba-production.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: inputs.save_image && matrix.name == 'production'
+        with:
+          name: validated-image-${{ steps.source.outputs.sha }}
+          path: shiba-production.tar.gz
+          compression-level: 0
+          retention-days: 7

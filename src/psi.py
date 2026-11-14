@@ -1,11 +1,14 @@
 import warnings
 warnings.simplefilter('ignore')
 import argparse
+import gc
 import logging
 import sys
 import os
 import pandas as pd
 from lib import shibalib
+from lib.general import str2bool
+from lib import factorial
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -28,14 +31,17 @@ def get_args():
     parser.add_argument("-r", "--reference", type = str, help = "Reference group for detecting differential events")
     parser.add_argument("-a", "--alternative", type = str, help = "Alternative group for detecting differential events")
     parser.add_argument("-m", "--minimum-reads", type = int, help = "Minumum value of total reads for each junction for detecting differential events", default = 10)
-    parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", action = 'store_true')
-    parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", action = 'store_true')
-    parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", action = 'store_true')
-    parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", action = 'store_true')
-    parser.add_argument("--excel", help = "Make result files in excel format", action = 'store_true')
+    parser.add_argument("-i", "--individual-psi", help = "Print PSI for individual samples to output files", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("-t", "--ttest", help = "Perform Welch's t-test between reference and alternative group", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--onlypsi", help = "Just calculate PSI for each sample, not perform statistical tests", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--onlypsi-group", help = "Just calculate PSI for each group, not perform statistical tests (Overrides --onlypsi when used together)", type = str2bool, nargs = "?", const = True, default = False)
+    parser.add_argument("--excel", help = "Make result files in excel format", type = str2bool, nargs = "?", const = True, default = False)
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
+    factorial.add_arguments(parser)
     args = parser.parse_args()
+    if args.stat_method == "fisher" and (args.formula or args.coef or args.contrast_file or args.design_only):
+        parser.error("Formula/contrast options require --stat-method beta_binomial")
     return(args)
 
 def main():
@@ -49,6 +55,14 @@ def main():
     )
     logger.info("Starting PSI calculation")
     logger.debug(args)
+
+    if args.stat_method == "beta_binomial":
+        try:
+            factorial.run(args)
+        except (ValueError, RuntimeError, OSError) as error:
+            logger.error("%s", error)
+            sys.exit(1)
+        return
 
     # Parse arguments
     paths = {
@@ -75,7 +89,7 @@ def main():
     logger.info("Loading event and junction files...")
     event_df_dict = shibalib.read_events(paths["event"])
     junc_df = shibalib.read_junctions(paths["junction"])
-    junc_dict_all = shibalib.junc_dict(junc_df)
+    junc_data = shibalib.JunctionData.from_dataframe(junc_df)
     sample_list = shibalib.make_sample_list(junc_df)
     junc_set = shibalib.make_junc_set(junc_df)
 
@@ -85,9 +99,24 @@ def main():
         logger.info("Processing group data...")
         group_df = shibalib.read_group(paths["group"])
         group_list = shibalib.set_group(group_df, params["onlypsi_group"], params["reference"], params["alternative"])
+        # Collect all groups from the experiment table for PSI_matrix_group.txt
+        group_list_all = sorted(group_df['group'].unique().tolist())
         sample_list_diff = None if params["onlypsi_group"] or len(group_list) == 1 else shibalib.sample_in_group_list(group_df, group_list)
-        junc_dict_group = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list)
-        group_data = {"group_list": group_list, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
+        junc_dict_group = shibalib.sum_reads(params["onlypsi_group"], junc_df, group_df, group_list_all)
+        group_data = {"group_list": group_list, "group_list_all": group_list_all, "group_df": group_df, "junc_dict_group": junc_dict_group, "sample_list_diff": sample_list_diff}
+
+    # Free junction DataFrame (no longer needed — data is in junc_data)
+    del junc_df
+    gc.collect()
+    logger.debug("Released junction DataFrame memory")
+
+    # Create shared memory for multi-process PSI calculation
+    shm = None
+    shm_info = None
+    if params["num_process"] > 1:
+        shm, shm_info = junc_data.to_shared_memory()
+        logger.info(f"Created shared memory for {len(junc_data.sample_ids)} samples "
+                     f"({shm.size / 1024 / 1024:.1f} MB)")
 
     # Define event processing
     def process_event(event_type, event_func, func, col_func, diff_func=None, index_func=None):
@@ -103,20 +132,25 @@ def main():
         # Generate PSI tables
         psi_table_group_df, psi_table_sample_df = None, None
         if params["onlypsi_group"]:
-            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list_all"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
         elif params["onlypsi"]:
-            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
         else:
-            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
-            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_dict_all, func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_group_df = shibalib.make_psi_table_group(group_data["group_list_all"], event_for_analysis_df, group_data["junc_dict_group"], func, col_func, params["num_process"], params["minimum_reads"])
+            psi_table_sample_df = shibalib.make_psi_table_sample(sample_list, event_for_analysis_df, junc_data, func, col_func, params["num_process"], params["minimum_reads"], shm_info=shm_info)
 
-        # Perform differential analysis
+        # Perform differential analysis (using only reference/alternative groups)
         diff_df = None
         if not params["onlypsi"] and not params["onlypsi_group"]:
+            # Filter psi_table_group_df to only ref/alt columns for differential analysis
+            diff_group_list = [params["reference"], params["alternative"]]
+            diff_group_cols = col_func(diff_group_list, True)
+            psi_table_diff_df = psi_table_group_df[diff_group_cols]
             diff_df = shibalib.diff_event(
-                event_for_analysis_df, psi_table_group_df, junc_dict_all, group_data["group_df"],
-                [params["reference"], params["alternative"]], group_data["sample_list_diff"],
-                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"]
+                event_for_analysis_df, psi_table_diff_df, junc_data, group_data["group_df"],
+                diff_group_list, group_data["sample_list_diff"],
+                diff_func, index_func, params["num_process"], params["FDR"], params["dPSI"], params["individual_psi"], params["ttest"],
+                shm_info=shm_info
             )
 
         # Generate PSI matrices
@@ -208,6 +242,19 @@ def main():
         else:
             logger.warning("No data to export to Excel")
 
+    # Clean up shared memory
+    if shm is not None:
+        try:
+            shm.close()
+            shm.unlink()
+            logger.debug("Cleaned up shared memory")
+        except Exception as e:
+            logger.warning(f"Error cleaning up shared memory: {e}")
+
+    # Reports must not mistake a reused legacy output directory for regression.
+    import json
+    with open(os.path.join(paths["output"], "analysis.json"), "w") as handle:
+        json.dump({"stat_method": "fisher"}, handle)
     logger.info("All processes completed.")
 
 if __name__ == '__main__':

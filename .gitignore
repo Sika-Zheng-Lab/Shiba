@@ -13,7 +13,15 @@ __pycache__
 .cache
 .coverage
 coverage.xml
-src/demo_output
-src/*md
-src/*demo*
-src/*test*
+
+# Local environments and generated caches
+.venv/
+.venv-docs/
+.pytest_cache/
+site/
+release-artifacts/
+test-results/
+.snakemake/
+
+# Local release planning notes
+/RELEASE_CHECKLIST.md

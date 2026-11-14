@@ -212,6 +212,41 @@ class TestRI(unittest.TestCase):
         self.assertEqual(len(events), 0)
 
 
+class TestPostprocessEvent(unittest.TestCase):
+    def test_postprocess_empty_events_returns_output_schema(self):
+        input_columns = {
+            "SE": ["exon", "intron_a", "intron_b", "intron_c", "strand", "gene_id", "gene_name"],
+            "FIVE": ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"],
+            "THREE": ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"],
+            "MXE": ["exon_a", "exon_b", "intron_a1", "intron_a2", "intron_b1", "intron_b2", "strand", "gene_id", "gene_name"],
+            "RI": ["exon_a", "exon_b", "exon_c", "intron_a", "strand", "gene_id", "gene_name"],
+            "MSE": ["exon", "intron", "mse_n", "strand", "gene_id", "gene_name"],
+            "AFE": ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"],
+            "ALE": ["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"],
+        }
+
+        for event_name, columns in input_columns.items():
+            with self.subTest(event_name=event_name):
+                output_df = pd.DataFrame([], columns=columns)
+                result = gtf2event._postprocess_event(event_name, output_df, "reference.gtf", set(), set())
+                self.assertEqual(len(result), 0)
+                self.assertEqual(list(result.columns), gtf2event._EVENT_OUTPUT_COLUMNS[event_name])
+
+    def test_postprocess_five_non_empty_event(self):
+        output_l = gtf2event.five(_make_gtf_dic_five())
+        output_df = pd.DataFrame(
+            output_l,
+            columns=["exon_a", "exon_b", "intron_a", "intron_b", "strand", "gene_id", "gene_name"],
+        )
+
+        result = gtf2event._postprocess_event("FIVE", output_df, None, None, None)
+
+        self.assertEqual(list(result.columns), gtf2event._EVENT_OUTPUT_COLUMNS["FIVE"])
+        self.assertEqual(result.loc[0, "event_id"], "FIVE_1")
+        self.assertEqual(result.loc[0, "label"], "annotated")
+        self.assertTrue(result.loc[0, "pos_id"].startswith("FIVE@"))
+
+
 class TestGtfExonSet(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()

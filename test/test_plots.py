@@ -117,5 +117,64 @@ class TestLoadSplicingSummaryTable(unittest.TestCase):
         self.assertIn("AS", result.columns)
 
 
+class TestLoadPcaTables(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        pca_dir = os.path.join(self.tmpdir, "pca")
+        os.makedirs(pca_dir)
+        self.experiment_table_df = pd.DataFrame({
+            "sample": ["s1", "s2"],
+            "group": ["ctrl", "treat"],
+            "group_order": [0, 1],
+        })
+
+        pca_df = pd.DataFrame({
+            "PC1": [1.0, -1.0],
+            "PC2": [0.5, -0.5],
+        }, index=["s1", "s2"])
+        pca_df.to_csv(os.path.join(pca_dir, "tpm_pca.tsv"), sep="\t")
+        pca_df.to_csv(os.path.join(pca_dir, "psi_pca.tsv"), sep="\t")
+
+        contribution_df = pd.DataFrame({
+            "PC": ["PC1", "PC2"],
+            "contribution": [0.12346, 0.06789],
+        })
+        contribution_df.to_csv(
+            os.path.join(pca_dir, "tpm_contribution.tsv"),
+            sep="\t",
+            header=False,
+            index=False,
+        )
+        contribution_df.to_csv(
+            os.path.join(pca_dir, "psi_contribution.tsv"),
+            sep="\t",
+            header=False,
+            index=False,
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_load_tpm_pca_table_reads_contribution_by_position(self):
+        pca_df, pc1, pc2 = plots.load_tpm_pca_table(
+            self.tmpdir,
+            self.experiment_table_df,
+            self.tmpdir,
+        )
+        self.assertEqual(pc1, "12.35")
+        self.assertEqual(pc2, "6.79")
+        self.assertEqual(pca_df["sample"].tolist(), ["s1", "s2"])
+
+    def test_load_psi_pca_table_reads_contribution_by_position(self):
+        pca_df, pc1, pc2 = plots.load_psi_pca_table(
+            self.tmpdir,
+            self.experiment_table_df,
+            self.tmpdir,
+        )
+        self.assertEqual(pc1, "12.35")
+        self.assertEqual(pc2, "6.79")
+        self.assertEqual(pca_df["sample"].tolist(), ["s1", "s2"])
+
+
 if __name__ == "__main__":
     unittest.main()

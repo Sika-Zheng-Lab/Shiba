@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import shlex
 import os
 import sys
 import logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Set version
 def _read_version():
     try:
-        version_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
+        version_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "VERSION")
         with open(version_path, "r") as f:
             return f.read().strip()
     except Exception:
@@ -26,7 +27,7 @@ def parse_args():
                 description=f"""Shiba {VERSION} - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
-    - Assembles transcript structures based on mapped reads using StringTie2.
+    - Assembles transcript structures based on mapped reads using StringTie.
 Step 2: gtf2event.py
     - Converts GTF files to event format.
 Step 3: bam2junc.py
@@ -78,6 +79,8 @@ def main():
     logger.info("Loading configuration...")
     config_path = args.config
     config = general.load_config(config_path)
+    general.apply_config_defaults(config)
+    regression = config.get('stat_method', 'fisher') == 'beta_binomial'
     if config['excel'] and args.mame:
         logger.warning("Excel output is not available in MameShiba mode. Disabling excel option.")
         config['excel'] = False
@@ -103,7 +106,7 @@ def main():
     if sample_count <= 0:
         logger.error("No samples found in experiment table. Exiting...")
         sys.exit(1)
-    elif sample_count == 1:
+    elif sample_count == 1 and not regression:
         logger.info("Only one sample found in experiment table.")
         only_psi = True
         logger.info("Differential analysis mode disabled. Set only_psi to True.")
@@ -111,7 +114,7 @@ def main():
     if group_count <= 0:
         logger.error("No groups found in experiment table. Exiting...")
         sys.exit(1)
-    elif group_count == 1:
+    elif group_count == 1 and not regression:
         logger.info("Only one group found in experiment table.")
         if not (only_psi or only_psi_group):
             logger.info("Differential analysis mode disabled.")
@@ -138,7 +141,7 @@ def main():
 
     # Get command line of this script
     logger.debug("Getting command line...")
-    command_line = " ".join(sys.argv)
+    command_line = shlex.join([sys.executable, *sys.argv])
     logger.debug(f"Command line: {command_line}")
 
     # Steps
@@ -148,7 +151,7 @@ def main():
         {
             "name": "Step 1: bam2gtf.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "bam2gtf.py"),
+                sys.executable, os.path.join(script_dir, "src", "bam2gtf.py"),
                 "-i", experiment_table,
                 "-r", gtf,
                 "-o", os.path.join(output_dir, "annotation", "assembled_annotation.gtf"),
@@ -158,7 +161,7 @@ def main():
         {
             "name": "Step 2: gtf2event.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "gtf2event.py"),
+                sys.executable, os.path.join(script_dir, "src", "gtf2event.py"),
                 "-i", os.path.join(output_dir, "annotation", "assembled_annotation.gtf") if config['unannotated'] else gtf,
                 "-r" if config['unannotated'] else "",
                 gtf if config['unannotated'] else "",
@@ -169,12 +172,14 @@ def main():
         {
             "name": "Step 3: bam2junc.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "bam2junc.py"),
+                sys.executable, os.path.join(script_dir, "src", "bam2junc.py"),
                 "-i", experiment_table,
                 "-r", os.path.join(output_dir, "events", "EVENT_RI.txt"),
                 "-o", os.path.join(output_dir, "junctions", "junctions.bed"),
+                "-g", os.path.join(output_dir, "annotation", "assembled_annotation.gtf") if config['unannotated'] else gtf,
                 "-p", processors,
                 "-a", str(config['minimum_anchor_length']),
+                "-b", str(config.get('boundary_anchor_length', 6)),
                 "-m", str(config['minimum_intron_length']),
                 "-M", str(config['maximum_intron_length']),
                 "-s", config['strand']
@@ -183,19 +188,19 @@ def main():
         {
             "name": "Step 4: psi.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "psi.py"),
+                sys.executable, os.path.join(script_dir, "src", "psi.py"),
                 "-g", experiment_table,
-                "-p", "1",
-                "-r", config['reference_group'],
-                "-a", config['alternative_group'],
+                "-p", processors,
+                "-r", config.get('reference_group', 'NA'),
+                "-a", config.get('alternative_group', 'NA'),
                 "-f", str(config['fdr']),
                 "-d", str(config['delta_psi']),
                 "-m", str(config['minimum_reads']),
-                "-i" if config['individual_psi'] else "",
-                "-t" if config['ttest'] else "",
-                "--excel" if config['excel'] else "",
-                "--onlypsi" if only_psi else "",
-                "--onlypsi-group" if only_psi_group else "",
+                "-i", str(config['individual_psi']),
+                "-t", str(False if regression else config['ttest']),
+                "--excel", str(config['excel']),
+                "--onlypsi", str(only_psi),
+                "--onlypsi-group", str(only_psi_group),
                 os.path.join(output_dir, "junctions", "junctions.bed"),
                 os.path.join(output_dir, "events"),
                 os.path.join(output_dir, "results", "splicing")
@@ -204,22 +209,22 @@ def main():
         {
             "name": "Step 5: expression.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "expression.py"),
+                sys.executable, os.path.join(script_dir, "src", "expression.py"),
                 "-i", experiment_table,
                 "-g", gtf,
                 "-o", os.path.join(output_dir, "results", "expression"),
                 "" if only_psi or only_psi_group else "-r",
-                "" if only_psi or only_psi_group else config['reference_group'],
+                "" if only_psi or only_psi_group else (config.get('expression_reference_group', 'NA') if regression else config['reference_group']),
                 "" if only_psi or only_psi_group else "-a",
-                "" if only_psi or only_psi_group else config['alternative_group'],
-                "--excel" if config['excel'] else "",
+                "" if only_psi or only_psi_group else (config.get('expression_alternative_group', 'NA') if regression else config['alternative_group']),
+                "--excel", str(config['excel']),
                 "-p", processors
             ]
         },
         {
             "name": "Step 6: pca.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "pca.py"),
+                sys.executable, os.path.join(script_dir, "src", "pca.py"),
                 "--input-tpm", os.path.join(output_dir, "results", "expression", "TPM.txt"),
                 "--input-psi", os.path.join(output_dir, "results", "splicing", "PSI_matrix_group.txt" if only_psi_group else "PSI_matrix_sample.txt"),
                 "-g", "3000",
@@ -229,7 +234,7 @@ def main():
         {
             "name": "Step 7: plots.py",
             "command": [
-                "python", os.path.join(script_dir, "src", "plots.py"),
+                sys.executable, os.path.join(script_dir, "src", "plots.py"),
                 "-i", os.path.join(output_dir, "results"),
                 "-e", experiment_table,
                 "-s", command_line,
@@ -237,6 +242,10 @@ def main():
             ]
         }
     ]
+
+    if regression:
+        from src.lib.factorial_config import config_arguments
+        steps[3]['command'].extend(config_arguments(config))
 
     logger.info("Starting pipeline execution...")
 

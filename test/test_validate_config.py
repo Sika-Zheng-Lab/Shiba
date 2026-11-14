@@ -6,6 +6,7 @@ import sys
 # Add src directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "src")))
 from lib.general import (
+    apply_config_defaults,
     validate_file_exists,
     validate_experiment_table_columns,
     validate_groups_bulk,
@@ -166,9 +167,9 @@ class TestValidateGroupsSc(unittest.TestCase):
 
     def _write_sc_experiment(self, barcode_paths):
         f = tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False)
-        f.write("barcode\tSJ\n")
-        for bp in barcode_paths:
-            f.write(f"{bp}\t/path/to/SJ\n")
+        f.write("sample\talignment\tbarcode\n")
+        for i, bp in enumerate(barcode_paths):
+            f.write(f"s{i}\t/path/to/alignment.bam\t{bp}\n")
         f.close()
         return f.name
 
@@ -271,9 +272,14 @@ class TestValidateConfigTypes(unittest.TestCase):
         self.assertIn("strand", errors[0])
 
     def test_strand_valid_values(self):
-        for strand in ["XS", "0", "1", "2"]:
+        for strand in ["XS", "RF", "FR", "0", "1", "2", "unstranded"]:
             errors = validate_config_types({"strand": strand}, mode="bulk")
             self.assertEqual(errors, [], f"strand={strand} should be valid")
+
+    def test_boundary_anchor_validation(self):
+        self.assertEqual(validate_config_types({"boundary_anchor_length": 1}, mode="bulk"), [])
+        self.assertTrue(validate_config_types({"boundary_anchor_length": 0}, mode="bulk"))
+        self.assertTrue(validate_config_types({"boundary_anchor_length": "bad"}, mode="bulk"))
 
     def test_max_intron_less_than_min(self):
         config = {
@@ -289,13 +295,15 @@ class TestValidateConfigTypes(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("minimum_anchor_length", errors[0])
 
-    def test_sc_mode_ignores_bulk_params(self):
+    def test_sc_mode_validates_tosa_params(self):
         config = {
             "minimum_anchor_length": -999,
             "strand": "INVALID",
         }
         errors = validate_config_types(config, mode="sc")
-        self.assertEqual(errors, [])
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("minimum_anchor_length" in error for error in errors))
+        self.assertTrue(any("strand" in error for error in errors))
 
 
 class TestValidateConfig(unittest.TestCase):
@@ -426,8 +434,10 @@ class TestValidateConfig(unittest.TestCase):
             "ACGT\tCluster-1",
             "TGCA\tCluster-2",
         ])
-        exp = self._write_tsv("barcode\tSJ", [
-            f"{bc}\t/path/to/SJ",
+        alignment = tempfile.NamedTemporaryFile(suffix=".bam", delete=False)
+        alignment.close()
+        exp = self._write_tsv("sample\talignment\tbarcode", [
+            f"s1\t{alignment.name}\t{bc}",
         ])
         config = {
             "workdir": "/tmp/test_workdir",
@@ -445,7 +455,41 @@ class TestValidateConfig(unittest.TestCase):
         finally:
             os.unlink(gtf.name)
             os.unlink(bc)
+            os.unlink(alignment.name)
             os.unlink(exp)
+
+
+# ============================================================================
+# apply_config_defaults
+# ============================================================================
+class TestApplyConfigDefaults(unittest.TestCase):
+    def test_defaults_and_explicit_values(self):
+        config = {"fdr": 0.01, "stat_method": "beta_binomial"}
+        apply_config_defaults(config)
+        self.assertEqual(config["fdr"], 0.01)
+        self.assertEqual(config["stat_method"], "beta_binomial")
+        self.assertEqual(config["minimum_reads"], 10)
+        self.assertNotIn("beta_binomial", config)
+
+    def test_method_default_and_allowed_values(self):
+        config = {}
+        apply_config_defaults(config)
+        self.assertEqual(config["stat_method"], "fisher")
+        for invalid in ("legacy", "beta-binomial", "typo"):
+            errors = validate_config({"stat_method": invalid})
+            self.assertTrue(any("stat_method must be fisher or beta_binomial" in e for e in errors))
+
+    def test_single_cell_defaults(self):
+        config = {}
+        apply_config_defaults(config, mode="sc")
+        self.assertEqual(config["minimum_anchor_length"], 8)
+        self.assertEqual(config["minimum_intron_length"], 20)
+        self.assertEqual(config["strand"], "unstranded")
+
+    def test_removed_switch_rejected_even_when_false(self):
+        for value in (True, False):
+            errors = validate_config({"beta_binomial": value})
+            self.assertTrue(any("beta_binomial has been removed" in e for e in errors))
 
 
 if __name__ == "__main__":

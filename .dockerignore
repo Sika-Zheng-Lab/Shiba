@@ -1,0 +1,26 @@
+.git
+.venv
+.venv-docs
+.pytest_cache
+.snakemake
+.cache
+**/__pycache__
+**/*.pyc
+.coverage*
+coverage.xml
+site
+release-artifacts
+test-results
+test/logs
+test/*.out
+.env
+.env.*
+*.bam
+*.bai
+*.cram
+*.crai
+*.sif
+*.tar.gz
+
+# Maintainer-only release planning
+RELEASE_CHECKLIST.md

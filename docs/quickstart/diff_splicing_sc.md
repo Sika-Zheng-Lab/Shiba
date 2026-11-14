@@ -4,22 +4,17 @@
 
 ## Before you start
 
-- Perform mapping of sc(sn)RNA-seq reads to the reference genome using [STARsolo](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md).
-    - You can download a test input file mapped by STARsolo on the mouse genome from [here](https://zenodo.org/records/14976391).
-- Download a gene annotataion file of your interest in GTF format.
+- Map sc(sn)RNA-seq reads to the reference genome and keep a coordinate-sorted BAM/CRAM with `CB` (cell barcode) and `UB` (UMI) tags. Tosa uses `CB` to select cells and `UB` to deduplicate molecules.
+- Download a gene annotation file of your interest in GTF format.
 
 ---
 
 ## Installation
 
-``` bash
-# Install Shiba with conda
-conda create -n shiba -c conda-forge -c bioconda shiba
-# Activate the conda environment
-conda activate shiba
-# Install styleframe for generating outputs in Excel format (optional)
-pip install styleframe==4.2
-```
+Follow the [installation guide](../installation.md) and activate the environment
+containing Shiba. The commands below use the Conda-installed launchers. For a
+source checkout, use the [source invocation](../installation.md#locating-scripts-and-workflows)
+instead. These examples require the v1.0.0 implementation, including Tosa.
 
 ---
 
@@ -27,17 +22,15 @@ pip install styleframe==4.2
 
 ### 1. Prepare inputs
 
-`experiment.tsv`: A **tab-separated** text file of barcode file and STAR solo raw output directory.
+`experiment.tsv`: A **tab-separated** table with one row per library. `alignment` points to a BAM or CRAM file; `barcode` points to the library's barcode/group table.
 
 ``` text
-barcode SJ
-/path/to/barcodes_run1.tsv /path/to/run1/Solo.out/SJ/raw
-/path/to/barcodes_run2.tsv /path/to/run2/Solo.out/SJ/raw
-/path/to/barcodes_run3.tsv /path/to/run3/Solo.out/SJ/raw
-/path/to/barcodes_run4.tsv /path/to/run4/Solo.out/SJ/raw
+sample alignment barcode
+run1 /path/to/run1/Aligned.sortedByCoord.out.bam /path/to/barcodes_run1.tsv
+run2 /path/to/run2/Aligned.sortedByCoord.out.bam /path/to/barcodes_run2.tsv
 ```
 
-`barcodes.tsv` is a **tab-separated** text file of barcode and group name like this:
+`barcodes.tsv` is a **tab-separated** text file of barcode and group name like this. Barcodes must match the `CB` tags, including any suffix such as `-1`:
 
 ``` text
 barcode group
@@ -58,6 +51,11 @@ ATCGCCTAGACTCGAG Cluster-2
 
 `config.yaml`: A yaml file of the configuration.
 
+This guide describes the Tosa-enabled v1.0.0 implementation. The v0.8.2 package
+uses the earlier STARsolo `SJ` input. To try generated data from a source
+checkout, run `python test/make_sc_tosa_fixture.py /path/to/fixture` from the
+checkout root and use its `config.yaml`. This test helper is not packaged.
+
 ``` yaml
 workdir:
   /path/to/workdir # (1)!
@@ -65,6 +63,13 @@ gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (2)!
 experiment_table:
   /path/to/experiment.tsv # (3)!
+
+# Tosa counting
+minimum_anchor_length: 8
+boundary_anchor_length: 6
+minimum_intron_length: 20
+maximum_intron_length: 500000
+strand: unstranded
 
 # PSI calculation
 only_psi:
@@ -102,6 +107,8 @@ scshiba.py -p 4 config.yaml
 
 You are going to use 4 threads for parallelization. You can change the number of threads by changing the `-p` option.
 
+Results now include `PSI_RI.txt` for intron-retention analysis, alongside the existing seven event types.
+
 !!! bug "Did you encounter any problems?"
 
 	You can run **scShiba** with the `--verbose` option to see the debug log. This will help you to find the problem.
@@ -118,19 +125,28 @@ A snakemake-based workflow of **scShiba**. This is useful for running **scShiba*
 
 ### 1. Prepare inputs
 
-`experiment.tsv`: A **tab-separated** text file of sample ID, path to fastq files, and groups for differential analysis. This is the same as the input for **scShiba**.
+`experiment.tsv`: The same `sample`, `alignment`, `barcode` table used by **scShiba**.
 
 `config.yaml`: A yaml file of the configuration. This is the same as the input for **scShiba** but with the addition of the `container` field.
+
+The container reference below must resolve to a published release matching your source. Until that release is available, run Snakemake locally with the source environment or build `docker/Dockerfile_develop` and set `container` to your matching SIF image.
 
 ``` yaml
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeScShiba
-  docker://naotokubota/shiba:v0.8.2 # (2)!
+  docker://naotokubota/shiba:v1.0.0 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:
   /path/to/experiment.tsv # (4)!
+
+# Tosa counting
+minimum_anchor_length: 8
+boundary_anchor_length: 6
+minimum_intron_length: 20
+maximum_intron_length: 500000
+strand: unstranded
 
 # PSI calculation
 only_psi:
@@ -163,10 +179,13 @@ excel:
 
 ### 2. Run
 
-Please make sure that you have installed Snakemake and Singularity and cloned the Shiba repository on your system.
+Install Snakemake and Apptainer/Singularity, set
+[`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows), and select a
+matching container image as described in the [installation guide](../installation.md#snakemake).
+For execution in the activated Conda environment, omit `--use-singularity`.
 
 ``` bash
-snakemake -s /path/to/Shiba/snakescshiba.smk \
+snakemake -s "$SHIBA_HOME/snakescshiba.smk" \
 --configfile config.yaml \
 --cores 16 \
 --use-singularity \

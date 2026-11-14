@@ -13,9 +13,11 @@
 [![Docker Image Size](https://img.shields.io/docker/image-size/naotokubota/shiba)](https://hub.docker.com/r/naotokubota/shiba)
 [![NAR](https://img.shields.io/badge/NAR-10.1093/nar/gkaf098-0B3B58)](https://academic.oup.com/nar/article/53/4/gkaf098/8042001)
 
-# Shiba (v0.8.2) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
+# Shiba (v1.0.0) <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_icon.png" width=40% align="right">
 
 A versatile computational method for systematic identification of differential RNA splicing. Shiba/scShiba can quantify and identify differential splicing events (DSEs) from bulk RNA-seq data and single-cell RNA-seq data. Shiba and scShiba are also implemented as [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflows, SnakeShiba and SnakeScShiba, respectively.
+
+The scShiba and SnakeScShiba code in this checkout counts junction and intron-retention boundary reads directly from tagged BAM/CRAM files with [Tosa](https://github.com/Sika-Zheng-Lab/Tosa). See the [single-cell input guide](docs/quickstart/diff_splicing_sc.md) for the new experiment table.
 
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
@@ -27,66 +29,52 @@ See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.m
 Shiba comprises four main steps:
 1. **Transcript assembly**: Assemble transcripts from RNA-seq reads using [StringTie](https://github.com/gpertea/stringtie)
 2. **Splicing event identification**: Identify alternative mRNA splicing events from assembled transcripts
-3. **Read counting**: Count reads mapped to each splicing event using [RegTools](https://github.com/griffithlab/regtools) and [featureCounts](https://subread.sourceforge.net/)
-4. **Statistical analysis**: Identify DSEs based on Fisher's exact test
+3. **Read counting**: Count splice junction and intron retention boundary reads using [Tosa](https://github.com/Sika-Zheng-Lab/Tosa)
+4. **Statistical analysis**: Identify DSEs using Fisher's exact test or beta-binomial regression
+
+**Beta-binomial analysis**: Shiba and SnakeShiba support optional event-centric
+beta-binomial regression (`stat_method: beta_binomial`) for factorial experimental
+designs. This mode models junction counts across biological replicates with
+R/glmmTMB, accounting for overdispersion and supporting covariates, interaction
+terms (for example, genotype × treatment), and user-defined contrasts. It reports
+FDR-adjusted event-level results and model-based PSI predictions and effect sizes.
+See the [beta-binomial regression guide](docs/usage/beta_binomial_regression.md)
+for configuration and examples. Set `stat_method: beta_binomial` plus
+`formula`, metadata, and `coef` or `contrast_file` in the configuration.
+Set `stat_method: fisher` to use Fisher testing instead. The old supplementary
+`beta_binomial` key and `psi.py -b/--beta-binomial` have been removed; delete
+that key from existing configurations.
 
 <img src="https://raw.githubusercontent.com/Sika-Zheng-Lab/Shiba/main/img/Shiba_overview.png" width=75%>
 
 ## Installation
 
-### Conda
+Install Shiba from Bioconda (with the `conda-forge` and `bioconda` channels configured):
 
 ```bash
-conda create -n shiba -c conda-forge -c bioconda shiba
-conda activate shiba
-pip install styleframe==4.2 # optional, for generating outputs in Excel format.
+conda install shiba
 ```
 
-If you want to perform only splicing analysis, you can install minimal dependencies and run **MameShiba**, a lightweight version of Shiba.
+If the new dependencies are missing from an existing environment, install them with:
 
 ```bash
-conda create -n mameshiba -c conda-forge -c bioconda mameshiba
+conda install -c conda-forge -c bioconda tosa=1.0.0 \
+  r-glmmtmb=1.1.13 r-tmb=1.9.19 r-jsonlite=2.0 openpyxl=3.1
 ```
 
-### Docker
+If Bioconda has not yet published Shiba v1.0.0, these dependencies alone do not
+upgrade the Shiba code. Use the [source installation instructions](docs/installation.md#source-checkout)
+with the v1.0.0 release checkout and its `environment.yml` until the package is available.
+The source environment also supplies the matching Python, plotting, and expression-analysis dependencies.
 
-```bash
-docker pull naotokubota/shiba:v0.8.2
-```
+See the [installation guide](docs/installation.md) for other installation options.
 
 ## Usage
 
-Manual for Shiba is available at [https://sika-zheng-lab.github.io/Shiba/](https://sika-zheng-lab.github.io/Shiba/).
-
-***Shiba***
-
-```bash
-shiba.py -p 4 config.yaml
-```
-
-***MameShiba***, a lightweight version of Shiba
-
-```bash
-shiba.py --mame -p 4 config.yaml
-```
-
-***SnakeShiba***, Snakemake-based workflow of Shiba
-
-```bash
-snakemake -s snakeshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
-
-***scShiba***, a single-cell RNA-seq version of Shiba
-
-```bash
-scshiba.py -p 4 config.yaml
-```
-
-***SnakeScShiba***, Snakemake-based workflow of scShiba
-
-```bash
-snakemake -s snakescshiba.smk --configfile config.yaml --cores 4 --use-singularity
-```
+See the user guide for [pipeline commands](https://sika-zheng-lab.github.io/Shiba/quickstart/running/),
+[bulk RNA-seq](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/),
+[single-cell RNA-seq](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_sc/), and
+[factorial beta-binomial analysis with example inputs](https://sika-zheng-lab.github.io/Shiba/quickstart/beta_binomial/).
 
 ## Visualization
 

@@ -87,10 +87,11 @@ def load_psi_table(psi_file: str) -> pd.DataFrame:
         psi_df = psi_df.dropna(axis=0, thresh=psi_df.shape[1]*0.5) # Drop rows with more than 50% NaN
         logger.info("Number of rows after dropping rows with more than 50% NaN: {}".format(psi_df.shape[0]))
         # Check if there are any columns with all NaN
+        logger.info("Dropping columns with all NaN...")
         column_all_nan = psi_df.columns[psi_df.isnull().all()]
         logger.debug("Columns with all NaN: {}".format(column_all_nan))
-        logger.info("Dropping columns with all NaN...")
         psi_df = psi_df.drop(columns=column_all_nan)
+        logger.info("KNN imputation... (It may take a while depending on the size of the PSI table)")
         imputer = KNNImputer(n_neighbors=5)
         psi_df = pd.DataFrame(imputer.fit_transform(psi_df), index=psi_df.index, columns=psi_df.columns)
         logger.debug("Number of NaN values after KNN imputation: {}".format(psi_df.isnull().sum().sum()))

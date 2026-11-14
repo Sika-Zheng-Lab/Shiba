@@ -1,4 +1,5 @@
 # Modules used in shiba.py and scshiba.py
+import argparse
 import os
 import subprocess
 import sys
@@ -6,7 +7,30 @@ import yaml
 import json
 import logging
 import datetime
+import csv
 logger = logging.getLogger(__name__)
+
+
+def str2bool(v):
+    """Convert string to boolean for argparse compatibility.
+
+    Accepts both bare flags (via nargs='?' + const=True) and explicit
+    string values passed by Snakemake config interpolation.
+
+    Accepted truthy values: "True", "true", "1", "yes"
+    Accepted falsy values:  "False", "false", "0", "no"
+
+    Usage in argparse:
+        parser.add_argument("--flag", type=str2bool, nargs="?", const=True, default=False)
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("true", "1", "yes"):
+        return True
+    elif v.lower() in ("false", "0", "no"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError(f"Boolean value expected, got '{v}'")
 
 def load_config(config_path):
     """
@@ -49,13 +73,22 @@ def generate_report(name, output_dir, version, command_line, experiment_table, s
     version (str): Version of the tool
     command_line (str): Command line used to run the pipeline
     experiment_table (str): Path to the experiment table file
-    start_time (datetime): Start time of the pipeline execution (optional)
+    start_time (datetime or str): Start time of the pipeline execution (optional).
+        Accepts a datetime object or an ISO 8601 format string.
     
     Returns:
     str: Path to the generated report.json file
     """
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Parse start_time if given as ISO format string
+    if isinstance(start_time, str):
+        try:
+            start_time = datetime.datetime.fromisoformat(start_time)
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid start_time string: '{start_time}'. Treating as None.")
+            start_time = None
     
     # Get end time
     end_time = datetime.datetime.now()
@@ -255,13 +288,10 @@ def validate_groups_sc(experiment_table, reference_group, alternative_group):
     # Read barcode file paths from experiment table
     try:
         barcode_files = []
-        with open(experiment_table, "r") as f:
-            for i, line in enumerate(f):
-                if i == 0:
-                    continue
-                columns = line.strip().split("\t")
-                if len(columns) >= 1 and columns[0]:
-                    barcode_files.append(columns[0])
+        with open(experiment_table, newline="") as f:
+            for row in csv.DictReader(f, delimiter="\t"):
+                if row.get("barcode"):
+                    barcode_files.append(row["barcode"])
         # Read groups from each barcode file
         available_groups = set()
         for barcode_file in barcode_files:
@@ -290,6 +320,36 @@ def validate_groups_sc(experiment_table, reference_group, alternative_group):
         errors.append(f'Experiment table not found: {experiment_table}')
     return errors
 
+def normalize_regtools_strand(strand_value):
+    """Normalize Shiba strand configuration to regtools-compatible values.
+
+    regtools >= 1.0.0 expects XS, RF, or FR instead of the legacy numeric values
+    0, 1, and 2. This helper keeps the older config values accepted while
+    translating them to the newer spellings before invoking regtools.
+    """
+    if strand_value is None:
+        return "XS"
+
+    strand = str(strand_value).strip()
+    legacy_mapping = {
+        "0": "XS",
+        "1": "RF",
+        "2": "FR",
+    }
+    if strand in legacy_mapping:
+        return legacy_mapping[strand]
+    if strand in {"XS", "RF", "FR"}:
+        return strand
+    raise ValueError(f"Unsupported strand value: {strand_value!r}")
+
+
+def normalize_tosa_strand(strand_value):
+    """Translate bulk strand settings to Tosa's XS/RF/FR modes."""
+    if strand_value is not None and str(strand_value).strip().lower() in {"unstranded", "none"}:
+        return None
+    return normalize_regtools_strand(strand_value)
+
+
 def validate_config_types(config, mode="bulk"):
     """
     Validates config parameter types and value ranges.
@@ -302,6 +362,23 @@ def validate_config_types(config, mode="bulk"):
     list: A list of error message strings (empty if all valid).
     """
     errors = []
+
+    # Coverage fraction for the factorial event pre-filter.
+    if config.get('stat_method') == 'beta_binomial' and 'component_cache_size' in config:
+        value = config['component_cache_size']
+        try:
+            if not isinstance(value, (int, str)) or isinstance(value, bool) or int(value) < 0:
+                errors.append('component_cache_size must be a nonnegative integer')
+        except (TypeError, ValueError, OverflowError):
+            errors.append('component_cache_size must be a nonnegative integer')
+
+    if config.get('stat_method') == 'beta_binomial' and 'min_sample_fraction' in config:
+        try:
+            fraction = float(config['min_sample_fraction'])
+            if not 0 < fraction <= 1:
+                errors.append('min_sample_fraction must be in (0, 1]')
+        except (TypeError, ValueError):
+            errors.append('min_sample_fraction must be a number in (0, 1]')
 
     # fdr: float, 0 < fdr <= 1
     if 'fdr' in config:
@@ -330,8 +407,15 @@ def validate_config_types(config, mode="bulk"):
         except (TypeError, ValueError):
             errors.append(f'minimum_reads must be an integer, got "{config["minimum_reads"]}"')
 
-    # Bulk-specific validations
-    if mode == "bulk":
+    # Tosa read-filtering settings for bulk and single-cell counting.
+    if mode in {"bulk", "sc"}:
+        if 'boundary_anchor_length' in config:
+            try:
+                value = int(config['boundary_anchor_length'])
+                if value <= 0:
+                    errors.append('boundary_anchor_length must be a positive integer')
+            except (TypeError, ValueError):
+                errors.append('boundary_anchor_length must be an integer')
         # minimum_anchor_length: int, > 0
         if 'minimum_anchor_length' in config:
             try:
@@ -369,9 +453,9 @@ def validate_config_types(config, mode="bulk"):
             except (TypeError, ValueError):
                 errors.append(f'maximum_intron_length must be an integer, got "{config["maximum_intron_length"]}"')
 
-        # strand: one of XS, 0, 1, 2
+        # strand: Tosa's modes, unstranded, or legacy numeric values
         if 'strand' in config:
-            valid_strands = {"XS", "0", "1", "2"}
+            valid_strands = {"XS", "RF", "FR", "0", "1", "2", "unstranded", "none"}
             if str(config['strand']) not in valid_strands:
                 errors.append(
                     f'strand must be one of {", ".join(sorted(valid_strands))}, '
@@ -379,6 +463,27 @@ def validate_config_types(config, mode="bulk"):
                 )
 
     return errors
+
+def apply_config_defaults(config, mode="bulk"):
+    """
+    Applies default values for optional configuration keys that may be missing.
+    Mutates the config dict in-place without replacing explicit values.
+
+    Parameters:
+    config (dict): The loaded configuration dictionary.
+    """
+    defaults = {
+        'stat_method': 'fisher', 'unannotated': True, 'minimum_anchor_length': 6,
+        'boundary_anchor_length': 6, 'minimum_intron_length': 70,
+        'maximum_intron_length': 500000, 'strand': 'XS', 'only_psi': False,
+        'only_psi_group': False, 'fdr': 0.05, 'delta_psi': 0.1,
+        'minimum_reads': 10, 'individual_psi': True, 'ttest': False, 'excel': False,
+    }
+    if mode == "sc":
+        defaults.update(minimum_anchor_length=8, minimum_intron_length=20, strand="unstranded")
+    for key, value in defaults.items():
+        config.setdefault(key, value)
+
 
 def validate_config(config, mode="bulk"):
     """
@@ -394,6 +499,39 @@ def validate_config(config, mode="bulk"):
     list: A list of all error message strings (empty if everything is valid).
     """
     errors = []
+    if 'beta_binomial' in config:
+        errors.append("beta_binomial has been removed; delete this key. Use stat_method: beta_binomial "
+                      "with formula and coef/contrast_file for bulk factorial regression, "
+                      "or stat_method: fisher for Fisher testing.")
+    regression = config.get('stat_method', 'fisher') == 'beta_binomial'
+    if config.get('stat_method', 'fisher') not in ('fisher', 'beta_binomial'):
+        errors.append('stat_method must be fisher or beta_binomial')
+    if regression:
+        if mode != 'bulk':
+            errors.append('Factorial regression currently requires bulk biological replicate counts')
+        if not isinstance(config.get('formula'), str) or not config.get('formula', '').strip():
+            errors.append('beta-binomial regression requires formula')
+        if not (config.get('coef') or config.get('contrast_file')):
+            errors.append('beta-binomial regression requires coef or contrast_file')
+        if config.get('only_psi') or config.get('only_psi_group'):
+            errors.append('beta-binomial regression cannot use only_psi or only_psi_group')
+        for key in ('sample_metadata', 'contrast_file', 'prediction_grid'):
+            if config.get(key):
+                errors.extend(validate_file_exists(config[key], key))
+        if bool(config.get('expression_reference_group')) != bool(config.get('expression_alternative_group')):
+            errors.append('Specify both expression_reference_group and expression_alternative_group')
+        elif config.get('expression_reference_group') and os.path.isfile(config.get('experiment_table') or ''):
+            errors.extend(validate_groups_bulk(config['experiment_table'], config['expression_reference_group'],
+                                               config['expression_alternative_group']))
+        if not isinstance(config.get('reference_levels', {}), dict):
+            errors.append('reference_levels must map factor names to reference levels')
+        for key in ('coef', 'categorical', 'continuous', 'filter_group'):
+            value = config.get(key, [])
+            if not isinstance(value, (str, list)) or (isinstance(value, list) and
+                    any(not isinstance(item, str) or not item for item in value)):
+                errors.append(f'{key} must be a string or a list of nonempty strings')
+        if config.get('p_adjust', 'BH') not in ('BH', 'BY'):
+            errors.append('p_adjust must be BH or BY')
 
     # 1. Validate that essential files exist
     if config.get('gtf'):
@@ -412,9 +550,21 @@ def validate_config(config, mode="bulk"):
         elif mode == "sc":
             errors.extend(
                 validate_experiment_table_columns(
-                    config['experiment_table'], ["barcode", "SJ"]
+                    config['experiment_table'], ["sample", "alignment", "barcode"]
                 )
             )
+            with open(config['experiment_table'], newline="") as handle:
+                samples = set()
+                for row in csv.DictReader(handle, delimiter="\t"):
+                    if not all(key in row for key in ("sample", "alignment", "barcode")):
+                        break
+                    sample = row["sample"]
+                    if not sample or sample in samples:
+                        errors.append(f'Duplicate or empty sample in experiment table: {sample!r}')
+                    samples.add(sample)
+                    for column in ("alignment", "barcode"):
+                        if not row[column] or not os.path.isfile(row[column]):
+                            errors.append(f'{column} file not found for {sample}: {row[column]}')
 
     # 3. Validate reference_group and alternative_group
     only_psi = config.get('only_psi', False)
@@ -422,7 +572,7 @@ def validate_config(config, mode="bulk"):
     ref_group = config.get('reference_group')
     alt_group = config.get('alternative_group')
 
-    if not (only_psi and only_psi_group):
+    if not regression and not (only_psi and only_psi_group):
         # Check that reference_group and alternative_group are specified in config
         if not ref_group:
             errors.append('reference_group is not specified in configuration file')

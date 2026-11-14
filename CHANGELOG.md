@@ -2,6 +2,28 @@
 
 All notable changes to this Shiba project will be documented in this file.
 
+## [v1.0.0] - 2026-11-13
+
+> [!IMPORTANT]
+> Read counting and minus-strand MXE definitions have changed. Results may differ from v0.8.2; re-run all samples from alignment files instead of reusing previous counts.
+
+### Added
+
+- Beta-binomial regression for bulk RNA-seq designs with covariates and interactions (`stat_method: beta_binomial`, using R/glmmTMB). Fisher's exact test remains the default.
+- Intron-retention (RI) analysis in scShiba and SnakeScShiba.
+- Self-contained interactive HTML reports for bulk and single-cell analyses, with PNG/PDF/SVG exports.
+
+### Changed
+
+- Splice-junction and intron-retention boundary counting now uses [Tosa](https://github.com/Sika-Zheng-Lab/Tosa) 1.0.0.
+- Single-cell input changes from STARsolo SJ matrices to BAM/CRAM with `CB`/`UB` tags. Experiment tables now use `sample`, `alignment`, and `barcode` columns.
+- MXE PSI now represents the upstream exon on both strands, changing results for minus-strand genes.
+- `PSI_matrix_group.txt` now includes all groups in the experiment table.
+
+### Fixed
+
+- Fixed failures when event tables are empty, including Excel export.
+
 ## [v0.8.2] - 2026-02-23
 
 ### Fixed

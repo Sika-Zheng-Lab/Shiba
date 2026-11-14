@@ -50,10 +50,10 @@ class TestReadEvents(unittest.TestCase):
         d = shibalib.read_events(DATA_DIR)
         self.assertEqual(len(d["SE"]), 3)
 
-    def test_read_events_sc_excludes_ri(self):
+    def test_read_events_sc_includes_ri(self):
         d = shibalib.read_events_sc(DATA_DIR)
-        self.assertNotIn("RI", d)
-        self.assertEqual(len(d), 7)
+        self.assertIn("RI", d)
+        self.assertEqual(len(d), 8)
 
 
 class TestReadJunctions(unittest.TestCase):
@@ -147,6 +147,121 @@ class TestJuncDict(unittest.TestCase):
         self.assertEqual(result["Alt_2"]["chr10:1200-1500"], 55)
 
 
+# ============================================================================
+# JunctionData (memory-efficient shared-memory-capable junction storage)
+# ============================================================================
+class TestJunctionData(unittest.TestCase):
+    """Tests for the JunctionData class used for memory-efficient multiprocessing."""
+
+    def setUp(self):
+        self.junc_df = _make_junc_df()
+        # Ensure numeric columns are int
+        self.junc_df.iloc[:, 4:] = self.junc_df.iloc[:, 4:].astype(int)
+
+    def test_from_dataframe_basic(self):
+        """JunctionData.from_dataframe should produce correct shape and sample list."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        sample_cols = [c for c in self.junc_df.columns if c not in ("chr", "start", "end", "ID")]
+        self.assertEqual(jd.array.shape[0], len(self.junc_df))
+        self.assertEqual(jd.array.shape[1], len(sample_cols))
+        self.assertEqual(jd.sample_ids, sample_cols)
+
+    def test_dict_like_access(self):
+        """JunctionData[sample][junction_id] should match the original DataFrame."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        # Compare against junc_dict for a known value
+        junc_dict_all = shibalib.junc_dict(self.junc_df)
+        for sample in jd.sample_ids:
+            for jid in list(jd.junction_to_idx.keys())[:5]:
+                self.assertEqual(jd[sample][jid], junc_dict_all[sample][jid])
+
+    def test_missing_junction_raises(self):
+        """Accessing a non-existent junction should raise KeyError."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        with self.assertRaises(KeyError):
+            _ = jd[jd.sample_ids[0]]["nonexistent_junction"]
+
+    def test_se_psi_with_junction_data(self):
+        """PSI worker function se() should work with JunctionData as drop-in for dict."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        event_df = pd.DataFrame({
+            "event_id": ["SE_1"],
+            "pos_id": ["SE@chr10@1000-1200@800-1500"],
+            "exon": ["chr10:1000-1200"],
+            "intron_a": ["chr10:800-1000"],
+            "intron_b": ["chr10:1200-1500"],
+            "intron_c": ["chr10:800-1500"],
+            "strand": ["+"],
+            "gene_id": ["G1"],
+            "gene_name": ["GeneA"],
+            "label": ["annotated"]
+        })
+        # Use only samples that exist in junc_df
+        sample_list = jd.sample_ids
+        result_jd = shibalib.se(jd, sample_list, event_df, 1, 1, 0)
+        # Compare with dict-based result
+        junc_dict_all = shibalib.junc_dict(self.junc_df)
+        result_dict = shibalib.se(junc_dict_all, sample_list, event_df, 1, 1, 0)
+        # Both should produce the same PSI values
+        self.assertEqual(len(result_jd), len(result_dict))
+        for row_jd, row_dict in zip(result_jd, result_dict):
+            for v_jd, v_dict in zip(row_jd, row_dict):
+                if isinstance(v_jd, float) and np.isnan(v_jd):
+                    self.assertTrue(np.isnan(v_dict))
+                else:
+                    self.assertEqual(v_jd, v_dict)
+
+    def test_to_shared_memory_and_back(self):
+        """Data should survive round-trip through shared memory."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        shm, shm_info = jd.to_shared_memory()
+        try:
+            jd2 = shibalib.JunctionData.from_shared_memory(
+                shm_info['shm_name'], shm_info['shape'],
+                shm_info['junction_ids'], shm_info['sample_ids']
+            )
+            # Verify data matches
+            np.testing.assert_array_equal(jd.array, jd2.array)
+            self.assertEqual(jd.sample_ids, jd2.sample_ids)
+            # Verify dict-like access
+            sample = jd.sample_ids[0]
+            jid = list(jd.junction_to_idx.keys())[0]
+            self.assertEqual(jd[sample][jid], jd2[sample][jid])
+            jd2.close()
+        finally:
+            shm.close()
+            shm.unlink()
+
+    def test_worker_init_and_get(self):
+        """_init_junc_worker / _get_junc_data cycle should work in the current process."""
+        jd = shibalib.JunctionData.from_dataframe(self.junc_df)
+        shm, shm_info = jd.to_shared_memory()
+        try:
+            shibalib._init_junc_worker(
+                shm_info['shm_name'], shm_info['shape'],
+                shm_info['junction_ids'], shm_info['sample_ids']
+            )
+            worker_data = shibalib._get_junc_data()
+            sample = jd.sample_ids[0]
+            jid = list(jd.junction_to_idx.keys())[0]
+            self.assertEqual(jd[sample][jid], worker_data[sample][jid])
+        finally:
+            # Reset worker state
+            shibalib._worker_junc_data = None
+            shm.close()
+            shm.unlink()
+
+    def test_get_junc_data_without_init_raises(self):
+        """_get_junc_data should raise RuntimeError when not initialized."""
+        old = shibalib._worker_junc_data
+        shibalib._worker_junc_data = None
+        try:
+            with self.assertRaises(RuntimeError):
+                shibalib._get_junc_data()
+        finally:
+            shibalib._worker_junc_data = old
+
+
 class TestMakeJuncSet(unittest.TestCase):
     def test_make_junc_set(self):
         junc_df = _make_junc_df()
@@ -159,6 +274,25 @@ class TestMakeJuncSet(unittest.TestCase):
 # ============================================================================
 # Event Filtering Functions
 # ============================================================================
+class TestEmptyEventFiltering(unittest.TestCase):
+    def test_empty_event_files_preserve_columns(self):
+        events = shibalib.read_events(DATA_DIR)
+        selectors = {
+            "SE": shibalib.event_for_analysis_se,
+            "FIVE": shibalib.event_for_analysis_five_three,
+            "THREE": shibalib.event_for_analysis_five_three,
+            "MXE": shibalib.event_for_analysis_mxe,
+            "RI": shibalib.event_for_analysis_ri,
+            "MSE": shibalib.event_for_analysis_mse,
+            "AFE": shibalib.event_for_analysis_afe_ale,
+            "ALE": shibalib.event_for_analysis_afe_ale,
+        }
+        for kind, select in selectors.items():
+            with self.subTest(event_type=kind):
+                empty = events[kind].iloc[:0]
+                pd.testing.assert_frame_equal(select(empty, {"chr1:100-200"}), empty)
+
+
 class TestEventForAnalysisSE(unittest.TestCase):
     def test_se_events_filtered(self):
         events = shibalib.read_events(DATA_DIR)
@@ -240,7 +374,10 @@ class TestColSE(unittest.TestCase):
 class TestColInd(unittest.TestCase):
     def test_col_ind(self):
         cols = shibalib.col_ind(["s1", "s2"])
-        self.assertEqual(cols, ["event_id", "s1_PSI", "s2_PSI"])
+        self.assertEqual(
+            cols,
+            ["event_id", "s1_PSI", "s2_PSI", "s1_success", "s2_success", "s1_total_reads", "s2_total_reads"]
+        )
 
 
 class TestColMSE(unittest.TestCase):
@@ -478,6 +615,49 @@ class TestMXEPsi(unittest.TestCase):
         result = shibalib.mxe_ind(self.junc_dict, self.event_df, ["s1"], 1, 0)
         row = result[0]
         self.assertAlmostEqual(row[1], 98.0 / 112.0, places=4)
+
+
+class TestMXEPsiMinusStrand(unittest.TestCase):
+    """Test MXE PSI with minus strand (strand-aware exon_a/b assignment)."""
+    def setUp(self):
+        # Minus strand: exon_a = upstream (5') = genomic right exon
+        #               exon_b = downstream (3') = genomic left exon
+        # intron_a1 = 5' of exon_a (genomic right), intron_a2 = 3' of exon_a (genomic left)
+        # intron_b1 = 5' of exon_b (genomic right), intron_b2 = 3' of exon_b (genomic left)
+        self.event_df = pd.DataFrame({
+            "event_id": ["MXE_1"],
+            "pos_id": ["MXE@chr1@10700-10800@10500-10700@10200-10400@10000"],
+            "exon_a": ["chr1:10500-10700"],
+            "exon_b": ["chr1:10200-10400"],
+            "intron_a1": ["chr1:10700-10800"],
+            "intron_a2": ["chr1:10000-10500"],
+            "intron_b1": ["chr1:10400-10800"],
+            "intron_b2": ["chr1:10000-10200"],
+            "strand": ["-"],
+            "gene_id": ["G10"],
+            "gene_name": ["GeneJ"],
+            "label": ["annotated"]
+        })
+        self.junc_dict = {
+            "s1": {
+                "chr1:10700-10800": 6,   # intron_a1
+                "chr1:10000-10500": 8,   # intron_a2
+                "chr1:10400-10800": 48,  # intron_b1
+                "chr1:10000-10200": 50,  # intron_b2
+            },
+        }
+
+    def test_mxe_psi_minus_strand(self):
+        result = shibalib.mxe(self.junc_dict, ["s1"], self.event_df, 1, 5, 0)
+        row = result[0]
+        # a1+a2=14, b1+b2=98 -> PSI = 14/(14+98) = 0.125
+        s1_psi = row[16]
+        self.assertAlmostEqual(s1_psi, 14.0 / 112.0, places=4)
+
+    def test_mxe_ind_psi_minus_strand(self):
+        result = shibalib.mxe_ind(self.junc_dict, self.event_df, ["s1"], 1, 0)
+        row = result[0]
+        self.assertAlmostEqual(row[1], 14.0 / 112.0, places=4)
 
 
 # ============================================================================
@@ -764,7 +944,7 @@ class TestTtest(unittest.TestCase):
 
 
 # ============================================================================
-# make_psi_mtx
+# Beta-Binomial
 # ============================================================================
 class TestMakePsiMtx(unittest.TestCase):
     def test_make_psi_mtx(self):
@@ -783,6 +963,15 @@ class TestMakePsiMtx(unittest.TestCase):
         self.assertIn("pos_id", mtx_df.columns)
         self.assertIn("s1", mtx_df.columns)
         self.assertIn("s2", mtx_df.columns)
+
+    def test_make_psi_mtx_empty_df(self):
+        df = pd.DataFrame(columns=["event_id", "pos_id", "extra", "s1_PSI", "s2_PSI"])
+        sorted_df, mtx_df = shibalib.make_psi_mtx(df)
+
+        self.assertEqual(len(sorted_df), 0)
+        self.assertEqual(len(mtx_df), 0)
+        self.assertEqual(list(sorted_df.columns), ["event_id", "pos_id", "extra", "s1_PSI", "s2_PSI"])
+        self.assertEqual(list(mtx_df.columns), ["event_id", "pos_id", "s1", "s2"])
 
 
 # ============================================================================

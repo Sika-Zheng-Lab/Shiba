@@ -1,12 +1,22 @@
 # Shiba usage
 
+After installing with Conda, activate the environment and run:
+
+```bash
+shiba.py -p 4 config.yaml
+```
+
+For source execution and the `SHIBA_HOME` used by internal-script examples,
+see [Locating scripts and workflows](../installation.md#locating-scripts-and-workflows).
+The step scripts below are internal tools, not separate commands on `PATH`.
+
 ``` bash
 usage: shiba.py [-h] [-p PROCESS] [-s START_STEP] [--mame] [-v] config
 
-Shiba v0.8.2 - Pipeline for identification of differential RNA splicing
+Shiba - Pipeline for identification of differential RNA splicing
 
 Step 1: bam2gtf.py
-    - Assembles transcript structures based on mapped reads using StringTie2.
+    - Assembles transcript structures based on mapped reads using StringTie.
 Step 2: gtf2event.py
     - Converts GTF files to event format.
 Step 3: bam2junc.py
@@ -33,9 +43,10 @@ options:
   -v, --verbose         Verbose mode
 ```
 
-Check the [Manual](../manual/diff_splicing_bulk.md/#1-prepare-inputs) to learn how to prepare the `config`.
+Check the [Quick start](../quickstart/diff_splicing_bulk.md#1-prepare-inputs) to learn how to prepare the `config`.
 
-The `Shiba` command will run the following steps sequentially:
+The `shiba.py` command will run the following steps sequentially (transcript
+assembly is skipped when `unannotated: False`):
 
 1. `bam2gtf.py`
 2. `gtf2event.py`
@@ -52,7 +63,7 @@ The `Shiba` command will run the following steps sequentially:
 ``` bash
 usage: bam2gtf.py [-h] -i INPUT -r REFERENCE -o OUTPUT [-p PROCESSORS] [-v]
 
-Pipeline for transcript assembly using StringTie2
+Pipeline for transcript assembly using StringTie
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -105,32 +116,42 @@ SE_9  SE@chr10@100610596-100610715@100609254-100612429  chr10:100610596-10061071
 ## Step3: `bam2junc.py`
 
 ``` bash
-usage: bam2junc.py [-h] -i INPUT -r RI_EVENT -o OUTPUT [-p PROCESSORS] [-a ANCHOR] [-m MIN_INTRON] [-M MAX_INTRON] [-s STRAND] [-v]
+usage: bam2junc.py [-h] -i INPUT -r RI_EVENT -o OUTPUT -g GTF [-p PROCESSORS] [-a ANCHOR] [-b BOUNDARY_ANCHOR] [-m MIN_INTRON] [-M MAX_INTRON] [-s STRAND] [-v]
 
-Pipeline for processing junction read counts.
+Count junction and RI boundary reads with Tosa and write Shiba's junctions.bed.
 
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
                         Experiment table
-  -r RI_EVENT, --ri_event RI_EVENT
+  -r RI_EVENT, --ri-event RI_EVENT
                         Intron retention event file
   -o OUTPUT, --output OUTPUT
                         Output junction read counts file
+  -g GTF, --gtf GTF    GTF used to generate events
   -p PROCESSORS, --processors PROCESSORS
                         Number of processors to use (default: 1)
   -a ANCHOR, --anchor ANCHOR
                         Minimum anchor length (default: 8)
-  -m MIN_INTRON, --min_intron MIN_INTRON
+  -b BOUNDARY_ANCHOR, --boundary-anchor BOUNDARY_ANCHOR
+                        Bases required on each side of an RI boundary (default: 6)
+  -m MIN_INTRON, --min-intron MIN_INTRON
                         Minimum intron size (default: 70)
-  -M MAX_INTRON, --max_intron MAX_INTRON
+  -M MAX_INTRON, --max-intron MAX_INTRON
                         Maximum intron size (default: 500000)
   -s STRAND, --strand STRAND
-                        Strand specificity (default: XS)
+                        Tosa strand mode: XS, RF, FR, or unstranded (default: XS). Legacy values 0/1/2 are accepted.
   -v, --verbose         Verbose output
 ```
 
+Tosa writes gzip-compressed junction and boundary tables for each BAM. Shiba converts their coordinates, combines strand rows, adds zero-count RI boundaries, and writes `junctions/junctions.bed`. For SnakeShiba, `bam2junc.py run` processes a single BAM and `bam2junc.py merge` combines the per-sample tables.
+
 ## Step4: `psi.py`
+
+The options below describe the Fisher workflow (`stat_method: fisher`, the default).
+For `stat_method: beta_binomial`, see the [factorial quick start](../quickstart/beta_binomial.md)
+and [regression CLI and output reference](beta_binomial_regression.md).
+Run `python "$SHIBA_HOME/src/psi.py" --help` for the complete current option list.
 
 ``` bash
 usage: psi.py [-h] [-p NUM_PROCESS] [-g GROUP] [-f FDR] [-d PSI] [-r REFERENCE] [-a ALTERNATIVE] [-m MINIMUM_READS] [-i] [-t] [--onlypsi] [--onlypsi-group] [--excel] [-v] junctions event output
@@ -167,7 +188,7 @@ optional arguments:
 ## Step5: `expression.py`
 
 ``` bash
-usage: expression.py [-h] -i INPUT -g REFERENCE -o OUTPUT [-r REFGROUP] [-a ALTGROUP] [-p PROCESSORS] [-v]
+usage: expression.py [-h] -i INPUT -g REFERENCE -o OUTPUT [-r REFGROUP] [-a ALTGROUP] [-p PROCESSORS] [--excel [EXCEL]] [-v]
 
 RNA expression analysis using featureCounts and DESeq2.
 
@@ -185,6 +206,7 @@ optional arguments:
                         Alternative group for differential expression analysis
   -p PROCESSORS, --processors PROCESSORS
                         Number of processors to use (default: 1)
+  --excel [EXCEL]        Export TPM/CPM to Excel (default: False)
   -v, --verbose         Increase output verbosity
 ```
 
@@ -211,12 +233,14 @@ optional arguments:
 ## Step7: `plots.py`
 
 ``` bash
-usage: plots.py [-h] [-i INPUT] [-e EXPERIMENT_TABLE] [-s SHIBA_COMMAND] [-o OUTPUT] [-v]
+usage: plots.py [-h] [--single-cell] [--only-psi] [-i INPUT] [-e EXPERIMENT_TABLE] [-s SHIBA_COMMAND] [-o OUTPUT] [-v]
 
 Make plots for alternative splicing events
 
 optional arguments:
   -h, --help            show this help message and exit
+  --single-cell         Read flat scShiba results without bulk PCA
+  --only-psi            Single-cell PSI-only report without differential tests
   -i INPUT, --input INPUT
                         Directory that contains result files (default: None)
   -e EXPERIMENT_TABLE, --experiment-table EXPERIMENT_TABLE

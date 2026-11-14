@@ -4,33 +4,21 @@
 
 ## Before you start
 
+This guide uses the default `stat_method: fisher`. For factorial regression,
+use the [beta-binomial quick start](beta_binomial.md).
+
 - Perform mapping of RNA-seq reads to the reference genome and generate bam files with their index files (`.bai`)  by software such as [STAR](https://github.com/alexdobin/STAR) and [HISAT2](https://daehwankimlab.github.io/hisat2/).
     - You can download test RNA-seq bam files with their index (two replicates for reference and alternative groups) mapped by STAR on the mouse genome from [here](https://zenodo.org/records/14976391).
-- Download a gene annotataion file of your interest in GTF format.
+- Download a gene annotation file of your interest in GTF format.
 
 ---
 
 ## Installation
 
-- **Shiba**:
-
-``` bash
-# Install Shiba with conda
-conda create -n shiba -c conda-forge -c bioconda shiba
-# Activate the conda environment
-conda activate shiba
-# Install styleframe for generating outputs in Excel format (optional)
-pip install styleframe==4.2
-```
-
-- **MameShiba**, a lightweight version of **Shiba**:
-
-``` bash
-# Install MameShiba with conda
-conda create -n mameshiba -c conda-forge -c bioconda mameshiba
-# Activate the conda environment
-conda activate mameshiba
-```
+Follow the [installation guide](../installation.md) and activate the environment
+containing Shiba. The commands below use the Conda-installed launchers. For a
+source checkout, use the [source invocation](../installation.md#locating-scripts-and-workflows)
+instead. These examples require the v1.0.0 implementation, including Tosa.
 
 ---
 
@@ -85,6 +73,8 @@ unannotated:
 # Junction read filtering
 minimum_anchor_length:
   6 # (5)!
+boundary_anchor_length:
+  6 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:
@@ -182,11 +172,13 @@ A snakemake-based workflow of **Shiba**. This is useful for running **Shiba** on
 
 `config.yaml`: A yaml file of the configuration. This is the same as the configuration for **Shiba** but with the addition of the `container` field and without the `only_psi` and `only_psi_group` fields as they are not supported in **SnakeShiba**.
 
+The container reference below must resolve to a published release matching your source. Until that release is available, build `docker/Dockerfile_develop` and use a matching SIF image, or run Snakemake locally with the source environment.
+
 ``` yaml
 workdir:
   /path/to/workdir # (1)!
 container: # This field is required for SnakeShiba
-  docker://naotokubota/shiba:v0.8.2 # (2)!
+  docker://naotokubota/shiba:v1.0.0 # (2)!
 gtf:
   /path/to/Mus_musculus.GRCm38.102.gtf # (3)!
 experiment_table:
@@ -195,6 +187,8 @@ experiment_table:
 # Junction read filtering
 minimum_anchor_length:
   6 # (5)!
+boundary_anchor_length:
+  6 # Required aligned bases on each side of an RI boundary
 minimum_intron_length:
   70 # (6)!
 maximum_intron_length:
@@ -240,10 +234,13 @@ excel:
 
 ### 2. Run
 
-Please make sure that you have installed Snakemake and Singularity and cloned the **Shiba** repository on your system.
+Install Snakemake and Apptainer/Singularity, set
+[`SHIBA_HOME`](../installation.md#locating-scripts-and-workflows), and select a
+matching container image as described in the [installation guide](../installation.md#snakemake).
+For execution in the activated Conda environment, omit `--use-singularity`.
 
 ``` bash
-snakemake -s /path/to/Shiba/snakeshiba.smk \
+snakemake -s "$SHIBA_HOME/snakeshiba.smk" \
 --configfile config.yaml \
 --cores 16 \
 --use-singularity \

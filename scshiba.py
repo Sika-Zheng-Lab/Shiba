@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import shlex
 import logging
 import subprocess
 import yaml
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Set version
 def _read_version():
     try:
-        version_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
+        version_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "VERSION")
         with open(version_path, "r") as f:
             return f.read().strip()
     except Exception:
@@ -28,9 +29,11 @@ def parse_args():
 Step 1: gtf2event.py
     - Converts GTF files to event format.
 Step 2: sc2junc.py
-    - Counts junction reads from STARsolo output files.
+    - Counts junction and RI boundary reads from BAM/CRAM with Tosa.
 Step 3: scpsi.py
-    - Calculates PSI values and perform differential analysis.""",
+    - Calculates PSI values and perform differential analysis.
+Step 4: plots.py
+    - Creates an interactive summary.html report.""",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("config", help="Config file in yaml format")
@@ -64,6 +67,7 @@ def main():
 	logger.info("Loading configuration...")
 	config_path = args.config
 	config = general.load_config(config_path)
+	general.apply_config_defaults(config, mode="sc")
 
 	# Check essential config keys
 	missing_keys = general.check_config(config, ["workdir", "experiment_table", "gtf"])
@@ -96,7 +100,7 @@ def main():
 
 	# Get command line of this script
 	logger.debug("Getting command line...")
-	command_line = " ".join(sys.argv)
+	command_line = shlex.join([sys.executable, *sys.argv])
 	logger.debug(f"Command line: {command_line}")
 
 	# Steps
@@ -117,7 +121,15 @@ def main():
 			"command": [
 				"python", os.path.join(script_dir, "src", "sc2junc.py"),
 				"-i", experiment_table,
-				"-o", os.path.join(output_dir, "junctions", "junctions.bed")
+				"-o", os.path.join(output_dir, "junctions", "junctions.bed"),
+				"-r", os.path.join(output_dir, "events", "EVENT_RI.txt"),
+				"-g", gtf,
+				"-p", processors,
+				"-a", str(config.get('minimum_anchor_length', 8)),
+				"-b", str(config.get('boundary_anchor_length', 6)),
+				"-m", str(config.get('minimum_intron_length', 20)),
+				"-M", str(config.get('maximum_intron_length', 500000)),
+				"-s", str(config.get('strand', 'unstranded'))
 			]
 		},
 		{
@@ -130,14 +142,23 @@ def main():
 				"-f", str(config['fdr']),
 				"-d", str(config['delta_psi']),
 				"-m", str(config['minimum_reads']),
-				"--onlypsi" if config['only_psi'] else "",
-				"--excel" if config['excel'] else "",
+				"--onlypsi", str(config['only_psi']),
+				"--excel", str(config['excel']),
 				os.path.join(output_dir, "junctions", "junctions.bed"),
 				os.path.join(output_dir, "events"),
 				os.path.join(output_dir, "results")
 			]
 		}
 	]
+
+	steps.append({
+		"name": "Step 4: plots.py",
+		"command": [
+			sys.executable, os.path.join(script_dir, "src", "plots.py"),
+			"--single-cell", "-i", os.path.join(output_dir, "results"),
+			"-o", os.path.join(output_dir, "plots"), "-s", command_line,
+		] + (["--only-psi"] if config["only_psi"] else [])
+	})
 
 	logger.info("Starting pipeline execution...")
 

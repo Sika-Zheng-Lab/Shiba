@@ -8,6 +8,7 @@ repo_name: Sika-Zheng-Lab/Shiba
 
 theme:
   name: material
+  variant: classic
   palette:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -86,6 +87,8 @@ nav:
 - Home: index.md
 - Installation: installation.md
 - Quick start:
+  - Running the pipelines: quickstart/running.md
+  - Factorial beta-binomial analysis: quickstart/beta_binomial.md
   - With bulk RNA-seq data: quickstart/diff_splicing_bulk.md
   - With single-cell RNA-seq data: quickstart/diff_splicing_sc.md
 - Output:
@@ -96,3 +99,14 @@ nav:
   - scShiba: usage/scshiba.md
   - SnakeShiba: usage/snakeshiba.md
   - SnakeScShiba: usage/snakescshiba.md
+  - Beta-binomial regression: usage/beta_binomial_regression.md
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

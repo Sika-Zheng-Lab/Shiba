@@ -49,21 +49,35 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up the full analysis environment
+        uses: mamba-org/setup-micromamba@v3
         with:
-          python-version: "3.12"
+          environment-file: environment.yml
+          cache-environment: true
+          init-shell: bash
 
-      - name: Install dependencies
+      - name: Verify backends and install coverage
+        shell: bash -el {0}
+        env:
+          PYTHONNOUSERSITE: '1'
         run: |
-          python -m pip install --upgrade pip
-          pip install numpy pandas scipy scikit-learn statsmodels plotly matplotlib seaborn pyyaml pysam coverage openpyxl
+          python scripts/verify_runtime.py
+          python -m pip install coverage==7.17.3
 
-      - name: Run tests with coverage
+      - name: Run all tests with coverage, rejecting skips
+        shell: bash -el {0}
+        env:
+          PYTHONNOUSERSITE: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
         run: |
-          coverage run -m unittest discover -s test -v
+          export COVERAGE_RCFILE="$PWD/.coveragerc"
+          export COVERAGE_FILE="$PWD/.coverage"
+          coverage erase
+          coverage run scripts/run_tests.py
+          coverage combine
           coverage xml
-          coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+          coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

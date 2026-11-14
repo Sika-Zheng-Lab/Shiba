@@ -1,6 +1,10 @@
 [run]
 source = src
 relative_files = true
+parallel = true
+patch = subprocess
+concurrency = multiprocessing
+sigterm = true
 
 [xml]
 output = coverage.xml

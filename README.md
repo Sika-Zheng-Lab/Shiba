@@ -22,7 +22,7 @@ The scShiba and SnakeScShiba code in this checkout counts junction and intron-re
 See [CHANGELOG.md](https://github.com/Sika-Zheng-Lab/Shiba/blob/main/CHANGELOG.md) for the latest updates.
 
 > [!IMPORTANT]
-> Shiba now supports **long-read RNA-seq** data analysis! Please check the [manual](https://sika-zheng-lab.github.io/Shiba/quickstart/diff_splicing_bulk/#shiba) for more details.
+> Shiba v1.0.0 is not backward compatible with earlier versions, and results may differ from those produced by previous versions. Read counting and minus-strand MXE definitions have changed.
 
 ## Overview
 
